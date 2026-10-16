@@ -1,164 +1,59 @@
 'use client';
-import { useEffect, useRef } from 'react';
-import { createBody, stepBodies, MAX_BODIES, type Body } from '../../lib/pour-physics';
-const colors = ['#ef9b5e', '#80c5b6', '#b6a5d7', '#e5c36a', '#7dadd0'];
-export default function PourScene({ count, seed, finalFraction = 1 }: {
-    count: number;
-    seed: string;
-    finalFraction?: number;
-}) {
-    const fraction = useRef(finalFraction);
-    fraction.current = finalFraction;
-    const canvas = useRef<HTMLCanvasElement>(null);
-    const desired = useRef(count);
-    const wake = useRef<() => void>(() => { });
-    useEffect(() => { desired.current = count; wake.current(); }, [count, finalFraction]);
-    useEffect(() => {
-        const el = canvas.current;
-        if (!el)
-            return;
-        const ctx = el.getContext('2d');
-        if (!ctx)
-            return;
-        const bodies: Body[] = [];
-        let rendered = 0, raf = 0, last = 0, activeUntil = 0;
-        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const project = (x: number, y: number, z: number) => ({ x: 180 + x * .92 + z * .4, y: 325 - y - z * .25 });
-        const polygon = (points: number[][], fill: string, stroke = '#8eafb4') => { ctx.beginPath(); points.forEach((p, i) => { const v = project(p[0], p[1], p[2]); if (i)
-            ctx.lineTo(v.x, v.y);
-        else
-            ctx.moveTo(v.x, v.y); }); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); };
-        function draw() {
-            ctx!.clearRect(0, 0, 360, 370);
-            ctx!.fillStyle = '#392e36';
-            ctx!.fillRect(0, 0, 360, 370);
-            polygon([[-110, 0, -65], [110, 0, -65], [110, 250, -65], [-110, 250, -65]], '#4c3b40', '#b29171');
-            polygon([[-110, 0, -65], [110, 0, -65], [110, 0, 65], [-110, 0, 65]], '#6a5050', '#c5a378');
-            polygon([[-110, 0, -65], [-110, 0, 65], [-110, 250, 65], [-110, 250, -65]], '#493941', '#547782');
-            for (const b of [...bodies].sort((a, b) => a.z - b.z || a.y - b.y)) {
-                const shadow = project(b.x, 0, b.z);
-                ctx!.fillStyle = '#071b2733';
-                ctx!.beginPath();
-                ctx!.ellipse(shadow.x, shadow.y, 9, 3, 0, 0, Math.PI * 2);
-                ctx!.fill();
-                const p = project(b.x, b.y, b.z), r = b.r * (b === bodies[bodies.length - 1] ? Math.cbrt(fraction.current) : 1);
-                ctx!.save();
-                ctx!.translate(p.x, p.y);
-                ctx!.rotate(b.angle * .3);
-                const color = colors[b.color];
-                if (b.shape === 0) {
-                    ctx!.fillStyle = color;
-                    ctx!.fillRect(-r, -r, r * 1.6, r * 1.6);
-                    ctx!.beginPath();
-                    ctx!.moveTo(-r, -r);
-                    ctx!.lineTo(-r + 5, -r - 5);
-                    ctx!.lineTo(r * .6 + 5, -r - 5);
-                    ctx!.lineTo(r * .6, -r);
-                    ctx!.closePath();
-                    ctx!.fillStyle = '#f5ead4';
-                    ctx!.fill();
-                    ctx!.beginPath();
-                    ctx!.moveTo(r * .6, -r);
-                    ctx!.lineTo(r * .6 + 5, -r - 5);
-                    ctx!.lineTo(r * .6 + 5, r * .6 - 5);
-                    ctx!.lineTo(r * .6, r * .6);
-                    ctx!.closePath();
-                    ctx!.fillStyle = '#487181';
-                    ctx!.fill();
-                }
-                else if (b.shape === 1) {
-                    const g = ctx!.createRadialGradient(-3, -4, 1, 0, 0, r);
-                    g.addColorStop(0, '#fff0d2');
-                    g.addColorStop(.3, color);
-                    g.addColorStop(1, '#325367');
-                    ctx!.fillStyle = g;
-                    ctx!.beginPath();
-                    ctx!.arc(0, 0, r, 0, Math.PI * 2);
-                    ctx!.fill();
-                }
-                else {
-                    ctx!.beginPath();
-                    ctx!.moveTo(0, -r * 1.25);
-                    ctx!.lineTo(r, r);
-                    ctx!.lineTo(-r, r);
-                    ctx!.closePath();
-                    ctx!.fillStyle = color;
-                    ctx!.fill();
-                    ctx!.beginPath();
-                    ctx!.moveTo(0, -r * 1.25);
-                    ctx!.lineTo(0, r * .5);
-                    ctx!.lineTo(r, r);
-                    ctx!.closePath();
-                    ctx!.fillStyle = '#f6d4a1';
-                    ctx!.fill();
-                }
-                ctx!.restore();
-            }
-            polygon([[-110, 0, 65], [110, 0, 65], [110, 250, 65], [-110, 250, 65]], '#9ed5d509', '#8bb5bd');
-            polygon([[110, 0, -65], [110, 0, 65], [110, 250, 65], [110, 250, -65]], '#b6eff00c', '#6e9eaa');
-            ctx!.fillStyle = '#adcfc3';
-            ctx!.fillRect(164, 8, 32, 10);
-            ctx!.fillStyle = '#426d77';
-            ctx!.fillRect(170, 18, 20, 9);
-            ctx!.strokeStyle = '#c4e6db';
-            ctx!.lineWidth = 3;
-            ctx!.beginPath();
-            for (const [i, v] of [[-110, 250, 65], [110, 250, 65], [110, 250, -65], [-110, 250, -65], [-110, 250, 65]].entries()) {
-                const p = project(...v as [
-                    number,
-                    number,
-                    number
-                ]);
-                if (i)
-                    ctx!.lineTo(p.x, p.y);
-                else
-                    ctx!.moveTo(p.x, p.y);
-            }
-            ctx!.stroke();
-        }
-        function frame(time: number) {
-            raf = 0;
-            if (document.hidden) {
-                last = 0;
-                return;
-            }
-            const dt = last ? Math.min((time - last) / 1000, 1 / 30) : 1 / 60;
-            last = time;
-            const target = Math.min(MAX_BODIES, desired.current);
-            if (target < rendered) {
-                bodies.length = 0;
-                rendered = 0;
-            }
-            let spawned = 0;
-            while (rendered < target && spawned < 4) {
-                const b = createBody(seed, rendered++);
-                if (reduced) {
-                    const i = rendered - 1;
-                    b.x = -78 + (i % 7) * 26;
-                    b.z = -39 + (Math.floor(i / 7) % 4) * 26;
-                    b.y = 11 + Math.floor(i / 28) * 22;
-                    b.vy = 0;
-                }
-                bodies.push(b);
-                spawned++;
-                activeUntil = time + 4500;
-            }
-            if (!reduced)
-                stepBodies(bodies, dt);
-            draw();
-            if (rendered < target || (!reduced && time < activeUntil))
-                raf = requestAnimationFrame(frame);
-        }
-        const start = () => { if (!raf) {
-            last = 0;
-            raf = requestAnimationFrame(frame);
-        } };
-        wake.current = start;
-        const resize = () => { const dpr = Math.min(devicePixelRatio || 1, 1.5); el.width = 360 * dpr; el.height = 370 * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw(); };
-        resize();
-        start();
-        document.addEventListener('visibilitychange', start);
-        return () => { cancelAnimationFrame(raf); wake.current = () => { }; document.removeEventListener('visibilitychange', start); };
-    }, [seed]);
-    return <canvas ref={canvas} className="pour-scene" role="img" aria-label="A transparent container with falling geometric objects"/>;
+import {useEffect,useRef} from 'react';
+import {createBody,stepBodies,MAX_BODIES,type Body} from '../../lib/pour-physics';
+const palette=[['#ffd487','#c27c51','#fff0bf'],['#91d8cb','#419d9b','#caffdf'],['#bca7e5','#7862ac','#efdaff'],['#f3a3a9','#b96987','#ffd6bd'],['#92bde7','#537bb6','#c6e5ff']];
+export default function PourScene({count,seed,finalFraction=1}:{count:number;seed:string;finalFraction?:number}){
+ const canvas=useRef<HTMLCanvasElement>(null),desired=useRef(count),fraction=useRef(finalFraction),wake=useRef(()=>{});
+ desired.current=count;fraction.current=finalFraction;
+ useEffect(()=>wake.current(),[count,finalFraction]);
+ useEffect(()=>{
+  const el=canvas.current,ctx=el?.getContext('2d');if(!el||!ctx)return;
+  el.width=360;el.height=370;ctx.imageSmoothingEnabled=false;
+  const bodies:Body[]=[];let rendered=0,raf=0,last=0,until=0;
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const box=(x:number,y:number,w:number,h:number,c:string)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
+  const draw=()=>{
+   ctx.clearRect(0,0,360,370);box(0,0,360,370,'#253044');
+   for(let y=0;y<340;y+=16)for(let x=0;x<360;x+=32)box(x+(y%32?16:0),y,30,14,'#2d374a');
+   box(22,335,316,12,'#e5b77c');box(22,347,316,5,'#926852');
+   box(64,329,232,6,'#15263a');
+   // Stepped glass silhouette with dark interior and two-pixel highlights.
+   box(54,67,252,251,'#14283a');box(62,61,236,266,'#1b3847');
+   box(64,72,232,247,'#203e4a');box(73,81,214,231,'#244652');
+   for(const b of [...bodies].sort((a,b)=>a.z-b.z||a.y-b.y)){
+    const x=Math.round(180+b.x*.86+b.z*.25),y=Math.round(310-b.y-b.z*.17);
+    const r=Math.max(2,Math.round(b.r*(b===bodies[bodies.length-1]?Math.cbrt(fraction.current):1)));
+    const [base,shade,shine]=palette[b.color%palette.length];
+    box(x-r-1,y-r+3,r*2+2,r*2-4,'#182a3b');
+    box(x-r+2,y-r,r*2-4,r*2,shade);box(x-r,y-r+3,r*2,r*2-6,shade);
+    box(x-r+2,y-r+2,r*2-6,r*2-5,base);
+    box(x-r+3,y-r+3,Math.max(2,r-3),3,shine);
+    if(b.shape===1)box(x-2,y-2,4,4,shine);
+    if(b.shape===2){box(x-r+2,y-1,r*2-5,3,shade);box(x-1,y-r+3,3,r*2-7,shine);}
+   }
+   box(54,67,5,251,'#6b9d9d');box(301,67,5,251,'#628b91');
+   box(59,73,3,237,'#a5c3b6');box(67,85,3,195,'#ffffff20');
+   box(65,320,230,7,'#7ba5a2');box(74,327,212,4,'#b2c6ac');
+   box(58,61,244,5,'#a6c7be');box(58,67,244,3,'#638f92');
+   box(159,8,42,10,'#ddb47c');box(166,18,28,14,'#a17e65');
+   box(169,32,22,5,'#f4d497');
+  };
+  const frame=(time:number)=>{
+   raf=0;if(document.hidden){last=0;return;}
+   const dt=last?Math.min((time-last)/1000,1/30):1/60;last=time;
+   const target=Math.min(MAX_BODIES,desired.current);
+   if(target<rendered){bodies.length=0;rendered=0;}
+   let spawned=0;while(rendered<target&&spawned++<4){
+    const b=createBody(seed,rendered++);
+    if(reduced){const i=rendered-1;b.x=-78+i%7*26;b.z=-39+Math.floor(i/7)%4*26;b.y=11+Math.floor(i/28)*22;b.vy=0;}
+    bodies.push(b);until=time+4000;
+   }
+   if(!reduced)stepBodies(bodies,dt);draw();
+   if(rendered<target||(!reduced&&time<until))raf=requestAnimationFrame(frame);
+  };
+  const start=()=>{if(!raf){last=0;raf=requestAnimationFrame(frame);}};
+  wake.current=start;start();document.addEventListener('visibilitychange',start);
+  return()=>{cancelAnimationFrame(raf);wake.current=()=>{};document.removeEventListener('visibilitychange',start);};
+ },[seed]);
+ return <canvas ref={canvas} className="pour-scene" role="img" aria-label="Pixel sweets falling into a glass jar. The picture shows accepted pours."/>;
 }

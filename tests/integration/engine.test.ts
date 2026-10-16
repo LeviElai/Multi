@@ -421,7 +421,7 @@ for(const playerCount of [2,3,5,10])test(`${playerCount} players: five-mode roun
 test('Fill is monotonic even for legacy remove-enabled configs and locks at server expiry',async t=>{
  const quiz=getDemoQuiz();const round=getDefaultRound('amountle');if(round.mode!=='amountle')throw new Error();round.publicConfig.allowRemove=true;round.allowRevision=false;quiz.rounds=[round];const f=await fixture(t,quiz,2);await f.action('START');await f.active();
  const p=f.members[0].principal;const send=(count:number,revision:number)=>f.engine.submit(p,f.room.sessionId,{roundId:round.id,clientMutationId:key(),revision,payload:{count,locked:false}});
- await send(1,1);await send(7,2);await assert.rejects(send(6,3),isCode('REMOVAL_DISABLED'));await send(8,4);f.advance(round.timerSeconds*1000+1);await f.engine.reconcile(f.room.sessionId);await assert.rejects(send(9,5));await f.action('REVEAL');const s=await f.engine.snapshot(p,f.room.sessionId);assert.equal(s.ownSubmission?.payload.count,8);assert.equal(s.round?.fillTarget,round.secretConfig.answer);
+ await send(1,1);await send(7,2);await assert.rejects(send(6,3),isCode('REMOVAL_DISABLED'));await send(8,4);f.advance(round.timerSeconds*1000+1);await f.engine.reconcile(f.room.sessionId);await assert.rejects(send(9,5));await f.action('REVEAL');const s=await f.engine.snapshot(p,f.room.sessionId);assert.equal(s.ownSubmission?.payload.count,8);assert.equal(s.round?.fillTarget,undefined);
 });
 
 test('anonymous creation and hosting are rejected before any persistent ownership is assigned',async t=>{

@@ -12,6 +12,7 @@ import { parseFermiNumber } from '../../../packages/game-modes/src/fermi';
 import { RareAnswerControl } from './world/RareExperience';
 
 import Amount from './game/AmountPlayer';
+import Scratchpad from './game/Scratchpad';
 import { ScaleStage } from './game/ScaleStage';
 export { ScaleStage } from './game/ScaleStage';
 type Props = {
@@ -62,12 +63,13 @@ export default function ModePlayer({ snapshot: s, onUpdate, onLocalSubmit, disab
             }
             pending.current = { key: newId(), payload, revision: ++rev.current };
             const ack = await deliver(pending.current);
-            playTone();
+            if(payload.locked)playTone();
             return ack;
         }
         catch (e) {
             if (e instanceof ApiError && e.status >= 400 && e.status < 500 && ![408, 429].includes(e.status))
                 pending.current = null;
+            playCue('error');
             setError(e instanceof Error ? e.message : 'Could not sync. Retry sends the same answer safely.');
             throw e;
         }
@@ -95,7 +97,7 @@ function Fermi({ round, disabled, busy, value, send }: ControlProps & {
 }
 catch {
     preview = 'Enter a number';
-} ; return <form onSubmit={e => { e.preventDefault(); void send({ text, locked: true }).catch(() => { }); }}><div className="number-entry"><label htmlFor="fermi-value">YOUR BEST ESTIMATE</label><input autoComplete="off" id="fermi-value" inputMode="decimal" placeholder="0" value={text} onChange={e => setText(e.target.value)} disabled={disabled} required aria-describedby="fermi-hint"/><span>{c.unit}</span></div><p className="estimate-preview" aria-live="polite">{preview || ""}</p><p className="control-hint" id="fermi-hint">K, M and B are accepted.<br />Range {c.min.toLocaleString('en')} to {c.max.toLocaleString('en')} {c.unit}.</p><button className="btn btn-dark btn-full" disabled={disabled || busy || !text.trim()}><Lock size={17}/> Lock estimate</button></form>; }
+} ; return <form onSubmit={e => { e.preventDefault(); void send({ text, locked: true }).catch(() => { }); }}><div className="number-entry"><label htmlFor="fermi-value">YOUR BEST ESTIMATE</label><input autoComplete="off" id="fermi-value" inputMode="decimal" placeholder="0" value={text} onChange={e => setText(e.target.value)} disabled={disabled} required aria-describedby="fermi-hint"/><span>{c.unit}</span></div><p className="estimate-preview" aria-live="polite">{preview || ""}</p><p className="control-hint" id="fermi-hint">K, M and B are accepted.<br />Range {c.min.toLocaleString('en')} to {c.max.toLocaleString('en')} {c.unit}.</p><Scratchpad/><button className="btn btn-dark btn-full" disabled={disabled || busy || !text.trim()}><Lock size={17}/> Lock estimate</button></form>; }
 function Rare({ disabled, busy, value, send }: ControlProps & {
     value?: string;
 }) {
@@ -137,18 +139,16 @@ function Word({ snapshot: s, onUpdate, onLocalSubmit, onError, disabled }: {
         const item = pendingGuess.current ?? { guess, key: newId() };
         pendingGuess.current = item;
         try {
-            if (onLocalSubmit)
-                await onLocalSubmit({ guess: item.guess });
-            else
-                await post(`/sessions/${s.id}/word-guesses`, { roundId: r.id, clientMutationId: item.key, guess: item.guess });
+            const result = onLocalSubmit ? await onLocalSubmit({guess:item.guess}) : await post<Ack>(`/sessions/${s.id}/word-guesses`, {roundId:r.id,clientMutationId:item.key,guess:item.guess});
             pendingGuess.current = null;
             setGuess('');
-            playCue('letter');
+            playCue(result.solved ? 'win' : 'reveal');
             onUpdate();
         }
         catch (e) {
             if (e instanceof ApiError && e.status >= 400 && e.status < 500 && ![408, 429].includes(e.status))
                 pendingGuess.current = null;
+            playCue('error');
             onError(e instanceof Error ? e.message : 'Guess not accepted. Retry safely.');
         }
         finally {
@@ -166,10 +166,11 @@ function Word({ snapshot: s, onUpdate, onLocalSubmit, onError, disabled }: {
         void submit();
         return;
     } if (k === 'Backspace') {
+        playCue('letter');
         setGuess(chars.slice(0, -1).join(''));
         return;
     } if (/^[a-zA-Z]$/.test(k) && chars.length < c.length)
-        setGuess(v => v + k.toUpperCase()); }
+        { playCue('letter'); setGuess(v => v + k.toUpperCase()); } }
     useEffect(() => { const fn = (e: KeyboardEvent) => { if ((e.target as HTMLElement)?.matches('input,textarea,select'))
         return; if (/^[a-zA-Z]$/.test(e.key) || ['Enter', 'Backspace'].includes(e.key)) {
         e.preventDefault();

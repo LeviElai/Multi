@@ -57,8 +57,8 @@ test('public projection is deeply frozen, independently cloned and strips unknow
   const round = forMode('amountle');
   const input = { ...round, privateNotes: 'hidden', publicConfig: { ...round.publicConfig, answer: 56, secretConfig: { answer: 56 } } };
   const projection = publicQuestionProjection(input);
-  assert.deepEqual(Object.keys(projection).sort(), ['id', 'mode', 'schemaVersion', 'question', 'timerSeconds', 'maxPoints', 'allowRevision', 'publicConfig', 'fillTarget'].sort());
-  assert.equal(projection.fillTarget, round.secretConfig.answer); // Fill intentionally announces its target.
+  assert.deepEqual(Object.keys(projection).sort(), ['id', 'mode', 'schemaVersion', 'question', 'timerSeconds', 'maxPoints', 'allowRevision', 'publicConfig'].sort());
+  assert.equal(projection.fillTarget, undefined); // Knowledge questions must not expose the answer.
   assert.equal('secretConfig' in projection, false);
   assert.equal('explanation' in projection, false);
   assert.equal('answer' in projection.publicConfig, false);

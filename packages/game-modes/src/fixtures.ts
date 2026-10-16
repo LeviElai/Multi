@@ -10,7 +10,7 @@ export function getDefaultRound(mode: ModeId): Round {
   switch (mode) {
     case 'fermi': return {
       ...common, mode, question: 'A square mosaic has 12 rows of 12 tiles. How many tiles are there?',
-      explanation: '12 × 12 = 144 tiles. This is an author-defined arithmetic puzzle.',
+      explanation: '12 rows × 12 tiles = 144 tiles.',
       publicConfig: { unit: 'tiles', errorMode: 'proportional', min: 0, max: 1000, tolerance: 144, step: 1 },
       secretConfig: { answer: 144 },
     };
@@ -34,9 +34,9 @@ export function getDefaultRound(mode: ModeId): Round {
       secretConfig: { targetSize: 24 },
     };
     case 'amountle': return {
-      ...common, mode, question: 'Pour 56 objects into the container.',
-      explanation: 'The closest accepted pour scores highest.',
-      publicConfig: { unit: 'tokens', maxCount: 100, allowRemove: false, steps: [1, 10], showCount: true, tolerance: 28 },
+      ...common, mode, question: 'Seven trays hold eight sweets each. How many sweets are there?',
+      explanation: '7 × 8 = 56 sweets. Your last accepted pour is your answer.',
+      publicConfig: { unit: 'sweets', maxCount: 100, allowRemove: false, steps: [1, 10], showCount: true, tolerance: 28 },
       secretConfig: { answer: 56 },
     };
   }
@@ -45,7 +45,7 @@ export function getDefaultRound(mode: ModeId): Round {
 export function getDemoQuiz(): QuizInput {
   return {
     title: 'Five-game starter',
-    description: 'Five different ways to play. A complete, creator-confirmed starter quiz with arithmetic, a custom palette, and a hidden word.',
+    description: 'Five rounds: numbers, rare answers, a hidden word, sizing and sweets.',
     language: 'en', audienceContext: 'adult_private', theme: 'studio',
     rounds: (['fermi', 'rare_answers', 'word_puzzle', 'size_it_up', 'amountle'] as const).map(getDefaultRound),
   };

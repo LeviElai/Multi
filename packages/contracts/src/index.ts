@@ -3,11 +3,11 @@ import { z } from 'zod';
 export const MODES = ['fermi','rare_answers','word_puzzle','size_it_up','amountle'] as const;
 export type ModeId = typeof MODES[number];
 export const MODE_META: Record<ModeId,{name:string;verb:string;color:string;description:string;symbol:string}> = {
-  fermi:{name:'Guess',verb:'How close can you get?',color:'#c6b4ff',description:'Lock in a number. Get as close as you can.',symbol:'↗'},
+  fermi:{name:'Estimate',verb:'How close can you get?',color:'#c6b4ff',description:'Lock in a number. Get as close as you can.',symbol:'↗'},
   rare_answers:{name:'Think',verb:'Find the hidden gem',color:'#7de1ce',description:'A correct answer is worth more when fewer people pick it.',symbol:'✳'},
-  word_puzzle:{name:'Estimate',verb:'One letter at a time',color:'#f6b4d0',description:'Find the hidden word. Every guess gives you a clue.',symbol:'W'},
+  word_puzzle:{name:'Guess',verb:'One letter at a time',color:'#f6b4d0',description:'Find the hidden word. Every guess gives you a clue.',symbol:'W'},
   size_it_up:{name:'Size',verb:'Trust your eye',color:'#bde597',description:'Drag to resize. Match the real-world proportions.',symbol:'↔'},
-  amountle:{name:'Count',verb:'Ready, steady, drop!',color:'#ffc778',description:'Drop objects to reach the target. Every drop counts.',symbol:'⠿'},
+  amountle:{name:'Count',verb:'Ready, steady, drop!',color:'#ffc778',description:'Drop sweets to estimate the answer. Tap or hold to pour.',symbol:'⠿'},
 };
 export const ProvenanceSchema=z.enum(['verified_factual','creator_confirmed','host_judged','needs_review']);
 export type Provenance=z.infer<typeof ProvenanceSchema>;

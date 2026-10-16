@@ -1,5 +1,6 @@
 'use client';
 import { memo, useEffect, useState } from 'react';
+import {playCue} from '../lib/audio';
 import { remainingSeconds } from '../lib/presentation';
 export const RoundClock = memo(function RoundClock({ deadline, pausedMs, offset, paused = false, duration, variant = 'timer' }: {
     deadline?: string | null;
@@ -13,6 +14,7 @@ export const RoundClock = memo(function RoundClock({ deadline, pausedMs, offset,
     useEffect(() => { setNow(Date.now()); if (paused)
         return; const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, [deadline, paused]);
     const remaining = remainingSeconds(deadline, pausedMs, offset, now);
+    useEffect(()=>{if(!paused && remaining>0 && remaining<=5 && variant!=='track')playCue('tick');},[remaining,paused,variant]);
     if (variant === 'track')
         return <div className="timer-track"><span style={{ transform: `scaleX(${Math.min(1, remaining / duration)})` }}/></div>;
     if (variant === 'countdown')

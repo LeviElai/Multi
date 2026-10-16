@@ -5,11 +5,11 @@ import { Atmosphere } from './Atmosphere';
 import { PixelSprite } from './Sprites';
 
 export const GAME_WORLDS: Record<ModeId, { name: string; cue: string; color: string }> = {
-  size_it_up: { name: 'Wonderwood', cue: 'A little perspective goes a long way.', color: '#bde597' },
+  size_it_up: { name: 'The Measuring Room', cue: 'Drag to resize. Match the reference.', color: '#bde597' },
   amountle: { name: 'The Drop Shop', cue: 'Tap for one. Hold for a stream.', color: '#ffc778' },
-  fermi: { name: 'Stargazer Station', cue: 'Big number or small hunch?', color: '#c6b4ff' },
+  fermi: { name: 'Stargazer Station', cue: 'Enter your estimate, then lock it in.', color: '#c6b4ff' },
   rare_answers: { name: 'The Quiet Reef', cue: 'Find something the others missed.', color: '#7de1ce' },
-  word_puzzle: { name: 'The Word Garden', cue: 'Follow the letters to the answer.', color: '#f6b4d0' },
+  word_puzzle: { name: 'The Spell Library', cue: 'Find the word in six guesses.', color: '#f6b4d0' },
 };
 
 export function GameBackdrop({ mode, children, className = '' }: { mode: ModeId; children?: ReactNode; className?: string }) {

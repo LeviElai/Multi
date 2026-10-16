@@ -48,15 +48,15 @@ export function RoundResults({ snapshot: s, onStage, busy = false }: {
     const phase = manual ?? s.resultStage ?? 'standings';
     useEffect(() => { setManual(null); }, [s.resultStage, s.revealStartedAt]);
     useEffect(() => { if (phase === 'podium' && s.leaderboard.some(p => p.roundPoints > 0))
-        playCue('win'); }, [phase]);
+        playCue('standings'); }, [phase]);
     const rows = roundPlacements(s.leaderboard, s.roundAwards);
     const best = rows[0]?.roundPoints ?? 0;
     const winners = rows.filter(p => p.roundPoints === best);
-    return <div className="round-results"><nav className="result-tabs" aria-label="Round results stages">{(['standings', 'reveal', 'podium'] as const).map((v, i) => <button key={v} aria-pressed={phase === v} disabled={busy} onClick={() => { if (onStage)
+    return <div className="round-results"><nav className="result-tabs" aria-label="Round results stages">{(['standings', 'reveal'] as const).map((v, i) => <button key={v} aria-pressed={phase === v} disabled={busy} onClick={() => { if (onStage)
         onStage(v);
     else
-        setManual(v); }}><span>0{i + 1}</span>{v === 'reveal' ? 'Answer' : v === 'podium' ? 'Round winners' : 'Placements'}</button>)}</nav>{onStage && <div className="results-host-note"><span>{s.resultStage ? "Holding this screen for everyone." : "Placements stay here until you start the next round."}</span>{s.resultStage && <button className="text-link" disabled={busy} onClick={() => onStage('standings')}>Show placements</button>}</div>}
+        setManual(v); }}><span>0{i + 1}</span>{v === 'reveal' ? 'Answer' : 'Placements'}</button>)}</nav>{onStage && <div className="results-host-note"><span>{s.resultStage ? "Holding this screen for everyone." : "Placements stay here until you start the next round."}</span>{s.resultStage && <button className="text-link" disabled={busy} onClick={() => onStage('standings')}>Show placements</button>}</div>}
  <PlayerScore snapshot={s}/><div className="result-winner-line" role="status">{best ? <>Round {winners.length > 1 ? 'winners' : 'winner'}: <strong>{winners.map(p => p.nickname).join(' · ')}</strong><b>+{best}</b></> : s.reveal?.skipped ? 'Round skipped · no points awarded' : 'No points awarded this round'}</div>
- {phase === 'reveal' ? <Reveal snapshot={s}/> : phase === 'podium' ? <RoundPodium snapshot={s}/> : <Standings leaders={s.leaderboard} ownId={s.participantId}/>}
+ {phase === 'reveal' ? <Reveal snapshot={s}/> : phase === 'podium' ? <Standings leaders={s.leaderboard} ownId={s.participantId}/> : <Standings leaders={s.leaderboard} ownId={s.participantId}/>}
  {s.role !== 'host' && phase === 'standings' && <p className="result-wait">Waiting for the host to start the next round.</p>}</div>;
 }

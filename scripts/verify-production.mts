@@ -41,7 +41,7 @@ const verified:string[]=[];
 for(const round of demo.rounds){
   await wait('ROUND_ACTIVE');
   const before=await snapshot(players[0]);
-  assert.equal(before.round?.id,round.id);assert.equal(before.reveal,undefined);assert.equal('secretConfig' in before.round!,false);
+  assert.equal(before.round?.id,round.id);assert.equal(before.reveal,undefined);assert.equal('secretConfig' in before.round!,false);assert.equal(before.round?.fillTarget,undefined,'Count answer remains secret');
   for(const [i,client] of players.entries()){
     if(round.mode==='word_puzzle') await call(client,path+'/word-guesses','POST',{roundId:round.id,clientMutationId:randomUUID(),guess:round.secretConfig.answer});
     else {const payload=round.mode==='fermi'?{value:Math.round(round.secretConfig.answer*(1+i*.1))}:round.mode==='rare_answers'?{text:round.secretConfig.answers[i].canonical}:round.mode==='size_it_up'?{ratio:round.secretConfig.targetSize/round.publicConfig.referenceSize*(1+i*.1)}:{count:round.secretConfig.answer+i};
