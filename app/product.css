@@ -882,3 +882,6 @@ body>.ambient-global{z-index:0}.site-header,.site-footer,.clean-home,.creator-ed
 
 /* Readability in the reef follows the same light input surface as other games. */
 .game-shell .mode-player.player-rare_answers{background:#fff6df;color:#29394d;border:2px solid #20384c}.game-shell .mode-player .rare-answer-control{background:transparent;border:0;box-shadow:none;padding:0}.game-shell .mode-player.player-rare_answers .rare-answer-control p,.game-preview .mode-player.player-rare_answers .rare-answer-control p{color:#476655}.game-shell .mode-player.player-rare_answers .rare-answer-control label{color:#29394d}.game-shell .round-timer.urgent{color:#ffb79e}.game-shell .round-meta>span:nth-child(2){color:#d1e6d6}
+
+/* On phones the main live-game action stays within thumb reach. */
+@media(max-width:750px){.game-shell .mode-player{padding-bottom:90px}.game-shell .mode-player .btn-full,.game-shell .mode-player .pour-trigger{position:fixed;left:16px;right:16px;bottom:max(12px,env(safe-area-inset-bottom));width:calc(100% - 32px);z-index:21;min-height:52px;box-shadow:0 0 0 8px #142b40ed,0 4px #29394d}.game-shell .mode-player.player-size_it_up:has(.scale-interactive){padding-bottom:90px}.game-shell .player-scorebar{margin-bottom:80px}}
