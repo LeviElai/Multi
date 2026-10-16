@@ -25,7 +25,7 @@ export default function FinalStage({snapshot:s}:{snapshot:Snapshot}){
  <h2>{!winners.length?'Thanks for playing':winners.length>1?'Joint champions':winners[0].nickname==='You'?'You win!':winners[0].nickname+' wins!'}</h2>
  <p>{s.title}</p>
  <div className="final-podium">{ordered.map(rank=><div key={rank} className={'final-place final-place-'+rank}>
- <div className="final-players">{s.leaderboard.filter(p=>p.rank===rank).map(p=><div className="final-person" key={p.participantId}><PixelChampion name={p.nickname} rank={rank}/><strong>{p.nickname}{p.participantId===s.participantId?' (you)':''}</strong><span>{p.points.toLocaleString('en')} points</span></div>)}</div>
+ <div className="final-players">{s.leaderboard.filter(p=>p.rank===rank).map(p=><div className="final-person" key={p.participantId}><PixelChampion name={p.nickname} rank={rank}/><strong>{p.nickname}{p.participantId===s.participantId&&p.nickname!=='You'?' (you)':''}</strong><span>{p.points.toLocaleString('en')} points</span></div>)}</div>
  <div className="final-plinth"><small>{s.leaderboard.filter(p=>p.rank===rank).length>1?'TIED':''}</small><b>{rank}</b><span>{rank===1?'CHAMPION':rank===2?'RUNNER-UP':'THIRD PLACE'}</span></div>
  </div>)}</div>
  <div className="final-floor" aria-hidden="true"/>

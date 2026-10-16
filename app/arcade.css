@@ -120,3 +120,9 @@ body{background-color:#17283b;background-image:url("data:image/svg+xml,%3Csvg xm
 .final-plinth>span{font-family:inherit!important;font-weight:800!important;font-size:10px!important;letter-spacing:.05em}
 @media(max-width:750px){.final-plinth>span{font-size:8px!important}}
 .game-preview .result-wait{display:none}
+
+/* Public solo play has player controls only; creator previews keep their role tools. */
+.solo-game .perspective-switch,.solo-game .preview-bottom>div{display:none!important}
+.solo-game .practice-round-heading{padding-top:8px}
+
+.game-rules{border-top:1px dashed #a7b69f;margin-top:20px;padding-top:12px;font-size:12px}.game-rules summary{cursor:pointer;min-height:30px;font-weight:800}.game-rules p{font-size:12px;line-height:1.7}
