@@ -21,6 +21,6 @@ export default function Amount({ round, disabled, initial, send }: {round:Public
     useEffect(() => { if (initial !== undefined)
         queue.reconcile(initial); }, [initial, queue]);
     useEffect(()=>{if(!disabled)void queue.flush()},[disabled,queue]);
-    return <><PourControl count={queue.accepted} onAdd={amount => queue.add(amount ?? 1, c.maxCount)} disabled={disabled || queue.requested >= c.maxCount} target={round.fillTarget ?? 0} seed={round.id} flow={Math.max(1, Math.ceil((round.fillTarget ?? 0) / Math.max(60, round.timerSeconds * 5)))}/>
+    return <><PourControl count={queue.accepted} onAdd={amount => queue.add(amount ?? 1, c.maxCount)} disabled={disabled || queue.requested >= c.maxCount} target={round.fillTarget ?? 0} seed={round.id} unit={c.unit || 'objects'} flow={Math.max(1, Math.ceil((round.fillTarget ?? 0) / Math.max(60, round.timerSeconds * 5)))}/>
  <div className="pour-sync" role="status" aria-live="polite">{queue.pending ? 'Pouring…' : queue.failed ? <>Pour not received. {disabled ? 'Only accepted pours count.' : <button className="text-link" onClick={() => void queue.flush()}>Retry</button>}</> : disabled ? 'Last accepted pour locked.' : 'Pours appear when received.'}</div></>;
 }
