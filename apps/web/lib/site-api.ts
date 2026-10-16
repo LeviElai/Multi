@@ -10,9 +10,15 @@ export async function siteApi(request:Request):Promise<Response>{
    const headers=new Headers(request.headers);headers.delete('host');headers.delete('oai-authenticated-user-id');headers.delete('oai-authenticated-user-email');headers.delete('oai-authenticated-user-full-name');
    // Node authenticates using its own secure cookie. No browser identity header
    // is promoted to a trusted creator identity by this fallback proxy.
+   headers.set('accept-encoding','identity');
    const response=await fetch(target,{method:request.method,headers,body:['GET','HEAD'].includes(request.method)?undefined:await request.arrayBuffer(),redirect:'manual'});
    if(source.pathname==='/api/v1/features' && response.ok){const body=await response.json() as {data:Record<string,unknown>};return Response.json({data:{...body.data,transport:'polling',auth:'credentials'}},{headers:{'Cache-Control':'no-store'}});}
-   return response;
+   // fetch decodes upstream compression; forwarding its original encoding or
+   // length would make the browser decode the already-decoded stream again.
+   const responseHeaders=new Headers(response.headers);
+   responseHeaders.delete('content-encoding');responseHeaders.delete('content-length');responseHeaders.delete('transfer-encoding');
+   responseHeaders.set('Cache-Control','no-store');
+   return new Response(response.body,{status:response.status,headers:responseHeaders});
  }
  try{
    const moduleName='cloudflare:workers';

@@ -1,7 +1,7 @@
 'use client';
-import { useEffect, useState, useMemo, useRef, useLayoutEffect } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import type { Snapshot, Leader } from '../../../../packages/contracts/src/index';
-import { roundPlacements, rankMovement, resultPhase, RESULT_TIMINGS } from '../../lib/competition';
+import { roundPlacements, rankMovement } from '../../lib/competition';
 import { playCue } from '../../lib/audio';
 import Reveal from '../Reveal';
 import type { CSSProperties } from 'react';
@@ -44,23 +44,9 @@ export function RoundResults({ snapshot: s, onStage, busy = false }: {
     onStage?: (stage: 'reveal' | 'podium' | 'standings' | 'auto') => void;
     busy?: boolean;
 }) {
-    const [started] = useState(() => Date.now());
-    const [now, setNow] = useState(Date.now());
     const [manual, setManual] = useState<'reveal' | 'podium' | 'standings' | null>(null);
-    const offset = useMemo(() => Date.parse(s.serverTime) - Date.now(), [s.serverTime]);
-    const start = s.revealStartedAt ? Date.parse(s.revealStartedAt) - offset : started;
     const phase = manual ?? s.resultStage ?? 'standings';
     useEffect(() => { setManual(null); }, [s.resultStage, s.revealStartedAt]);
-    useEffect(() => {
-        if (manual || s.resultStage)
-            return;
-        const elapsed = Date.now() - start;
-        const next = elapsed < RESULT_TIMINGS.reveal ? RESULT_TIMINGS.reveal : RESULT_TIMINGS.reveal + RESULT_TIMINGS.podium;
-        if (elapsed >= next)
-            return;
-        const timer = setTimeout(() => setNow(Date.now()), Math.max(0, next - elapsed) + 10);
-        return () => clearTimeout(timer);
-    }, [start, now, manual, s.resultStage]);
     useEffect(() => { if (phase === 'podium' && s.leaderboard.some(p => p.roundPoints > 0))
         playCue('win'); }, [phase]);
     const rows = roundPlacements(s.leaderboard, s.roundAwards);
