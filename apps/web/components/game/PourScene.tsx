@@ -30,11 +30,11 @@ export default function PourScene({ count, seed, finalFraction = 1 }: {
             ctx.moveTo(v.x, v.y); }); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); };
         function draw() {
             ctx!.clearRect(0, 0, 360, 370);
-            ctx!.fillStyle = '#142d3b';
+            ctx!.fillStyle = '#392e36';
             ctx!.fillRect(0, 0, 360, 370);
-            polygon([[-110, 0, -65], [110, 0, -65], [110, 250, -65], [-110, 250, -65]], '#1a3848', '#426774');
-            polygon([[-110, 0, -65], [110, 0, -65], [110, 0, 65], [-110, 0, 65]], '#2d4a56', '#67868d');
-            polygon([[-110, 0, -65], [-110, 0, 65], [-110, 250, 65], [-110, 250, -65]], '#224250', '#547782');
+            polygon([[-110, 0, -65], [110, 0, -65], [110, 250, -65], [-110, 250, -65]], '#4c3b40', '#b29171');
+            polygon([[-110, 0, -65], [110, 0, -65], [110, 0, 65], [-110, 0, 65]], '#6a5050', '#c5a378');
+            polygon([[-110, 0, -65], [-110, 0, 65], [-110, 250, 65], [-110, 250, -65]], '#493941', '#547782');
             for (const b of [...bodies].sort((a, b) => a.z - b.z || a.y - b.y)) {
                 const shadow = project(b.x, 0, b.z);
                 ctx!.fillStyle = '#071b2733';

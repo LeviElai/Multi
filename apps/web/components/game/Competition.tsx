@@ -52,7 +52,7 @@ export function RoundResults({ snapshot: s, onStage, busy = false }: {
     const rows = roundPlacements(s.leaderboard, s.roundAwards);
     const best = rows[0]?.roundPoints ?? 0;
     const winners = rows.filter(p => p.roundPoints === best);
-    return <div className="round-results"><nav className="result-tabs" aria-label="Round results stages">{(['reveal', 'podium', 'standings'] as const).map((v, i) => <button key={v} aria-pressed={phase === v} disabled={busy} onClick={() => { if (onStage)
+    return <div className="round-results"><nav className="result-tabs" aria-label="Round results stages">{(['standings', 'reveal', 'podium'] as const).map((v, i) => <button key={v} aria-pressed={phase === v} disabled={busy} onClick={() => { if (onStage)
         onStage(v);
     else
         setManual(v); }}><span>0{i + 1}</span>{v === 'reveal' ? 'Answer' : v === 'podium' ? 'Round winners' : 'Placements'}</button>)}</nav>{onStage && <div className="results-host-note"><span>{s.resultStage ? "Holding this screen for everyone." : "Placements stay here until you start the next round."}</span>{s.resultStage && <button className="text-link" disabled={busy} onClick={() => onStage('standings')}>Show placements</button>}</div>}
