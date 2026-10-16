@@ -68,6 +68,26 @@ export class CreatorAuth {
       if(token)await this.db.query('DELETE FROM auth_sessions WHERE token_digest = ?',[digestToken(token)]);
       return Response.json({data:{signedOut:true}},{headers:{'Set-Cookie':this.cookie('',0)}});
     }
+    if(path==='/api/auth/register' && request.method==='POST') {
+      let payload: {email?:unknown;password?:unknown;displayName?:unknown};
+      try { payload=await request.json() as typeof payload; } catch {return this.failure('INVALID_REQUEST','Check your account details.',400);}
+      const email=typeof payload.email==='string'?payload.email.trim().toLowerCase():'';
+      const password=typeof payload.password==='string'?payload.password:'';
+      const displayName=typeof payload.displayName==='string'?payload.displayName.trim():'';
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||password.length<12||password.length>128||!displayName||displayName.length>60)
+        return this.failure('INVALID_ACCOUNT','Use a valid email, a name, and a password of 12–128 characters.',400);
+      const exists=await this.db.query<Account>('SELECT * FROM auth_accounts WHERE email = ?',[email]);
+      if(exists.rows[0])return this.failure('ACCOUNT_EXISTS','An account already uses this email. Sign in instead.',409);
+      const user=await this.store.ensureUser(`credential:${email}`,displayName);
+      const result=await this.db.query('INSERT INTO auth_accounts (id, email, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (email) DO NOTHING',
+        [user.id,email,await hashPassword(password),displayName,new Date().toISOString()]);
+      if(!result.changes)return this.failure('ACCOUNT_EXISTS','An account already uses this email. Sign in instead.',409);
+      const token=randomBytes(32).toString('base64url');
+      const now=Date.now();
+      await this.db.query('INSERT INTO auth_sessions (token_digest, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)',
+        [digestToken(token),user.id,new Date(now+SESSION_SECONDS*1000).toISOString(),new Date(now).toISOString()]);
+      return Response.json({data:{id:user.id,displayName}}, {status:201,headers:{'Set-Cookie':this.cookie(token)}});
+    }
     if(path!=='/api/auth/login'||request.method!=='POST')return null;
     let payload:{email?:unknown;password?:unknown};
     try { payload=await request.json() as typeof payload; } catch {return this.failure('INVALID_REQUEST','Invalid credentials.',400);}

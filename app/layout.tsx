@@ -1,3 +1,4 @@
+import { Atmosphere } from '../apps/web/components/world/Atmosphere';
 import type { Metadata } from "next";
 import "./globals.css";
 import "../apps/web/components/creator.css";
@@ -16,6 +17,6 @@ export default function RootLayout({ children, }: Readonly<{
     children: React.ReactNode;
 }>) {
     return (<html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased"><Atmosphere global/>{children}</body>
     </html>);
 }

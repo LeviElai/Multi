@@ -10,7 +10,9 @@ export async function siteApi(request:Request):Promise<Response>{
    const headers=new Headers(request.headers);headers.delete('host');headers.delete('oai-authenticated-user-id');headers.delete('oai-authenticated-user-email');headers.delete('oai-authenticated-user-full-name');
    // Node authenticates using its own secure cookie. No browser identity header
    // is promoted to a trusted creator identity by this fallback proxy.
-   return fetch(target,{method:request.method,headers,body:['GET','HEAD'].includes(request.method)?undefined:await request.arrayBuffer(),redirect:'manual'});
+   const response=await fetch(target,{method:request.method,headers,body:['GET','HEAD'].includes(request.method)?undefined:await request.arrayBuffer(),redirect:'manual'});
+   if(source.pathname==='/api/v1/features' && response.ok){const body=await response.json() as {data:Record<string,unknown>};return Response.json({data:{...body.data,transport:'polling',auth:'credentials'}},{headers:{'Cache-Control':'no-store'}});}
+   return response;
  }
  try{
    const moduleName='cloudflare:workers';

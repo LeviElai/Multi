@@ -85,7 +85,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
   const auth=new CreatorAuth(store,db,secure);
   try {await auth.initialize(environment);}catch(error){await db.close();throw error;}
   const engine=new GameEngine(store,()=>Date.now(),{pinSecret,maxPlayers});
-  const features:Features={ai:false,billing:false,ads:false,stage:'private_alpha',transport:'socket'};
+  const features:Features={ai:false,billing:false,ads:false,stage:'private_alpha',transport:'socket',auth:'credentials'};
   const limiter=new RateLimiter();let draining=false;let ticking=false;
   let broadcastTimer:NodeJS.Timeout|undefined;let broadcasting=false;let broadcastAgain=false;
   const connections=new Map<string,Connected>();
@@ -112,7 +112,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
       // participant/action limits remain in the controller; this is a coarse
       // transport ceiling which permits fallback polling plus input updates.
       if(!limiter.allow(`http:${address}`,Math.max(6000,maxPlayers*240),60000))throw new DomainError('RATE_LIMITED','Too many requests. Try again shortly.',429);
-      if(path==='/api/auth/login'&&!limiter.allow(`login:${address}`,8,60000))throw new DomainError('RATE_LIMITED','Too many sign-in attempts. Try again in a minute.',429);
+      if((path==='/api/auth/login'||path==='/api/auth/register')&&!limiter.allow(`login:${address}`,8,60000))throw new DomainError('RATE_LIMITED','Too many sign-in attempts. Try again in a minute.',429);
       if(path==='/api/v1/sessions/join'&&!limiter.allow(`join:${address}`,90,60000))throw new DomainError('RATE_LIMITED','Too many join attempts. Try again in a minute.',429);
       const request=await webRequest(req,allowedOrigin??publicOrigin);
       const authResponse=await auth.handle(request);

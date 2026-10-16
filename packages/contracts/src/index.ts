@@ -3,11 +3,11 @@ import { z } from 'zod';
 export const MODES = ['fermi','rare_answers','word_puzzle','size_it_up','amountle'] as const;
 export type ModeId = typeof MODES[number];
 export const MODE_META: Record<ModeId,{name:string;verb:string;color:string;description:string;symbol:string}> = {
-  fermi:{name:'Fermi',verb:'Estimate it',color:'#e7ed59',description:'Estimate the answer. Closest scores highest.',symbol:'↗'},
-  rare_answers:{name:'Rare Answers',verb:'Think different',color:'#a8c5ac',description:'Give an answer nobody else chooses.',symbol:'✳'},
-  word_puzzle:{name:'Word Puzzle',verb:'Crack the word',color:'#eca7d0',description:'Solve the word in fewer guesses.',symbol:'W'},
-  size_it_up:{name:'Size It Up',verb:'Trust your eye',color:'#a9bdf6',description:'Resize an object beside a reference.',symbol:'↔'},
-  amountle:{name:'Amountle',verb:'Make it count',color:'#ff8c56',description:'Pour to the target. No undo.',symbol:'⠿'},
+  fermi:{name:'Guess',verb:'How close can you get?',color:'#c6b4ff',description:'Lock in a number. Get as close as you can.',symbol:'↗'},
+  rare_answers:{name:'Think',verb:'Find the hidden gem',color:'#7de1ce',description:'A correct answer is worth more when fewer people pick it.',symbol:'✳'},
+  word_puzzle:{name:'Estimate',verb:'One letter at a time',color:'#f6b4d0',description:'Find the hidden word. Every guess gives you a clue.',symbol:'W'},
+  size_it_up:{name:'Size',verb:'Trust your eye',color:'#bde597',description:'Drag to resize. Match the real-world proportions.',symbol:'↔'},
+  amountle:{name:'Count',verb:'Ready, steady, drop!',color:'#ffc778',description:'Drop objects to reach the target. Every drop counts.',symbol:'⠿'},
 };
 export const ProvenanceSchema=z.enum(['verified_factual','creator_confirmed','host_judged','needs_review']);
 export type Provenance=z.infer<typeof ProvenanceSchema>;
@@ -48,5 +48,5 @@ export type Ack={clientMutationId:string;accepted:true;serverRevision:number;acc
 export type SessionEvent={eventId:string;sessionId:string;seq:number;type:string;occurredAt:string;stateVersion:number;payload:Record<string,unknown>};
 export type ApiError={error:{code:string;message:string;requestId:string;details?:unknown}};
 export class DomainError extends Error {code:string;status:number;details?:unknown;constructor(code:string,message:string,status=400,details?:unknown){super(message);this.code=code;this.status=status;this.details=details;}}
-export type Features={ai:boolean;billing:boolean;ads:boolean;stage:'development'|'private_alpha'|'beta'|'public';transport:'socket'|'polling'};
+export type Features={auth?:'credentials'|'chatgpt';ai:boolean;billing:boolean;ads:boolean;stage:'development'|'private_alpha'|'beta'|'public';transport:'socket'|'polling'};
 export type Profile={id:string;displayName:string;features:Features;plan:'free'|'premium';quotaRemaining:number};
