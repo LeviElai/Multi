@@ -149,6 +149,12 @@ export class GameEngine {
       result.roundAwards = [...scored.values()];
       const revealEvent = await this.store.db.query<{occurred_at:string}>("SELECT occurred_at FROM session_events WHERE session_id = ? AND type = 'round.revealed' ORDER BY seq DESC LIMIT 1", [id]);
       result.revealStartedAt = revealEvent.rows[0]?.occurred_at;
+      const stageEvent = await this.store.db.query<{type:string;payload:string;occurred_at:string}>("SELECT type,payload,occurred_at FROM session_events WHERE session_id = ? AND type IN ('results.reveal','results.podium','results.standings','results.auto') ORDER BY seq DESC LIMIT 1", [id]);
+      const stage = stageEvent.rows[0];
+      if (stage && JSON.parse(stage.payload).roundIndex === data.session.roundIndex) {
+        if (stage.type === 'results.auto') result.revealStartedAt = stage.occurred_at;
+        else result.resultStage = stage.type.slice(8) as Snapshot['resultStage'];
+      }
     }
     if (round && principal.role === 'host' && data.session.state === 'REVIEW_REQUIRED') result.review = scoreRound(data, round).review;
     return result;
@@ -227,6 +233,10 @@ export class GameEngine {
         if (session.state !== 'ROUND_SCORED') throw new DomainError('INVALID_TRANSITION', 'Resolve every answer before revealing this round.', 409);
         transition(data, 'ROUND_REVEAL'); return finish('round.revealed');
       }
+      if (action.action === 'RESULT_STAGE') {
+        if (session.state !== 'ROUND_REVEAL' || !action.args?.stage) throw new DomainError('INVALID_TRANSITION', 'Show the round results first.', 409);
+        return finish('results.' + action.args.stage);
+      }
       if (action.action === 'NEXT') {
         if (session.state !== 'ROUND_REVEAL') throw new DomainError('INVALID_TRANSITION', 'Reveal this round before advancing.', 409);
         transition(data, 'INTERMISSION', new Date(now + INTERMISSION_MS).toISOString()); return finish('leaderboard.updated');
@@ -263,7 +273,7 @@ export class GameEngine {
       const acceptedAt = new Date(now).toISOString();
       const submission = { id: crypto.randomUUID(), roundId: input.roundId, participantId: player.id, clientMutationId: input.clientMutationId, revision: input.revision, payload, acceptedAt };
       data.submissions = [...data.submissions.filter((item) => item.roundId !== input.roundId || item.participantId !== player.id), submission];
-      return changed(data, { clientMutationId: input.clientMutationId, accepted: true as const, serverRevision: input.revision, acceptedAt }, 'answer.received');
+      return changed(data, { clientMutationId: input.clientMutationId, accepted: true as const, serverRevision: input.revision, acceptedAt, ...(round.mode === 'amountle' ? {acceptedCount: payload.count} : {}) }, 'answer.received');
     });
   }
 

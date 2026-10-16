@@ -428,3 +428,32 @@ test('anonymous creation and hosting are rejected before any persistent ownershi
  const f=await fixture(t);const context={store:f.store,user:null,pinSecret:PIN_SECRET};const request=(path:string,body:unknown)=>new Request('http://localhost/api/v1/'+path,{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','Idempotency-Key':key()},body:JSON.stringify(body)});
  assert.equal((await handleApi(request('quizzes',getDemoQuiz()),context)).status,401);assert.equal((await handleApi(request('sessions',{quizVersionId:f.version.id}),context)).status,401);
 });
+
+test('Amountle accepts deadline minus 1 ms, rejects the exact deadline, and replays the accepted count',async t=>{
+ const quiz=getDemoQuiz();quiz.rounds=[getDefaultRound('amountle')];
+ const f=await fixture(t,quiz,3);await f.action('START');await f.active();
+ const state=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
+ f.advance(Date.parse(state.deadlineAt!)-Date.parse(state.serverTime)-1);
+ const input={roundId:quiz.rounds[0].id,clientMutationId:key(),revision:1,payload:{count:56,locked:false}};
+ const ack=await f.engine.submit(f.members[0].principal,f.room.sessionId,input);
+ assert.equal(ack.acceptedCount,56);
+ f.advance(1);
+ await assert.rejects(f.engine.submit(f.members[0].principal,f.room.sessionId,{...input,clientMutationId:key(),revision:2,payload:{count:57,locked:false}}),isCode('ANSWER_LATE'));
+ assert.deepEqual(await f.engine.submit(f.members[0].principal,f.room.sessionId,input),ack);
+ const restored=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
+ assert.equal(restored.ownSubmission?.payload.count,56);
+});
+
+test('host result-stage controls persist for players and display without leaking into the next round',async t=>{
+ const f=await fixture(t,getDemoQuiz(),3);await f.action('START');await f.active();
+ await assert.rejects(f.action('RESULT_STAGE',{stage:'podium'}),isCode('INVALID_TRANSITION'));
+ await f.action('SKIP');await f.action('RESULT_STAGE',{stage:'podium'});
+ assert.equal((await f.engine.snapshot(f.members[0].principal,f.room.sessionId)).resultStage,'podium');
+ await f.restart();assert.equal((await f.engine.snapshot(f.members[1].principal,f.room.sessionId)).resultStage,'podium');
+ await f.action('RESULT_STAGE',{stage:'standings'});
+ assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).resultStage,'standings');
+ await f.action('RESULT_STAGE',{stage:'auto'});
+ assert.equal((await f.engine.snapshot(f.members[0].principal,f.room.sessionId)).resultStage,undefined);
+ await f.action('NEXT');await f.active();await f.action('SKIP');
+ assert.equal((await f.engine.snapshot(f.members[0].principal,f.room.sessionId)).resultStage,undefined);
+});

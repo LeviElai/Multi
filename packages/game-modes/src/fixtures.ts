@@ -23,19 +23,19 @@ export function getDefaultRound(mode: ModeId): Round {
     case 'word_puzzle': return {
       ...common, mode, timerSeconds: 90, allowRevision: false,
       question: 'Find the five-letter word. Your clue: a looping path.',
-      explanation: 'The creator’s selected word is ORBIT. Exact positions and remaining letters are matched in two passes.',
+      explanation: 'An orbit is the looping path of one object around another.',
       publicConfig: { length: 5, maxAttempts: 6, locale: 'en', dictionaryPolicy: 'unrestricted_valid_chars' },
       secretConfig: { answer: 'ORBIT', allowedGuesses: [] },
     };
     case 'size_it_up': return {
-      ...common, mode, question: 'Our block has an area of 240 square units and a width of 10 units. Resize its height beside the 10-unit reference.',
-      explanation: 'The height is 240 ÷ 10 = 24 units, so its height is 24 ÷ 10 = 2.4 times the reference. The vector uses a calibrated 100-unit axis.',
-      publicConfig: { unit: 'units', axis: 'height', referenceSize: 10, referenceLabel: '10-unit reference', targetLabel: 'Puzzle block', asset: 'block', minRatio: 0.25, maxRatio: 4, calibration: { version: 1, intrinsicDimension: 100, start: 0, end: 100 } },
+      ...common, mode, question: 'Resize the tree to 24 metres beside the 10-metre tower.',
+      explanation: 'The tree is 24 metres tall: 2.4 times the 10-metre tower.',
+      publicConfig: { unit: 'm', axis: 'height', referenceSize: 10, referenceLabel: '10 m tower', targetLabel: 'Tree', asset: 'tree', referenceAsset: 'tower', minRatio: 0.25, maxRatio: 4, calibration: { version: 1, intrinsicDimension: 100, start: 0, end: 100 } },
       secretConfig: { targetSize: 24 },
     };
     case 'amountle': return {
       ...common, mode, question: 'Pour 56 objects into the container.',
-      explanation: 'Target: 56 objects. Closest pour scores highest.',
+      explanation: 'The closest accepted pour scores highest.',
       publicConfig: { unit: 'tokens', maxCount: 100, allowRemove: false, steps: [1, 10], showCount: true, tolerance: 28 },
       secretConfig: { answer: 56 },
     };
@@ -44,7 +44,7 @@ export function getDefaultRound(mode: ModeId): Round {
 
 export function getDemoQuiz(): QuizInput {
   return {
-    title: 'A little friendly competition',
+    title: 'Five-game starter',
     description: 'Five different ways to play. A complete, creator-confirmed starter quiz with arithmetic, a custom palette, and a hidden word.',
     language: 'en', audienceContext: 'adult_private', theme: 'studio',
     rounds: (['fermi', 'rare_answers', 'word_puzzle', 'size_it_up', 'amountle'] as const).map(getDefaultRound),

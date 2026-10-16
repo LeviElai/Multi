@@ -2,7 +2,7 @@
 export type Body={x:number;y:number;z:number;vx:number;vy:number;vz:number;r:number;angle:number;spin:number;shape:number;color:number};
 export const MAX_BODIES=96;
 export function seededValue(seed:string,index:number){let h=2166136261;for(const c of seed+':'+index){h=Math.imul(h^c.charCodeAt(0),16777619)}return (h>>>0)/4294967296;}
-export function createBody(seed:string,index:number):Body{const r=8;return {x:(seededValue(seed,index*7)-.5)*90,y:260+index%3*18,z:(seededValue(seed,index*7+1)-.5)*65,vx:(seededValue(seed,index*7+2)-.5)*65,vy:-10,vz:(seededValue(seed,index*7+3)-.5)*30,r,angle:seededValue(seed,index*7+4)*Math.PI,spin:(seededValue(seed,index*7+5)-.5)*5,shape:Math.floor(seededValue(seed,index*7+6)*3),color:index%5};}
+export function createBody(seed:string,index:number):Body{const r=11;return {x:(seededValue(seed,index*7)-.5)*90,y:260+index%3*18,z:(seededValue(seed,index*7+1)-.5)*65,vx:(seededValue(seed,index*7+2)-.5)*65,vy:-10,vz:(seededValue(seed,index*7+3)-.5)*30,r,angle:seededValue(seed,index*7+4)*Math.PI,spin:(seededValue(seed,index*7+5)-.5)*5,shape:Math.floor(seededValue(seed,index*7+6)*3),color:index%5};}
 export function stepBodies(bodies:Body[],dt:number){
  const step=Math.min(dt,1/30);let energy=0;
  for(const b of bodies){b.vy-=450*step;b.x+=b.vx*step;b.y+=b.vy*step;b.z+=b.vz*step;b.angle+=b.spin*step;b.spin*=.995;

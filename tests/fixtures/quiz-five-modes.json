@@ -1,5 +1,5 @@
 {
-  "title": "A little friendly competition",
+  "title": "Five-game starter",
   "description": "Five different ways to play. A complete, creator-confirmed starter quiz with arithmetic, a custom palette, and a hidden word.",
   "language": "en",
   "audienceContext": "adult_private",
@@ -77,7 +77,7 @@
       "allowRevision": false,
       "mode": "word_puzzle",
       "question": "Find the five-letter word. Your clue: a looping path.",
-      "explanation": "The creator’s selected word is ORBIT. Exact positions and remaining letters are matched in two passes.",
+      "explanation": "An orbit is the looping path of one object around another.",
       "publicConfig": {
         "length": 5,
         "maxAttempts": 6,
@@ -97,15 +97,16 @@
       "provenance": "creator_confirmed",
       "allowRevision": true,
       "mode": "size_it_up",
-      "question": "Our block has an area of 240 square units and a width of 10 units. Resize its height beside the 10-unit reference.",
-      "explanation": "The height is 240 ÷ 10 = 24 units, so its height is 24 ÷ 10 = 2.4 times the reference. The vector uses a calibrated 100-unit axis.",
+      "question": "Resize the tree to 24 metres beside the 10-metre tower.",
+      "explanation": "The tree is 24 metres tall: 2.4 times the 10-metre tower.",
       "publicConfig": {
-        "unit": "units",
+        "unit": "m",
         "axis": "height",
         "referenceSize": 10,
-        "referenceLabel": "10-unit reference",
-        "targetLabel": "Puzzle block",
-        "asset": "block",
+        "referenceLabel": "10 m tower",
+        "targetLabel": "Tree",
+        "asset": "tree",
+        "referenceAsset": "tower",
         "minRatio": 0.25,
         "maxRatio": 4,
         "calibration": {
@@ -127,12 +128,12 @@
       "provenance": "creator_confirmed",
       "allowRevision": true,
       "mode": "amountle",
-      "question": "Seven boxes hold eight tokens each. Drop the total number of tokens.",
-      "explanation": "7 × 8 = 56 tokens. The integer count controls scoring; animated tokens are decorative.",
+      "question": "Pour 56 objects into the container.",
+      "explanation": "The closest accepted pour scores highest.",
       "publicConfig": {
         "unit": "tokens",
         "maxCount": 100,
-        "allowRemove": true,
+        "allowRemove": false,
         "steps": [
           1,
           10

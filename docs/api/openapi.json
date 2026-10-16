@@ -8261,7 +8261,23 @@
                   "bottle",
                   "circle",
                   "rocket",
-                  "block"
+                  "block",
+                  "tree",
+                  "person",
+                  "car"
+                ]
+              },
+              "referenceAsset": {
+                "type": "string",
+                "enum": [
+                  "tower",
+                  "bottle",
+                  "circle",
+                  "rocket",
+                  "block",
+                  "tree",
+                  "person",
+                  "car"
                 ]
               },
               "minRatio": {
@@ -8980,7 +8996,23 @@
                             "bottle",
                             "circle",
                             "rocket",
-                            "block"
+                            "block",
+                            "tree",
+                            "person",
+                            "car"
+                          ]
+                        },
+                        "referenceAsset": {
+                          "type": "string",
+                          "enum": [
+                            "tower",
+                            "bottle",
+                            "circle",
+                            "rocket",
+                            "block",
+                            "tree",
+                            "person",
+                            "car"
                           ]
                         },
                         "minRatio": {
@@ -9219,7 +9251,8 @@
               "END",
               "LOCK_JOIN",
               "UNLOCK_JOIN",
-              "KICK"
+              "KICK",
+              "RESULT_STAGE"
             ]
           },
           "expectedStateVersion": {
@@ -9229,6 +9262,15 @@
           "args": {
             "type": "object",
             "properties": {
+              "stage": {
+                "type": "string",
+                "enum": [
+                  "reveal",
+                  "podium",
+                  "standings",
+                  "auto"
+                ]
+              },
               "seconds": {
                 "type": "integer",
                 "minimum": 1,
@@ -10175,7 +10217,23 @@
                             "bottle",
                             "circle",
                             "rocket",
-                            "block"
+                            "block",
+                            "tree",
+                            "person",
+                            "car"
+                          ]
+                        },
+                        "referenceAsset": {
+                          "type": "string",
+                          "enum": [
+                            "tower",
+                            "bottle",
+                            "circle",
+                            "rocket",
+                            "block",
+                            "tree",
+                            "person",
+                            "car"
                           ]
                         },
                         "minRatio": {
@@ -10883,7 +10941,23 @@
                             "bottle",
                             "circle",
                             "rocket",
-                            "block"
+                            "block",
+                            "tree",
+                            "person",
+                            "car"
+                          ]
+                        },
+                        "referenceAsset": {
+                          "type": "string",
+                          "enum": [
+                            "tower",
+                            "bottle",
+                            "circle",
+                            "rocket",
+                            "block",
+                            "tree",
+                            "person",
+                            "car"
                           ]
                         },
                         "minRatio": {
@@ -11422,7 +11496,23 @@
                       "bottle",
                       "circle",
                       "rocket",
-                      "block"
+                      "block",
+                      "tree",
+                      "person",
+                      "car"
+                    ]
+                  },
+                  "referenceAsset": {
+                    "type": "string",
+                    "enum": [
+                      "tower",
+                      "bottle",
+                      "circle",
+                      "rocket",
+                      "block",
+                      "tree",
+                      "person",
+                      "car"
                     ]
                   },
                   "minRatio": {
