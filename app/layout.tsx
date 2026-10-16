@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./world.css";
 
 export const metadata: Metadata = {
-  title: "MULTIGAME — Make a night of it",
+  title: "MULTIGAME — One quiz. Five different games.",
   description: "Five wildly different games. One room. Create your own multiplayer game show.",
   robots: { index: false, follow: false },
   icons: {
