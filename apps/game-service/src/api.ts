@@ -285,7 +285,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       if (method === 'POST' && ['submissions', 'answers'].includes(suffix)) {
         if (principal.role !== 'player') throw new DomainError('FORBIDDEN', 'Open the player view to submit an answer.', 403);
         const submission = SubmitSchema.parse(body);
-        await rateLimit(ctx.store.db, `answer:${id}:${principal.id}`, 180, 60 * 1000);
+        await rateLimit(ctx.store.db, `answer:${id}:${principal.id}`, 600, 60 * 1000);
         return ok(await engine.submit(principal, id, submission));
       }
       if (method === 'POST' && suffix === 'word-guesses') {

@@ -78,6 +78,7 @@ export function publicQuestionProjection(round: Round): PublicRound {
     id: clean.id, mode: clean.mode, schemaVersion: clean.schemaVersion,
     question: clean.question, timerSeconds: clean.timerSeconds, maxPoints: clean.maxPoints,
     allowRevision: clean.allowRevision, publicConfig: clean.publicConfig,
+    ...(clean.mode === 'amountle' ? {fillTarget: clean.secretConfig.answer} : {}),
   });
 }
 

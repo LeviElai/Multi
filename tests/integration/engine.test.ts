@@ -398,3 +398,33 @@ test('removing the sole unresolved rare response finalizes review instead of lea
   await f.action('REVEAL');
   assert.equal((await f.engine.snapshot(f.members[0].principal, f.room.sessionId)).ownPoints, 1000);
 });
+
+for(const playerCount of [2,3,5,10])test(`${playerCount} players: five-mode round podium evidence, tied winners and cumulative standings survive recovery`,async t=>{
+ const f=await fixture(t,getDemoQuiz(),playerCount);await f.action('START');await f.active();
+ for(let i=0;i<5;i++){
+  const round=f.version.rounds[i];const before=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(before.roundAwards,undefined);assert.equal(before.revealStartedAt,undefined);
+  for(let j=0;j<playerCount;j++){
+   const p=f.members[j].principal;
+   if(round.mode==='word_puzzle')await f.engine.wordGuess(p,f.room.sessionId,{roundId:round.id,clientMutationId:key(),guess:round.secretConfig.answer});
+   else {const payload=round.mode==='fermi'?{value:round.secretConfig.answer}:round.mode==='rare_answers'?{text:round.secretConfig.answers[j%5].canonical}:round.mode==='size_it_up'?{ratio:round.secretConfig.targetSize/round.publicConfig.referenceSize}:{count:round.secretConfig.answer};await f.engine.submit(p,f.room.sessionId,{roundId:round.id,clientMutationId:key(),revision:1,payload});}
+  }
+  if(round.mode==='amountle'){f.advance(round.timerSeconds*1000+1);await f.engine.reconcile(f.room.sessionId)}else await f.action('LOCK');
+  await f.engine.reconcile(f.room.sessionId);assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).roundAwards,undefined);
+  await f.action('REVEAL');const revealed=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(revealed.roundAwards?.length,playerCount);assert.ok(revealed.revealStartedAt);assert.equal(revealed.leaderboard.length,playerCount);
+  if(round.mode==='rare_answers')assert.ok(revealed.roundAwards!.every(a=>a.points===revealed.roundAwards![0].points),'equally frequent answers must tie');
+  await f.restart();const recovered=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.deepEqual(recovered.roundAwards,revealed.roundAwards);assert.equal(recovered.revealStartedAt,revealed.revealStartedAt);assert.deepEqual(recovered.leaderboard,revealed.leaderboard);
+  await f.action('NEXT');if(i<4)await f.active();else{f.advance(1000);await f.engine.reconcile(f.room.sessionId)}
+ }
+ assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).state,'SESSION_COMPLETED');
+});
+
+test('Fill is monotonic even for legacy remove-enabled configs and locks at server expiry',async t=>{
+ const quiz=getDemoQuiz();const round=getDefaultRound('amountle');if(round.mode!=='amountle')throw new Error();round.publicConfig.allowRemove=true;round.allowRevision=false;quiz.rounds=[round];const f=await fixture(t,quiz,2);await f.action('START');await f.active();
+ const p=f.members[0].principal;const send=(count:number,revision:number)=>f.engine.submit(p,f.room.sessionId,{roundId:round.id,clientMutationId:key(),revision,payload:{count,locked:false}});
+ await send(1,1);await send(7,2);await assert.rejects(send(6,3),isCode('REMOVAL_DISABLED'));await send(8,4);f.advance(round.timerSeconds*1000+1);await f.engine.reconcile(f.room.sessionId);await assert.rejects(send(9,5));await f.action('REVEAL');const s=await f.engine.snapshot(p,f.room.sessionId);assert.equal(s.ownSubmission?.payload.count,8);assert.equal(s.round?.fillTarget,round.secretConfig.answer);
+});
+
+test('anonymous creation and hosting are rejected before any persistent ownership is assigned',async t=>{
+ const f=await fixture(t);const context={store:f.store,user:null,pinSecret:PIN_SECRET};const request=(path:string,body:unknown)=>new Request('http://localhost/api/v1/'+path,{method:'POST',headers:{Origin:'http://localhost','Content-Type':'application/json','Idempotency-Key':key()},body:JSON.stringify(body)});
+ assert.equal((await handleApi(request('quizzes',getDemoQuiz()),context)).status,401);assert.equal((await handleApi(request('sessions',{quizVersionId:f.version.id}),context)).status,401);
+});

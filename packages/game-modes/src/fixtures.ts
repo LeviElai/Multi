@@ -34,9 +34,9 @@ export function getDefaultRound(mode: ModeId): Round {
       secretConfig: { targetSize: 24 },
     };
     case 'amountle': return {
-      ...common, mode, question: 'Seven boxes hold eight tokens each. Drop the total number of tokens.',
-      explanation: '7 × 8 = 56 tokens. The integer count controls scoring; animated tokens are decorative.',
-      publicConfig: { unit: 'tokens', maxCount: 100, allowRemove: true, steps: [1, 10], showCount: true, tolerance: 28 },
+      ...common, mode, question: 'Pour 56 objects into the container.',
+      explanation: 'Target: 56 objects. Closest pour scores highest.',
+      publicConfig: { unit: 'tokens', maxCount: 100, allowRemove: false, steps: [1, 10], showCount: true, tolerance: 28 },
       secretConfig: { answer: 56 },
     };
   }

@@ -146,6 +146,9 @@ export class GameEngine {
       const scored = new Map(data.awards.filter(award => award.roundId === round.id).map(award => [award.participantId, award]));
       const frozen: SessionData = { ...data, members: data.members.filter(member => scored.has(member.id)).map(member => ({ ...member, status: scored.get(member.id)?.reason === 'participant_removed' ? 'kicked' as const : 'active' as const })) };
       result.reveal = scoreRound(frozen, round).reveal;
+      result.roundAwards = [...scored.values()];
+      const revealEvent = await this.store.db.query<{occurred_at:string}>("SELECT occurred_at FROM session_events WHERE session_id = ? AND type = 'round.revealed' ORDER BY seq DESC LIMIT 1", [id]);
+      result.revealStartedAt = revealEvent.rows[0]?.occurred_at;
     }
     if (round && principal.role === 'host' && data.session.state === 'REVIEW_REQUIRED') result.review = scoreRound(data, round).review;
     return result;
@@ -254,9 +257,9 @@ export class GameEngine {
       if (round.mode === 'word_puzzle') throw new DomainError('INVALID_MODE', 'Submit a word attempt for this round.', 422);
       const previous = data.submissions.find((item) => item.roundId === input.roundId && item.participantId === player.id);
       if (previous && input.revision <= previous.revision) throw new DomainError('STALE_SUBMISSION', 'Your newer acknowledged answer is already saved.', 409, { serverRevision: previous.revision });
-      if (previous && (!round.allowRevision || previous.payload.locked)) throw new DomainError('ANSWER_LOCKED', 'Your answer is already locked.', 409);
+      if (previous && ((round.mode !== 'amountle' && !round.allowRevision) || previous.payload.locked)) throw new DomainError('ANSWER_LOCKED', 'Your answer is already locked.', 409);
       const payload = sanitizeAndValidateSubmission(round, input.payload);
-      if (round.mode === 'amountle' && !round.publicConfig.allowRemove && previous && (payload.count ?? 0) < (previous.payload.count ?? 0)) throw new DomainError('REMOVAL_DISABLED', 'This round only permits adding to your count.', 422);
+      if (round.mode === 'amountle' && previous && (payload.count ?? 0) < (previous.payload.count ?? 0)) throw new DomainError('REMOVAL_DISABLED', 'This round only permits adding to your count.', 422);
       const acceptedAt = new Date(now).toISOString();
       const submission = { id: crypto.randomUUID(), roundId: input.roundId, participantId: player.id, clientMutationId: input.clientMutationId, revision: input.revision, payload, acceptedAt };
       data.submissions = [...data.submissions.filter((item) => item.roundId !== input.roundId || item.participantId !== player.id), submission];

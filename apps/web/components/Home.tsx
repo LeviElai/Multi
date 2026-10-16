@@ -1,22 +1,10 @@
 'use client';
-import { lazy, Suspense, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Plus } from 'lucide-react';
-import { MODES, MODE_META, type ModeId } from '../../../packages/contracts/src/index';
-import { Header, Footer, SoundToggle } from './Brand';
-import { WorldScene } from './world/WorldScene';
-import { PixelSprite } from './world/Sprites';
+import {Header,Footer} from './Brand';
 import JoinForm from './JoinForm';
-const Preview = lazy(() => import('./Preview').then(module => ({ default: module.Preview })));
-import { getDefaultRound } from '../../../packages/game-modes/src/fixtures';
-export default function Home() {
-    const [mode, setMode] = useState<ModeId>('rare_answers');
-    const [playing, setPlaying] = useState(false);
-    return <div className="harbor-home"><Header /><main>
-  <section className="harbor-hero" aria-labelledby="home-title"><WorldScene /><div className="harbor-content"><div className="harbor-kicker"><span /> FRIENDS WELCOME. GOOD GUESSES OPTIONAL.</div><h1 id="home-title">One quiz.<br /><span>Five different games.</span></h1><p className="harbor-intro">A tiny world of big guesses, rare answers, and friendly rivals.<br /> Make a quiz. Gather your people. Let the games begin.</p><JoinForm compact/><div className="harbor-create"><span>Taking the host seat?</span><Link href="/create" className="btn btn-cream">Create a quiz <Plus size={18}/></Link></div><p className="harbor-footnote">Free manual hosting <span>✦</span> Play from any phone</p></div><div className="harbor-location"><span>01 / ARCADE HARBOR</span><a href="#discover">EXPLORE THE GAMES ↓</a><SoundToggle /></div></section>
-  <section className="world-showcase" id="discover" aria-labelledby="discover-title"><div className="showcase-heading"><div><span className="eyebrow">FIVE LITTLE WORLDS. ONE BIG GAME NIGHT.</span><h2 id="discover-title">Find your kind of clever.</h2></div><p>Try a round. Find a favorite.<br />Mix them all into your next quiz.</p></div><div className="world-selector" role="group" aria-label="Choose a game to try">{MODES.map((m, i) => <button key={m} onClick={() => { setMode(m); setPlaying(false); }} aria-pressed={mode === m} className={mode === m ? 'selected' : ''}><span className="world-number">0{i + 1}</span><PixelSprite kind={m}/><strong>{MODE_META[m].name}</strong><span>{['Make a great guess', 'Think less obvious', 'Crack the hidden word', 'Trust your eye', 'Pour just enough'][i]}</span></button>)}</div>
-  <div className={`showcase-stage showcase-${mode}`}>{playing ? <Suspense fallback={<p className="practice-loading" role="status">Getting your practice round ready…</p>}><Preview key={mode} quiz={{ title: 'Try a round', description: '', language: 'en', audienceContext: 'adult_private', theme: 'studio', rounds: [getDefaultRound(mode)] }}/></Suspense> : <><div className="showcase-scene">{mode === 'rare_answers' ? <WorldScene ocean/> : <WorldScene />}<PixelSprite kind={mode} className="showcase-mascot"/><span className="world-scene-label">{mode === 'rare_answers' ? 'THE QUIET REEF' : 'ARCADE HARBOR'}</span></div><div className="showcase-copy"><span className="eyebrow">{MODE_META[mode].verb}</span><h3>{MODE_META[mode].name}</h3><p>{MODE_META[mode].description} {mode === 'rare_answers' ? 'Find the answer nobody else thought of. The rarer it is, the deeper you dive.' : 'Try the real controls and see how your answer scores.'}</p><button className="btn btn-primary" onClick={() => setPlaying(true)}>Play a practice round <ArrowRight size={18}/></button><small>Interactive practice with two simulated players.</small></div></>}</div></section>
-  <section className="harbor-how"><div><span className="eyebrow">LESS SETUP. MORE “ONE MORE ROUND.”</span><h2>Your ideas.<br />Everyone’s game.</h2><Link href="/create" className="btn btn-primary">Create a quiz <ArrowRight size={18}/></Link></div><ol><li><b>01</b><div><h3>Make it yours</h3><p>Choose a game, write a question, and try it. Add another whenever you’re ready.</p></div></li><li><b>02</b><div><h3>Bring your people</h3><p>Host your quiz. Share the code or QR. Everyone joins on their own phone.</p></div></li><li><b>03</b><div><h3>Enjoy the surprises</h3><p>Reveal the answers, watch the standings, and settle who really knows best.</p></div></li></ol></section>
-  <div className="harbor-build-note">Private evaluation build · AI and advertising remain disabled.</div>
- </main><Footer /></div>;
-}
+import {PixelSprite} from './world/Sprites';
+import {MODES,MODE_META} from '../../../packages/contracts/src/index';
+export default function Home(){return <div className="clean-home"><Header/><main>
+ <section className="home-entry"><div className="home-title"><h1>One quiz.<br/>Five different games.</h1><p>Host a quiz. Players join with a code.</p></div><JoinForm compact/><Link href="/create" className="btn btn-primary home-create">Create a quiz <span aria-hidden="true">→</span></Link></section>
+ <section className="home-games" aria-label="Try the games"><h2>Try a game</h2><div>{MODES.map(mode=><Link href={'/demo?mode='+mode} key={mode}><PixelSprite kind={mode}/><span><strong>{MODE_META[mode].name}</strong><small>{MODE_META[mode].description}</small></span><b aria-hidden="true">↗</b></Link>)}</div></section>
+ </main><Footer/></div>}
