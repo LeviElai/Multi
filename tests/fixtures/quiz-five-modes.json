@@ -1,0 +1,148 @@
+{
+  "title": "A little friendly competition",
+  "description": "Five different ways to play. A complete, creator-confirmed starter quiz with arithmetic, a custom palette, and a hidden word.",
+  "language": "en",
+  "audienceContext": "adult_private",
+  "theme": "studio",
+  "rounds": [
+    {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "schemaVersion": 1,
+      "timerSeconds": 40,
+      "maxPoints": 1000,
+      "provenance": "creator_confirmed",
+      "allowRevision": true,
+      "mode": "fermi",
+      "question": "A square mosaic has 12 rows of 12 tiles. How many tiles are there?",
+      "explanation": "12 × 12 = 144 tiles. This is an author-defined arithmetic puzzle.",
+      "publicConfig": {
+        "unit": "tiles",
+        "errorMode": "proportional",
+        "min": 0,
+        "max": 1000,
+        "tolerance": 144,
+        "step": 1
+      },
+      "secretConfig": {
+        "answer": 144
+      }
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000002",
+      "schemaVersion": 1,
+      "timerSeconds": 40,
+      "maxPoints": 1000,
+      "provenance": "creator_confirmed",
+      "allowRevision": true,
+      "mode": "rare_answers",
+      "question": "Pick one name from our palette: Coral, Mint, Lilac, Lemon, or Sky. The least shared answer wins.",
+      "explanation": "Only this puzzle’s five palette names are valid. Rarity is calculated from the room’s final valid answers.",
+      "publicConfig": {
+        "rarityMethod": "live_room",
+        "adjudication": "allowlist",
+        "locale": "en",
+        "normalizationVersion": "nfkc-en-v1"
+      },
+      "secretConfig": {
+        "answers": [
+          {
+            "canonical": "Coral",
+            "aliases": []
+          },
+          {
+            "canonical": "Mint",
+            "aliases": []
+          },
+          {
+            "canonical": "Lilac",
+            "aliases": []
+          },
+          {
+            "canonical": "Lemon",
+            "aliases": []
+          },
+          {
+            "canonical": "Sky",
+            "aliases": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000003",
+      "schemaVersion": 1,
+      "timerSeconds": 90,
+      "maxPoints": 1000,
+      "provenance": "creator_confirmed",
+      "allowRevision": false,
+      "mode": "word_puzzle",
+      "question": "Find the five-letter word. Your clue: a looping path.",
+      "explanation": "The creator’s selected word is ORBIT. Exact positions and remaining letters are matched in two passes.",
+      "publicConfig": {
+        "length": 5,
+        "maxAttempts": 6,
+        "locale": "en",
+        "dictionaryPolicy": "unrestricted_valid_chars"
+      },
+      "secretConfig": {
+        "answer": "ORBIT",
+        "allowedGuesses": []
+      }
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000004",
+      "schemaVersion": 1,
+      "timerSeconds": 40,
+      "maxPoints": 1000,
+      "provenance": "creator_confirmed",
+      "allowRevision": true,
+      "mode": "size_it_up",
+      "question": "Our block has an area of 240 square units and a width of 10 units. Resize its height beside the 10-unit reference.",
+      "explanation": "The height is 240 ÷ 10 = 24 units, so its height is 24 ÷ 10 = 2.4 times the reference. The vector uses a calibrated 100-unit axis.",
+      "publicConfig": {
+        "unit": "units",
+        "axis": "height",
+        "referenceSize": 10,
+        "referenceLabel": "10-unit reference",
+        "targetLabel": "Puzzle block",
+        "asset": "block",
+        "minRatio": 0.25,
+        "maxRatio": 4,
+        "calibration": {
+          "version": 1,
+          "intrinsicDimension": 100,
+          "start": 0,
+          "end": 100
+        }
+      },
+      "secretConfig": {
+        "targetSize": 24
+      }
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000005",
+      "schemaVersion": 1,
+      "timerSeconds": 40,
+      "maxPoints": 1000,
+      "provenance": "creator_confirmed",
+      "allowRevision": true,
+      "mode": "amountle",
+      "question": "Seven boxes hold eight tokens each. Drop the total number of tokens.",
+      "explanation": "7 × 8 = 56 tokens. The integer count controls scoring; animated tokens are decorative.",
+      "publicConfig": {
+        "unit": "tokens",
+        "maxCount": 100,
+        "allowRemove": true,
+        "steps": [
+          1,
+          10
+        ],
+        "showCount": true,
+        "tolerance": 28
+      },
+      "secretConfig": {
+        "answer": 56
+      }
+    }
+  ]
+}

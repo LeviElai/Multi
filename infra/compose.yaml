@@ -1,0 +1,90 @@
+name: multigame
+services:
+  database:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: multigame
+      POSTGRES_USER: multigame
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U multigame -d multigame"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: worker
+    command: [node, --import, tsx, apps/worker/src/main.ts, --migrate]
+    environment:
+      DATABASE_URL: postgres://multigame:${POSTGRES_PASSWORD}@database:5432/multigame
+    depends_on:
+      database:
+        condition: service_healthy
+  game:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: game
+    environment:
+      DATABASE_URL: postgres://multigame:${POSTGRES_PASSWORD}@database:5432/multigame
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set HTTPS PUBLIC_ORIGIN}
+      PIN_PEPPER: ${PIN_PEPPER:?Set PIN_PEPPER}
+      AUTH_BOOTSTRAP_EMAIL: ${AUTH_BOOTSTRAP_EMAIL:?Set AUTH_BOOTSTRAP_EMAIL}
+      AUTH_BOOTSTRAP_PASSWORD: ${AUTH_BOOTSTRAP_PASSWORD:?Set AUTH_BOOTSTRAP_PASSWORD}
+      AUTH_BOOTSTRAP_NAME: ${AUTH_BOOTSTRAP_NAME:-Host}
+      TRUST_PROXY: '1'
+      MAX_PLAYERS: '25'
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:4001/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 30s
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: worker
+    environment:
+      DATABASE_URL: postgres://multigame:${POSTGRES_PASSWORD}@database:5432/multigame
+      PIN_PEPPER: ${PIN_PEPPER}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 30s
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: web
+    environment:
+      GAME_SERVICE_URL: http://game:4001
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN}
+    depends_on:
+      game:
+        condition: service_healthy
+    restart: unless-stopped
+  edge:
+    image: nginx:1.28-bookworm
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${TLS_CERT_DIR:?Set TLS_CERT_DIR}:/etc/nginx/tls:ro
+    depends_on:
+      - web
+      - game
+    restart: unless-stopped
+volumes:
+  postgres-data:

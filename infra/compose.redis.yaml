@@ -1,0 +1,7 @@
+# Optional overlay. The current release does not consume Redis. It is not an
+# authoritative database or a delivery guarantee, and adds resource usage.
+services:
+  redis:
+    image: redis:7.4-bookworm
+    command: [redis-server, --appendonly, 'no', --requirepass, '${REDIS_PASSWORD:?Set REDIS_PASSWORD}']
+    restart: unless-stopped

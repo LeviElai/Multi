@@ -1,0 +1,12 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+allowBuilds:
+  esbuild: true
+  fsevents: false
+  sharp: true
+  unrs-resolver: true
+  workerd: true
+cacheDir: ${SITES_PNPM_SHARED_STORE:-.sites-runtime/pnpm-store}/policy-cache
+packageImportMethod: auto
+storeDir: ${SITES_PNPM_SHARED_STORE:-.sites-runtime/pnpm-store}

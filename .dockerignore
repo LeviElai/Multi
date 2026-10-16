@@ -1,0 +1,16 @@
+.git
+node_modules
+.next
+.wrangler
+dist
+coverage
+tests/reports
+*.sqlite
+*.sqlite-*
+*.db
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+upload

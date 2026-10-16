@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-10-16T11:34:40.013Z",
+  "scenario": "one_round_concurrent_acknowledged_submissions",
+  "players": 25,
+  "storage": "local SQLite",
+  "transport": "real Node HTTP + Socket.IO WebSocket",
+  "p50AckMs": 49,
+  "p95AckMs": 50,
+  "maxAckMs": 50,
+  "accepted": 25,
+  "correctLedgerRows": 25,
+  "limitations": [
+    "No browser rendering, mobile network, PostgreSQL or deployed infrastructure measurement",
+    "Not a sustained public capacity certification"
+  ]
+}
