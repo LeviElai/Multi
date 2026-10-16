@@ -10,7 +10,7 @@ test('creator registration validates passwords, signs in, prevents duplicates an
   t.after(() => db.close());
   await db.migrate(await readFile(new URL('../../packages/db/migrations/sqlite/0001_initial.sql', import.meta.url), 'utf8'));
   const auth = new CreatorAuth(new SqlStore(db), db, false);
-  await auth.initialize({});
+  await auth.initialize({ NODE_ENV: 'test' });
   const request = (route: string, payload: unknown, cookie = '') => new Request('http://localhost/api/auth/' + route, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify(payload),
   });
@@ -27,7 +27,7 @@ test('creator registration validates passwords, signs in, prevents duplicates an
   const login = (await auth.handle(request('login', {...account, email:'CREATOR@example.test'})))!;
   assert.equal(login.status, 200);
   const other = (await auth.handle(request('register', {...account, email:'other@example.test'})))!;
-  assert.notEqual((await other.json()).data.id, identity!.id);
+  assert.notEqual(((await other.json()) as {data:{id:string}}).data.id, identity!.id);
   await auth.handle(request('logout', {}, cookie));
   assert.equal(await auth.identify(new Request('http://localhost', {headers:{Cookie:cookie}})), null);
 });
