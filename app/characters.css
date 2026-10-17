@@ -1,6 +1,6 @@
 /* Hand-built pixel materials. Quiet text surfaces, expressive edges. */
 .demo-page{padding-top:20px}.demo-page .practice-page-title{margin-bottom:18px}.practice-stage{padding:16px 22px!important}.practice-stage>.perspective-switch{margin:0 auto 12px!important}.practice-stage .practice-question{font-size:22px;line-height:1.4;padding:14px;margin:10px auto 16px!important}.practice-round-heading{margin:0 auto 8px!important}
-.pixel-character{width:40px;height:50px;display:block;flex-shrink:0;image-rendering:pixelated;overflow:visible;filter:drop-shadow(2px 2px #0a17295c)}
+.pixel-character{width:40px;height:50px;display:block;flex-shrink:0;image-rendering:pixelated;overflow:visible;filter:none}
 .player-identity{display:inline-flex;align-items:center;gap:10px;min-width:0;max-width:100%;vertical-align:middle}.identity-name{overflow-wrap:anywhere;min-width:0;font-weight:800;line-height:1.35}
 .mood-idle .character-body,.mood-waiting .character-body{animation:character-breathe 4.3s steps(2,end) infinite;transform-origin:50% 95%}.mood-idle .character-face{animation:character-blink 6.7s steps(1,end) infinite;transform-origin:50% 45%}
 .mood-join .character-body,.mood-locked .character-body,.mood-happy .character-body,.mood-up .character-body{animation:character-hop .48s steps(4,end) 1}.mood-celebrate .character-body{animation:character-cheer 1.6s steps(4,end) 3;transform-origin:50% 90%}.mood-near .character-body{animation:character-nod .5s steps(3,end) 1}

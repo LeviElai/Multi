@@ -1,0 +1,37 @@
+/* Homepage-only afternoon palette. Game worlds and podium keep their artwork. */
+.clean-home{background:#b2dce0;color:#244b5d}
+.clean-home .site-header,.clean-home .site-footer{background:#fff0d0;color:#294b58;border-color:#8caf9c}
+.clean-home .home-entry .scene-painting{background-image:url('/art/pixel/afternoon.svg')!important}
+.clean-home .home-entry .scene-painting:after{background:linear-gradient(90deg,#dcf0dfbb,#c6e9dd33 55%,transparent)}
+.clean-home .home-title h1,.clean-home .home-title p,.clean-home .home-title .eyebrow{color:#244758;text-shadow:1px 2px #fff3d299}
+.clean-home .home-create{background:#397d79;color:#fff3d2;border-color:#23575d;box-shadow:3px 4px #1b4556}
+.pixel-character{filter:none!important}
+.dressing-room[open]{display:grid;grid-template-columns:minmax(0,1fr) 220px;grid-template-rows:auto minmax(0,1fr) auto;width:min(850px,calc(100vw - 24px));height:min(720px,92dvh);padding:18px;gap:14px;background:#fff1d2;border-color:#284b58;box-shadow:inset 0 0 0 3px #c3ad7e,7px 7px #122f3b;overflow:hidden}
+.dressing-room header{grid-column:1/-1;align-items:center}.dressing-room h2{margin:0;font:17px/1.8 var(--pixel);color:#294655}.dressing-room header>button{min-width:44px;height:44px;background:#e7d6af;box-shadow:2px 2px #8a886c}
+.dressing-selectors{grid-column:1;grid-row:2;overflow:auto;overscroll-behavior:contain;min-height:0;padding:0 10px 5px 0;scrollbar-color:#7aab98 #e5dbbc}
+.outfit-selector{margin:0 0 14px;min-width:0;padding:9px 10px 11px;background:#ecdfba;border:2px solid #b0ad88;box-shadow:inset 0 2px #fff7df}
+.selector-label{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;color:#294655;font-size:13px}.selector-label>span{font-size:11px;color:#4d6b66;min-width:0;text-align:right}
+.selector-belt{display:flex;align-items:center;gap:8px;outline-offset:4px}.belt-arrow{flex:0 0 44px;min-height:46px;border:2px solid #315b60;background:#6a9c8c;color:#fff1c9;font-size:31px;line-height:1;box-shadow:2px 3px #314e56;touch-action:manipulation}.belt-arrow:active{transform:translateY(2px);box-shadow:1px 1px #314e56}
+.belt-window{overflow:hidden;min-width:0;flex:1;touch-action:pan-y;user-select:none}.belt-items{display:flex;justify-content:center;align-items:center;gap:5px;padding:4px 0}
+.belt-item{flex:0 0 44px;width:44px;height:48px;padding:4px;display:grid;place-items:center;border:2px solid #bac4a6;background:#f6ebce;cursor:pointer;opacity:.7;touch-action:pan-y}
+.belt-item[aria-pressed=true]{border-color:#2d6667;background:#d2e4c5;box-shadow:inset 0 0 0 2px #fff1be,0 2px #315c5d;opacity:1}
+.belt-item:focus-visible,.belt-arrow:focus-visible,.selector-belt:focus-visible{outline:3px solid #8762aa;outline-offset:2px}.belt-item:hover{opacity:1}.character-item{width:100%;height:36px;display:block;image-rendering:pixelated;overflow:visible;filter:none}
+.item-swatch{display:block;width:28px;height:30px;border:2px solid #254756;box-shadow:inset 3px 3px #ffffff33}.item-none{font-size:9px;font-weight:800;color:#35545c}
+.dressing-preview{grid-column:2;grid-row:2;display:flex;flex-direction:column;align-items:center;justify-content:center;align-self:start;min-width:0;background:#a8c7b2;border:3px solid #486c69;box-shadow:inset 0 0 0 3px #d9e4b8;padding:18px 10px;color:#243f4d;text-align:center}
+.dressing-mirror{position:relative;width:100%;height:260px;display:flex;align-items:center;justify-content:center;background:#dce6ca;border:3px solid #76978b;overflow:hidden}
+.dressing-preview .pixel-character{width:128px;height:160px;position:relative;z-index:1}.dressing-platform{position:absolute;bottom:24px;left:12%;right:12%;height:12px;background:#be9b6e;border:3px solid #866d53;box-shadow:0 5px #8b8263}
+.dressing-preview>strong{font-size:15px;margin-top:14px;overflow-wrap:anywhere;max-width:100%}.dressing-preview .character-body{animation:none}.dressing-preview .character-face{transform-box:fill-box;transform-origin:center;animation:dressing-blink 7s steps(1,end) infinite}
+.outfit-greeting{animation:dressing-hello .55s steps(4,end) 1}.outfit-reaction{animation:dressing-change .18s steps(3,end) 1}
+.dressing-room footer{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin:0;padding-top:12px}.dressing-room footer button{min-height:44px;font-size:13px;padding:10px 15px}.dressing-error{grid-column:1/-1;margin:0;font-size:13px;color:#8e363d}
+@keyframes dressing-blink{0%,94%,99%,100%{transform:scaleY(1)}96%,98%{transform:scaleY(.1)}}
+@keyframes dressing-hello{35%{transform:translateY(-7px) rotate(-4deg)}70%{transform:rotate(3deg)}}
+@keyframes dressing-change{50%{transform:translateY(-3px)}}
+@media(max-width:600px){
+ .clean-home .home-entry .scene-painting:after{background:linear-gradient(#e2f1d7aa,transparent 75%)}
+ .dressing-room[open]{width:calc(100vw - 16px);height:94dvh;max-height:94dvh;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 112px minmax(0,1fr) auto;gap:10px;padding:11px}
+ .dressing-room h2{font-size:14px}.dressing-preview{grid-column:1;grid-row:2;align-self:stretch;flex-direction:row;gap:14px;padding:5px 12px;justify-content:center}
+ .dressing-mirror{width:100px;height:94px;flex:0 0 100px}.dressing-preview .pixel-character{width:64px;height:80px}.dressing-platform{bottom:8px;height:8px;border-width:2px}.dressing-preview>strong{margin:0;max-width:140px;font-size:13px}
+ .dressing-selectors{grid-column:1;grid-row:3;padding-right:5px}.outfit-selector{padding:7px 8px 9px;margin-bottom:10px}.selector-belt{gap:8px}.belt-item{height:46px}.belt-items:has(>button:nth-child(5))>button:first-child,.belt-items:has(>button:nth-child(5))>button:last-child{display:none}
+ .dressing-room footer{grid-row:4;padding-top:8px;justify-content:space-between;gap:6px}.dressing-room footer button{font-size:12px;padding:9px 11px;flex:1}
+}
+@media(prefers-reduced-motion:reduce){.dressing-preview *,.dressing-room .outfit-greeting,.dressing-room .outfit-reaction{animation:none!important;transition:none!important}}
