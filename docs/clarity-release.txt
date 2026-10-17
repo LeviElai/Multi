@@ -1,0 +1,66 @@
+MULTIGAME ? Reading, result clarity, restored characters and performance
+
+Scope
+Preserved the original mode environments, canonical mode icons and final stage.
+Restored the original champion geometry from Git f83b726. Curated 10 hair shapes,
+8 hair colors, 8 faces, 8 shirt designs/colors, 5 bottom designs with 8 colors,
+8 hats plus none, 3 accessories plus none and 8 skin tones. Saved old looks remain
+readable. All clients retain the same ID-bound appearance and secure lobby editing.
+A 32-character contact sheet was reviewed at 32px and 48px display widths.
+
+Timing and scoring
+Automatic rounds begin with five seconds of reading; hosts may choose 8 or 12
+seconds in the lobby. The choice persists through restarts and following rounds.
+The server rejects early answers and starts the full answer timer after reading.
+Reading can be paused/resumed, advanced or skipped. Stimulus/answer controls stay
+hidden during reading. Results share a 5.5-second authoritative reveal deadline:
+answer 2s, comparison 2s, points 1.5s. Standings last 10 seconds, hold immutable
+previous totals first, reveal gains, count to authoritative new totals, then reorder
+by stable participant ID. Pauses retain progress; reconnects use the current phase.
+Round-best ties are distinct from overall rank and the current player's marker.
+Zero-point rounds receive no round-best winner. Final rounds go straight to the
+approved podium, with the final score update integrated there.
+
+Presentation
+Sunset harbor homepage with Join and Create as the main actions; internal practice
+routes retained. Quiet original pixel meadow replaces the global dark pattern.
+Eight stable ID-derived quiz-card colors, single title, actual question count.
+Reduced repeated score panels, repeated titles and generic instructional copy.
+
+Performance
+Unchanged snapshot revisions no longer redraw the game tree. Polling falls from
+1.1s to 1.8s, or 8s with a socket, and 15s in background tabs. Concurrent refreshes
+are coalesced. Characters and atmosphere are memoized. Standings batch geometry
+reads before transform writes. Clocks update once per second rather than four.
+All six mode backgrounds are no longer prefetched on every page. Ambient glow is
+static; small screens show fewer particles and drop backdrop filters. Count uses
+squared-distance rejection before square roots, caps rendering at 30fps on narrow
+or low-core devices, and retains non-overlapping stacking with a bounded 128 bodies.
+Local single-run benchmark, same 128 bodies/60 physics steps: 249.8ms before,
+62.6ms after. This measures CPU work on this PC, not physical-phone FPS.
+
+Validation
+116 unit/integration tests passed. Includes paused reading, full answer timer,
+early-answer rejection, restart recovery, persistent custom timing, simultaneous
+advance/stale command protection, automatic skip, immutable previous totals,
+position exchanges, round-best ties, zero-point rounds and eight-theme contrast.
+Three HTTP/WebSocket tests passed, including ten-player play and process-crash
+recovery. TypeScript and optimized Next.js production build passed.
+Browser review: original-style editor/save, 32-character sheet, sunset, varied
+private quiz cards, real host plus three independent player credentials, answer /
+comparison / points / previous standings / reordered standings and a 25-person
+scrolling list. Refreshed during paused standings; final totals stayed unchanged.
+
+Limits and follow-up evidence
+The local five-mode automatic run was interrupted after two modes by a transient
+Next development-manifest rebuild error while code was being edited; it is not
+reported as a successful complete run. Local production-preview startup was blocked
+by automatic command approval, with no additional reason supplied. Production
+verification is recorded separately in the delivery report.
+The browser viewport override did not resize the review tabs: screenshots are
+actual desktop captures, despite attempts at 390x844. Responsive CSS was reviewed,
+but a successful phone-sized browser/physical-device check is not claimed.
+No subjective audio mix or real-player comprehension study was performed.
+The deployed version is ready for another real-player test. Free hosting may still
+cold-start; no paid infrastructure was added. No image generation, agents, new
+package dependencies or database migrations were used.

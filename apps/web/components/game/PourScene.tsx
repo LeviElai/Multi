@@ -11,6 +11,7 @@ export default function PourScene({count,seed,finalFraction=1,paused=false}:{pau
   const el=canvas.current,ctx=el?.getContext('2d');if(!el||!ctx)return;
   el.width=360;el.height=370;ctx.imageSmoothingEnabled=false;
   const bodies:Body[]=[];let rendered=0,raf=0,last=0,until=0;
+  const low=navigator.hardwareConcurrency<=4||matchMedia('(max-width:600px)').matches;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const box=(x:number,y:number,w:number,h:number,c:string)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));};
   const draw=()=>{
@@ -41,6 +42,7 @@ export default function PourScene({count,seed,finalFraction=1,paused=false}:{pau
   };
   const frame=(time:number)=>{
    raf=0;if(pausedRef.current){draw();return;}if(document.hidden){last=0;return;}
+   if(low&&last&&time-last<32){raf=requestAnimationFrame(frame);return;}
    const dt=last?Math.min((time-last)/1000,1/30):1/60;last=time;
    const target=Math.min(MAX_BODIES,desired.current);
    if(target<rendered){bodies.length=0;rendered=0;}

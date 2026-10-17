@@ -12,12 +12,12 @@ export const RoundClock = memo(function RoundClock({ deadline, pausedMs, offset,
 }) {
     const [now, setNow] = useState(Date.now());
     useEffect(() => { setNow(Date.now()); if (paused)
-        return; const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, [deadline, paused]);
+        return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [deadline, paused]);
     const remaining = remainingSeconds(deadline, pausedMs, offset, now);
     useEffect(()=>{if(!paused&&remaining===3&&variant!=='track')playCue('tick',undefined,String(deadline)+':countdown');},[remaining,paused,variant,deadline]);
     if (variant === 'track')
         return <div className="timer-track"><span style={{ transform: `scaleX(${Math.min(1, remaining / duration)})` }}/></div>;
     if (variant === 'countdown')
-        return <strong className="countdown-number">{Math.max(1, remaining)}</strong>;
+        return <strong className="countdown-number">{Math.max(0, remaining)}</strong>;
     return <div className={`round-timer ${!paused && remaining < 10 ? 'urgent' : ''} ${paused?'is-paused':''}`} role="timer" aria-label={paused ? `Paused, ${remaining} seconds remaining` : `${remaining} seconds remaining`}>{remaining}<small>{paused ? 'paused' : 'sec'}</small></div>;
 });

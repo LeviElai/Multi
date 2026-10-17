@@ -51,6 +51,8 @@ await call(players[0],path+'/host-actions','POST',{action:'START',expectedStateV
 await action('START');
 const verified:string[]=[];
 for(const round of demo.rounds){
+  const reading=await wait('ROUND_PREPARE');assert.equal(reading.phase,'reading');assert.equal(reading.reveal,undefined);assert.equal(reading.round?.fillTarget,undefined);
+  if(round===demo.rounds[0]){await call(players[0],path+'/submissions','POST',{roundId:round.id,clientMutationId:randomUUID(),revision:1,payload:{value:144,locked:true}},409);await action('PAUSE');assert.equal((await snapshot(players[1])).phase,'reading');await action('RESUME');}
   await wait('ROUND_ACTIVE');
   const before=await snapshot(players[0]);assert.equal(before.automatic,true,'new HTTP rooms enable automatic play');for(const m of before.members)assert.deepEqual(m.avatar,savedLooks.get(m.id),'appearance survives each round');
   if(round===demo.rounds[0])await call(players[0],path+'/appearance?role=player','POST',{avatar:look},409);
@@ -63,7 +65,7 @@ for(const round of demo.rounds){
   }
 
   await wait('ROUND_REVEAL');
-  const results=await snapshot(players[0]);assert.ok(results.reveal);assert.equal(results.roundAwards?.length,3);assert.equal(results.leaderboard.length,3);
+  const results=await snapshot(players[0]);assert.ok(results.reveal);assert.equal(results.previousLeaderboard?.length,3);for(const p of results.leaderboard)assert.equal(p.points,results.previousLeaderboard!.find(b=>b.participantId===p.participantId)!.points+p.roundPoints);assert.equal(results.roundAwards?.length,3);assert.equal(results.leaderboard.length,3);
   assert.deepEqual((await snapshot(players[0])).leaderboard,results.leaderboard,'HTTP reconnection retains scores');
   if(round.mode==='fermi'){await action('PAUSE');const paused=await snapshot(players[0]);assert.equal(paused.phase,'reveal');assert.ok(paused.reveal);await action('RESUME');}
   if(round.id!==demo.rounds.at(-1)!.id){await wait('INTERMISSION');if(round.mode==='fermi'){await action('PAUSE');assert.equal((await snapshot(players[1])).phase,'placements');await action('RESUME');}}
@@ -73,4 +75,4 @@ const final=await wait('SESSION_COMPLETED');assert.equal(final.leaderboard.lengt
 await call(host,`/api/v1/quizzes/${quiz.id}`,'DELETE',undefined);
 await call(host,'/api/auth/logout','POST',{});
 await call(host,'/api/v1/quizzes','GET',undefined,401);
-console.log(JSON.stringify({origin,status:'passed',players:3,verified,checks:['stored unique appearances','synchronized lobby edits','appearance authorization','appearance persistence through rounds and podium','creator registration','quiz save and publish','guest PIN joining','read-only display','host authorization','hidden answer keys','all five submissions','pause/resume','server scoring','placement broadcast','reconnection','final results','logout'],sessionId:room.sessionId},null,2));
+console.log(JSON.stringify({origin,status:'passed',players:3,verified,checks:['reading blocks early answers','reading pause/resume','authoritative previous and new totals','stored unique appearances','synchronized lobby edits','appearance authorization','appearance persistence through rounds and podium','creator registration','quiz save and publish','guest PIN joining','read-only display','host authorization','hidden answer keys','all five submissions','pause/resume','server scoring','placement broadcast','reconnection','final results','logout'],sessionId:room.sessionId},null,2));

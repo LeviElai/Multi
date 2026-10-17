@@ -1,7 +1,7 @@
-import type { CSSProperties } from 'react';
+import {memo,type CSSProperties} from 'react';
 
 /** Deterministic decoration: no hydration randomness or animation render loop. */
-export function Atmosphere({ global = false }: { global?: boolean }) {
+export const Atmosphere=memo(function Atmosphere({ global = false }: { global?: boolean }) {
   return <div className={global ? 'ambient-world ambient-global' : 'ambient-world'} aria-hidden="true">
     {Array.from({ length: global ? 10 : 14 }, (_, i) => <i key={i} style={{
       '--x': `${(i * 23 + 7) % 97}%`, '--y': `${(i * 31 + 11) % 89}%`,
@@ -10,4 +10,4 @@ export function Atmosphere({ global = false }: { global?: boolean }) {
     } as CSSProperties}/>)}
     <div className="ambient-glow"/>{!global&&<><span className="ambient-fish fish-one"/><span className="ambient-fish fish-two"/><span className="ambient-gear"/><span className="ambient-page"/></>}
   </div>;
-}
+});

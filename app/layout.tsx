@@ -8,6 +8,7 @@ import "./product.css";
 import "./arcade.css";
 import "./reactions.css";
 import "./characters.css";
+import "./clarity.css";
 export const metadata: Metadata = {
     title: "MULTIGAME — One quiz. Five different games.",
     description: "Five wildly different games. One room. Create your own multiplayer game show.",
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children, }: Readonly<{
     children: React.ReactNode;
 }>) {
-    return (<html lang="en"><head>{["harbor","reef","stars","library","factory","workshop"].map(name=><link key={name} rel="prefetch" as="image" href={"/art/pixel/"+name+".svg"}/>)}</head>
+    return (<html lang="en"><head/>
       <body className="antialiased"><SoundDesign/><Atmosphere global/>{children}</body>
     </html>);
 }

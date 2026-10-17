@@ -1,3 +1,4 @@
+import {READING_MS,REVEAL_MS} from '../../../packages/contracts/src/timing';
 import { DomainError, HostActionSchema, SubmitSchema, WordGuessSchema } from '../../../packages/contracts/src/index';
 import {avatarFor,type Avatar} from '../../../packages/contracts/src/avatar';
 import type { Ack, Adjudication, Award, HostAction, Leader, Principal, SessionData, SessionRecord, SessionState, Snapshot } from '../../../packages/contracts/src/index';
@@ -144,8 +145,8 @@ export class GameEngine {
     }
     const leaderboard = leaderboardProjection(data, abortedAfterReveal).map(p=>({...p,avatar:data.members.find(m=>m.id===p.participantId)?.avatar??avatarFor(p.participantId)}));
     const effective=data.session.state==='PAUSED'?data.pausedPhase??'ROUND_ACTIVE':data.session.state;
-    const phase=effective==='ROUND_REVEAL'?'reveal':effective==='INTERMISSION'?'placements':'play';
-    const result: Snapshot = { automatic:data.automatic,phase,phaseId:round?.id+':'+phase,finishedCount:round ? finishedPlayers(data).size : 0,id, title: data.quiz.title, theme: data.quiz.theme, role: principal.role, state: data.session.state, stateVersion: data.session.stateVersion, serverTime: new Date(this.clock()).toISOString(), latestSeq: data.session.latestSeq, deadlineAt: data.session.deadlineAt, pausedRemainingMs: data.session.pausedRemainingMs, roundIndex: data.session.roundIndex, roundCount: data.quiz.rounds.length, round: round ? publicQuestionProjection(round) : null, joinLocked: data.session.joinLocked, members: principal.role === 'host' ? data.members : data.members.filter((member) => member.status === 'active'), ownAttempts, answerCount: answered.size, solvedCount: solved.size, leaderboard, maxPlayers: data.session.maxPlayers };
+    const phase=effective==='ROUND_PREPARE'&&data.automatic?'reading':effective==='ROUND_REVEAL'?'reveal':effective==='INTERMISSION'?'placements':'play';
+    const result: Snapshot = { automatic:data.automatic,completedAt:data.session.completedAt??undefined,phase,phaseId:round?.id+':'+phase,finishedCount:round ? finishedPlayers(data).size : 0,id, title: data.quiz.title, theme: data.quiz.theme, role: principal.role, state: data.session.state, stateVersion: data.session.stateVersion, serverTime: new Date(this.clock()).toISOString(), latestSeq: data.session.latestSeq, deadlineAt: data.session.deadlineAt, pausedRemainingMs: data.session.pausedRemainingMs, roundIndex: data.session.roundIndex, roundCount: data.quiz.rounds.length, round: round ? publicQuestionProjection(round) : null, joinLocked: data.session.joinLocked, members: principal.role === 'host' ? data.members : data.members.filter((member) => member.status === 'active'), ownAttempts, answerCount: answered.size, solvedCount: solved.size, leaderboard, maxPlayers: data.session.maxPlayers };
     if (principal.role === 'host') result.pin = data.session.pin;
     if (principal.role === 'player') {
       result.participantId = principal.id;
@@ -153,6 +154,8 @@ export class GameEngine {
       result.ownPoints = leaderboard.find((row) => row.participantId === principal.id)?.points ?? 0;
     }
     if (round && (REVEALED.has(effective) || abortedAfterReveal)) {
+      const prior={...data,session:{...data.session,roundIndex:data.session.roundIndex-1,state:'INTERMISSION' as const}};
+      result.previousLeaderboard=leaderboardProjection(prior,true).map(p=>({...p,avatar:data.members.find(m=>m.id===p.participantId)?.avatar}));
       // Membership may change after scoring. Reconstruct the frozen scoring
       // cohort from the immutable ledger so a later kick cannot rewrite rarity.
       const scored = new Map(data.awards.filter(award => award.roundId === round.id).map(award => [award.participantId, award]));
@@ -204,11 +207,11 @@ export class GameEngine {
         if (session.state !== 'LOBBY') throw new DomainError('INVALID_TRANSITION', 'This room has already started.', 409);
         if (!data.members.some((member) => member.status === 'active')) throw new DomainError('NO_PLAYERS', 'Wait for at least one player before starting.', 409);
         session.roundIndex = 0; session.extensionCount = 0;
-        transition(data, data.automatic ? 'ROUND_ACTIVE' : 'ROUND_PREPARE', new Date(now + (data.automatic ? currentRound(data).timerSeconds*1000 : PREPARATION_MS)).toISOString());
-        return finish('round.preparing');
+        transition(data, 'ROUND_PREPARE', new Date(now + (data.automatic ? (action.args?.seconds??5)*1000 : PREPARATION_MS)).toISOString());
+        return {...finish('round.preparing'),eventPayload:{readingSeconds:action.args?.seconds??5}};
       }
       if (action.action === 'PAUSE') {
-        if (!['ROUND_ACTIVE',...(data.automatic?['ROUND_REVEAL','INTERMISSION']:[])].includes(session.state) || !session.deadlineAt || Date.parse(session.deadlineAt) <= now) throw new DomainError('INVALID_TRANSITION', 'Only an active round can be paused.', 409);
+        if (!['ROUND_ACTIVE',...(data.automatic?['ROUND_PREPARE','ROUND_REVEAL','INTERMISSION']:[])].includes(session.state) || !session.deadlineAt || Date.parse(session.deadlineAt) <= now) throw new DomainError('INVALID_TRANSITION', 'Only an active round can be paused.', 409);
         session.pausedRemainingMs = Math.max(0, Date.parse(session.deadlineAt) - now);
         data.pausedPhase=session.state;transition(data, 'PAUSED'); return finish(data.automatic?'phase.paused.'+beforeState:'round.paused');
       }
@@ -231,6 +234,7 @@ export class GameEngine {
       if(action.action==='ADVANCE' && data.automatic){
         const phase=session.state==='PAUSED'?data.pausedPhase:session.state;session.pausedRemainingMs=null;
         if(phase==='REVIEW_REQUIRED'){session.deadlineAt=new Date(now).toISOString();return finish('review.finishing');}
+        if(phase==='ROUND_PREPARE'){transition(data,'ROUND_ACTIVE',new Date(now+currentRound(data).timerSeconds*1000).toISOString());return finish('round.started');}
         if(phase==='ROUND_ACTIVE'){transition(data,'ROUND_LOCKED',new Date(now).toISOString());return finish('round.locked');}
         if(phase==='ROUND_REVEAL'){if(session.roundIndex===data.quiz.rounds.length-1){completeSession(data,now);return finish('session.completed');}transition(data,'INTERMISSION',new Date(now+10000).toISOString());return finish('placements.started');}
         if(phase==='INTERMISSION'){startFollowingRound(data,now);return finish('round.started');}
@@ -242,11 +246,11 @@ export class GameEngine {
         return finish('round.locked');
       }
       if (action.action === 'SKIP') {
-        if (['LOBBY', 'ROUND_REVEAL', 'INTERMISSION'].includes(session.state)) throw new DomainError('INVALID_TRANSITION', 'This round cannot be skipped now.', 409);
+        if (['LOBBY', 'ROUND_REVEAL', 'INTERMISSION'].includes(session.state==='PAUSED'?data.pausedPhase??session.state:session.state)) throw new DomainError('INVALID_TRANSITION', 'This round cannot be skipped now.', 409);
         const round = currentRound(data);
         if (!data.voidRoundIds.includes(round.id)) data.voidRoundIds.push(round.id);
         awardCurrent(data, data.members.map((member) => ({ roundId: round.id, participantId: member.id, points: 0, reason: 'round_skipped', scoringRevision: 1, detail: { skipped: true } })));
-        transition(data, 'ROUND_REVEAL'); session.pausedRemainingMs = null;
+        transition(data, 'ROUND_REVEAL',data.automatic?new Date(now+REVEAL_MS).toISOString():null); session.pausedRemainingMs = null;
         return finish('round.revealed');
       }
       if (action.action === 'REVEAL') {
@@ -368,10 +372,10 @@ export class GameEngine {
             const session = current.session;
             const scheduled = Date.parse(session.deadlineAt ?? new Date(this.clock()).toISOString());
             if(current.automatic && session.state==='REVIEW_REQUIRED'){current.reviewTimeoutRoundId=currentRound(current).id;const scored=scoreRound(current,currentRound(current));awardCurrent(current,scored.awards);transition(current,'ROUND_SCORED');return stateChanged(current,'review.timed_out');}
-            if(current.automatic && session.state==='ROUND_SCORED'){transition(current,'ROUND_REVEAL',new Date(this.clock()+3000).toISOString());return stateChanged(current,'round.revealed');}
+            if(current.automatic && session.state==='ROUND_SCORED'){transition(current,'ROUND_REVEAL',new Date(this.clock()+REVEAL_MS).toISOString());return stateChanged(current,'round.revealed');}
             if(current.automatic && session.state==='ROUND_REVEAL'){if(session.roundIndex===current.quiz.rounds.length-1){completeSession(current,scheduled);return stateChanged(current,'session.completed');}transition(current,'INTERMISSION',new Date(scheduled+10000).toISOString());return stateChanged(current,'placements.started');}
             if (session.state === 'ROUND_PREPARE') {
-              transition(current, 'ROUND_COUNTDOWN', new Date(scheduled + COUNTDOWN_MS).toISOString()); return stateChanged(current, 'round.countdown');
+              transition(current, current.automatic?'ROUND_ACTIVE':'ROUND_COUNTDOWN', new Date(scheduled + (current.automatic?currentRound(current).timerSeconds*1000:COUNTDOWN_MS)).toISOString()); return stateChanged(current, 'round.countdown');
             }
             if (session.state === 'ROUND_COUNTDOWN') {
               transition(current, 'ROUND_ACTIVE', new Date(scheduled + currentRound(current).timerSeconds * 1000).toISOString()); return stateChanged(current, 'round.started');
@@ -423,5 +427,5 @@ function completeSession(data:SessionData,now:number){transition(data,'SESSION_C
 function startFollowingRound(data:SessionData,now:number){
  if(data.session.roundIndex+1>=data.quiz.rounds.length){completeSession(data,now);return;}
  data.session.roundIndex++;data.session.extensionCount=0;data.session.pausedRemainingMs=null;
- transition(data,'ROUND_ACTIVE',new Date(now+currentRound(data).timerSeconds*1000).toISOString());
+ transition(data,'ROUND_PREPARE',new Date(now+(data.readingSeconds??READING_MS/1000)*1000).toISOString());
 }

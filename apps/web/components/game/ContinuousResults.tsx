@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useRef} from 'react';
+import {useEffect,useRef,useMemo} from 'react';
 import type {Snapshot} from '../../../../packages/contracts/src/index';
 import {MODE_META} from '../../../../packages/contracts/src/index';
 import {Standings} from './Competition';
@@ -7,34 +7,31 @@ import {PixelSprite} from '../world/Sprites';
 import RoundVisualization from './RoundVisualization';
 import {RoundClock} from '../RoundClock';
 import {playCue} from '../../lib/audio';
-import {roundPlacements,rankMovement} from '../../lib/competition';
+import {useResultStep} from './ResultTime';
 export default function ContinuousResults({snapshot:s}:{snapshot:Snapshot}){
- const r=s.round!,own=s.leaderboard.find(p=>p.participantId===s.participantId);
+ const r=s.round!,own=s.leaderboard.find(p=>p.participantId===s.participantId),step=useResultStep(s),standings=s.phase==='placements',compare=step!=='answer',award=s.roundAwards?.find(a=>a.participantId===s.participantId);
+ const offset=useMemo(()=>Date.parse(s.serverTime)-Date.now(),[s.serverTime]);
+ const priorStep=useRef(step);const freshPoints=step==='points'&&priorStep.current!=='points';useEffect(()=>{priorStep.current=step;},[step]);
+ const best=Math.max(0,...s.leaderboard.map(p=>p.roundPoints));const winners=s.leaderboard.filter(p=>p.roundPoints===best);
  const root=useRef<HTMLElement>(null);
  useEffect(()=>{root.current?.scrollIntoView({block:'start',behavior:'instant'});},[r.id]);
- const phase=s.phase==='placements'?'placements':'reveal';
- const paused=s.state==='PAUSED';
- const answer=s.reveal?.answer;
- const submitted=s.ownSubmission?.payload;
- const ownAnswer=r.mode==='word_puzzle'?s.ownAttempts.at(-1)?.guess:r.mode==='rare_answers'?submitted?.text:r.mode==='size_it_up'?submitted?.ratio:r.mode==='amountle'?submitted?.count:submitted?.value;
+ useEffect(()=>{playCue(standings?'standings':step==='points'?(own&&own.roundPoints>0?'win':'click'):'reveal',r.mode,s.id+':'+r.id+':'+(standings?'standings':step));},[step,s.phaseId]);
  const format=(v:unknown)=>typeof v==='number'?v.toLocaleString('en',{maximumFractionDigits:3}):String(v??'No answer');
- const ownAward=s.roundAwards?.find(a=>a.participantId===s.participantId);
- const group=s.reveal?.groups?.find(g=>g.answer===ownAward?.detail.canonical);
- const rareOutcome=s.participantId?(ownAward?.reason==='accepted_rare'?(group?.count===1?'Unique answer':String(group?.count??0)+' players matched'):'Not accepted'):(String(s.reveal?.groups?.length??0)+' accepted answers');
- const correct=r.mode==='size_it_up'?s.reveal?.trueRatio:answer;
- const difference=typeof ownAnswer==='number'&&typeof correct==='number'?ownAnswer-correct:null;
- const placements=roundPlacements(s.leaderboard,s.roundAwards);
- const best=placements[0]?.roundPoints??0;
- const winners=placements.filter(player=>player.roundPoints===best);
- useEffect(()=>{playCue(phase==='reveal'?'reveal':own&&rankMovement(s.leaderboard,own.participantId)>0?'win':'standings',r.mode,s.id+':'+s.round?.id+':'+phase);},[s.phaseId,phase]);
- return <section ref={root} className={'continuous-results phase-'+phase} aria-label="Round results">
- <header className="phase-heading"><div><PixelSprite kind={r.mode}/><span>{MODE_META[r.mode].name} · Round {s.roundIndex+1}/{s.roundCount}</span></div><div className="phase-countdown"><span>{s.automatic===false?'Waiting for host':paused?'Paused by host':phase==='placements'?'Next round in':s.roundIndex===s.roundCount-1?'Final podium in':'Placements in'}</span>{s.automatic!==false&&<RoundClock deadline={s.deadlineAt} pausedMs={s.pausedRemainingMs} paused={paused} offset={Date.parse(s.serverTime)-Date.now()} duration={phase==='reveal'?3:10}/>}</div></header>
- <div className="result-winner-line" role="status">{s.reveal?.skipped?'Round skipped · no points awarded':best>0?<><span>{winners.length>1?'Round winners':'Round winner'}: <strong>{winners.map(player=>player.nickname).join(' · ')}</strong></span><b>+{best.toLocaleString('en')} points</b></>:'No points awarded this round'}</div>
- <article className="answer-ticket"><h2>{r.question}</h2><div className="answer-ticket-values"><div><small>{s.participantId?'Your answer':'Round outcome'}</small><strong>{s.participantId?format(ownAnswer)+(r.mode==='size_it_up'?'×':''):'Round scored'}</strong></div>{own&&<div className="ticket-points" key={own.points}><small>Round points</small><strong>+{own.roundPoints.toLocaleString('en')}</strong><span>Total {own.points.toLocaleString('en')} · Place #{own.rank}</span></div>}</div>
- <p className="ticket-reason">{s.reveal?.skipped?'Round skipped · no points awarded.':difference===0?'Perfect match.':difference!==null?format(Math.abs(difference))+(difference>0?' too high.':' too low.'):r.mode==='word_puzzle'?s.ownAttempts.some(a=>a.solved)?`Solved in ${s.ownAttempts.length} ${s.ownAttempts.length===1?'guess':'guesses'}.`:'The word is revealed.':r.mode==='rare_answers'?rareOutcome+'.':s.reveal?.explanation}</p>
- </article>
- <RoundVisualization snapshot={s}/>
- <div className="continuous-standings"><Standings leaders={s.leaderboard} ownId={s.participantId}/></div>
- {s.reveal?.explanation&&<details className="result-notes"><summary>About this answer</summary><p>{s.reveal.explanation}</p>{s.reveal.sourceUrl&&<a href={s.reveal.sourceUrl} target="_blank" rel="noopener noreferrer">Answer source</a>}</details>}
+ const payload=s.ownSubmission?.payload;
+ const submitted=r.mode==='word_puzzle'?s.ownAttempts.at(-1)?.guess:r.mode==='rare_answers'?payload?.text:r.mode==='size_it_up'?payload?.ratio:r.mode==='amountle'?payload?.count:payload?.value;
+ const truth=r.mode==='size_it_up'?s.reveal?.trueRatio:s.reveal?.answer;
+ const difference=typeof submitted==='number'&&typeof truth==='number'?submitted-truth:null;
+ const group=s.reveal?.groups?.find(g=>g.answer===award?.detail.canonical);
+ const reason=s.reveal?.skipped?'Round skipped':submitted===undefined?'No answer':r.mode==='rare_answers'?award?.reason==='accepted_rare'?group?.count===1?'Unique answer':`Shared with ${(group?.count??1)-1} players`:'Invalid answer':r.mode==='word_puzzle'?award?.detail.solved?`Solved in ${s.ownAttempts.length} guesses`:'Not solved':difference===0?'Exact match':difference!==null?format(Math.abs(difference))+(difference>0?' above':' below'):'';
+ return <section ref={root} className={'continuous-results sequence-results step-'+step+(standings?' phase-placements':' phase-reveal')} aria-label="Round results">
+ <header className="phase-heading"><div><PixelSprite kind={r.mode}/><span>{standings?'Round results':step==='answer'?'Answer':step==='comparison'?'You':'Points'}</span></div><div className="phase-countdown"><span>{s.automatic===false?'Waiting for host':s.state==='PAUSED'?'Paused':standings?'Next round in':s.roundIndex===s.roundCount-1?'Podium in':'Standings in'}</span>{s.automatic!==false&&<RoundClock deadline={s.deadlineAt} pausedMs={s.pausedRemainingMs} paused={s.state==='PAUSED'} offset={offset} duration={standings?10:5.5}/>}</div></header>
+ <h2 className="result-question">{r.question}</h2>
+ {(!standings)&&<RoundVisualization snapshot={s} compare={compare}/>}
+ {standings&&<div className="compact-outcome"><small>{r.mode==='rare_answers'?'Outcome':'Answer'}</small><strong>{r.mode==='rare_answers'?`${s.reveal?.groups?.length??0} valid groups`:format(truth)+(r.mode==='size_it_up'?' times reference':s.reveal?.unit?' '+s.reveal.unit:'')}</strong></div>}
+ {s.participantId&&compare&&<div className="comparison-strip"><span><small>You</small><strong>{format(submitted)}{submitted!==undefined&&r.mode==='size_it_up'?'\u00d7':''}</strong></span><span className="comparison-reason">{reason}</span></div>}
+ {!standings&&step==='points'&&own&&<div className={"points-award "+(freshPoints?"fresh-award":"")} role="status">+{format(own.roundPoints)} <small>points</small></div>}
+ {!s.participantId&&!standings&&step==='points'&&<div className="shared-round-best">{best>0?<><small>Round best</small><strong>{winners.map(p=>p.nickname).join(' / ')}</strong><b>+{format(best)} points</b></>:<strong>No points this round</strong>}</div>}
+ {standings&&<div className="continuous-standings"><Standings leaders={s.leaderboard} previousLeaders={s.previousLeaderboard} ownId={s.participantId} sequence={step} countStart={s.state==='PAUSED'?Date.now()+1200-(10000-(s.pausedRemainingMs??0)):Date.parse(s.deadlineAt??s.serverTime)-8800} offset={s.state==='PAUSED'?0:offset} paused={s.state==='PAUSED'}/></div>}
+ {s.reveal?.explanation&&step!=='answer'&&<details className="result-notes"><summary>About this answer</summary><p>{s.reveal.explanation}</p>{s.reveal.sourceUrl&&<a href={s.reveal.sourceUrl} target="_blank" rel="noopener noreferrer">Source</a>}</details>}
  </section>;
 }

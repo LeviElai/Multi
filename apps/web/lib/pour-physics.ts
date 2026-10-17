@@ -7,8 +7,8 @@ export function settleBodies(bodies:Body[],passes=1024){
  for(let pass=0;pass<passes;pass++){
   let overlap=false;
   for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){
-   const a=bodies[i],b=bodies[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
-   const diameter=a.r+b.r;if(d>=diameter-.001)continue;overlap=true;
+   const a=bodies[i],b=bodies[j];let dx=b.x-a.x,dy=b.y-a.y;
+   const diameter=a.r+b.r,distanceSquared=dx*dx+dy*dy;if(distanceSquared>=(diameter-.001)**2)continue;overlap=true;let d=Math.sqrt(distanceSquared);
    if(d<.001){dx=.001;dy=.001;d=Math.hypot(dx,dy);}
    const nx=dx/d,ny=dy/d,shift=(diameter-d+.001)*.5;
    a.x-=nx*shift;a.y-=ny*shift;b.x+=nx*shift;b.y+=ny*shift;

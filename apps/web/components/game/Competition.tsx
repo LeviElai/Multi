@@ -4,6 +4,7 @@ import type { Snapshot, Leader } from '../../../../packages/contracts/src/index'
 import { roundPlacements, rankMovement } from '../../lib/competition';
 import {PlayerIdentity} from './PlayerIdentity';
 import ContinuousResults from './ContinuousResults';
+import {ScoreTotal} from './ResultTime';
 import type { CSSProperties } from 'react';
 
 export function PlayerScore({ snapshot: s }: { snapshot: Snapshot }) {
@@ -18,17 +19,30 @@ export function PlayerScore({ snapshot: s }: { snapshot: Snapshot }) {
         <div><small>Movement</small><strong className={movement > 0 ? 'score-up' : movement < 0 ? 'score-down' : ''}>{movement > 0 ? `↑ ${movement}` : movement < 0 ? `↓ ${-movement}` : '—'}</strong></div></>}
     </section>;
 }
-export function Standings({ leaders, ownId, compact = false }: {
-    leaders: Leader[];
-    ownId?: string;
-    compact?: boolean;
+export function Standings({leaders,previousLeaders,ownId,compact=false,sequence='settled',countStart,offset=0,paused=false}: {
+ leaders:Leader[];previousLeaders?:Leader[];ownId?:string;compact?:boolean;sequence?:string;countStart?:number;offset?:number;paused?:boolean;
 }) {
-    const root = useRef<HTMLElement>(null);
-    const previous = useRef(new Map<string, number>());
-    useLayoutEffect(() => { const nodes = root.current?.querySelectorAll<HTMLElement>('[data-player]'); nodes?.forEach(node => { const id = node.dataset.player!, y = node.getBoundingClientRect().top, old = previous.current.get(id) ?? (y + rankMovement(leaders,id)*node.getBoundingClientRect().height); if (old !== undefined && old !== y && !matchMedia('(prefers-reduced-motion: reduce)').matches)
-        node.animate([{ transform: `translateY(${old - y}px)` }, { transform: 'translateY(0)' }], { duration: 300, easing: 'ease-out' }); previous.current.set(id, y); }); }, [leaders.map(p => p.participantId + ':' + p.points).join('|')]);
-    useLayoutEffect(()=>{const list=root.current?.querySelector('ol'),own=root.current?.querySelector<HTMLElement>('.is-you');if(list&&own){const top=own.offsetTop-list.offsetTop;if(top<list.scrollTop||top+own.offsetHeight>list.scrollTop+list.clientHeight)list.scrollTop=Math.max(0,top-list.clientHeight/2+own.offsetHeight/2);}},[ownId,leaders.map(p=>p.participantId+':'+p.rank).join('|')]);
-    return <section ref={root} className={'standings-board ' + (compact ? 'standings-compact' : '')} aria-label="Overall standings"><header><h2>{'THE STANDINGS'}</h2><span>Total points</span></header><ol>{leaders.map((p, index) => { const movement = rankMovement(leaders, p.participantId); return <li style={{"--row": Math.min(index, 12)} as CSSProperties} data-player={p.participantId} key={p.participantId} className={p.participantId === ownId ? 'is-you' : ''}><b className="standing-rank">{p.rank}</b><span className="standing-name"><PlayerIdentity id={p.participantId} name={p.nickname} avatar={p.avatar} mood={p.participantId===ownId?(movement>0?"up":p.roundPoints>0?"happy":"near"):"still"}/>{p.participantId === ownId && p.nickname !== 'You' && <small>You</small>}</span><span className={"standing-move " + (movement < 0 ? "move-down" : "")} aria-label={movement > 0 ? `Up ${movement} places` : movement < 0 ? `Down ${-movement} places` : 'No rank change'}>{movement > 0 ? '↑' + movement : movement < 0 ? '↓' + (-movement) : '—'}</span><span className="standing-score" key={p.points}><strong>{p.points.toLocaleString('en')}</strong>{(!compact || p.roundPoints > 0) && <small>+{p.roundPoints} this round</small>}</span></li>; })}</ol>{!leaders.length && <p>No players yet.</p>}{!compact && leaders.length > 0 && <p className="standings-caption">{leaders.length === 1 && leaders[0].nickname === 'You' ? 'Your total so far.' : <>{leaders.filter(p => p.rank === 1).map(p => p.nickname).join(' & ')} {leaders.filter(p => p.rank === 1).length > 1 ? 'share the lead' : leaders[0].nickname === 'You' ? 'lead overall' : 'leads overall'}. Equal scores share a place.</>}</p>}</section>;
+ const root=useRef<HTMLElement>(null),positions=useRef(new Map<string,number>());
+ const before=previousLeaders??leaders.map(p=>({...p,points:p.points-p.roundPoints})).sort((a,b)=>b.points-a.points||a.participantId.localeCompare(b.participantId));
+ const final=sequence==='settled',counting=sequence==='counting',gains=sequence!=='previous';
+ const rows=final?leaders:before;
+ const best=Math.max(0,...leaders.map(p=>p.roundPoints));
+ useLayoutEffect(()=>{
+  const nodes=Array.from(root.current?.querySelectorAll<HTMLElement>('[data-player]')??[]);
+  // Read every position before writing transforms: no per-row layout thrashing.
+  const current=nodes.map(node=>({node,id:node.dataset.player!,y:node.getBoundingClientRect().top}));
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)for(const {node,id,y} of current){const previous=positions.current.get(id);if(previous!==undefined&&previous!==y)node.animate([{transform:`translateY(${previous-y}px)`},{transform:'translateY(0)'}],{duration:450,easing:'ease-out'});}
+  positions.current=new Map(current.map(p=>[p.id,p.y]));
+ },[rows.map(p=>p.participantId).join('|')]);
+ useLayoutEffect(()=>{const list=root.current?.querySelector('ol'),own=root.current?.querySelector<HTMLElement>('.is-you');if(list&&own){const top=own.offsetTop-list.offsetTop;if(top<list.scrollTop||top+own.offsetHeight>list.scrollTop+list.clientHeight)list.scrollTop=Math.max(0,top-list.clientHeight/2+own.offsetHeight/2);}},[ownId,final]);
+ return <section ref={root} className={'standings-board '+(compact?'standings-compact':'')} aria-label="Standings"><header><h2>Standings</h2><span>Total</span></header><ol>{rows.map((p,index)=>{
+ const next=leaders.find(n=>n.participantId===p.participantId)!,old=before.find(n=>n.participantId===p.participantId)!,movement=rankMovement(leaders,p.participantId),isBest=!compact&&best>0&&next.roundPoints===best;
+ const rank=final?next.rank:1+before.filter(n=>n.points>p.points).length;
+ return <li data-player={p.participantId} key={p.participantId} className={(p.participantId===ownId?'is-you ':'')+(isBest?'round-best':'')}>
+ <b className="standing-rank">{rank}</b><span className="standing-name"><PlayerIdentity id={p.participantId} name={p.nickname} avatar={next.avatar}/><span className="standing-badges">{p.participantId===ownId&&<small>You</small>}{isBest&&<small>Round best</small>}</span></span>
+ <span className="standing-move" aria-label={final&&movement?`${Math.abs(movement)} places ${movement>0?'up':'down'}`:'No rank change'}>{final&&movement?(movement>0?'\u2191':'\u2193')+Math.abs(movement):''}</span>
+ <span className="standing-score"><ScoreTotal from={old.points} to={counting||final?next.points:old.points} progress={counting?0:1} startAt={countStart} offset={offset} paused={paused}/>{!compact&&gains&&<small>+{next.roundPoints.toLocaleString('en')}</small>}</span></li>;
+ })}</ol>{!rows.length&&<p>No players yet.</p>}</section>;
 }
 export function RoundPodium({ snapshot: s }: {
     snapshot: Snapshot;

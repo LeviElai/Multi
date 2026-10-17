@@ -477,11 +477,11 @@ test('host result-stage controls persist for players and display without leaking
 });
 
 
-test('autopilot: five modes, 3s reveal, 10s placements, pause every phase and final podium without NEXT',async t=>{
+test('autopilot: five modes, 5.5s reveal, 10s placements, pause every phase and final podium without NEXT',async t=>{
  const f=await fixture(t,getDemoQuiz(),2,true);await f.action('START');
  for(let index=0;index<5;index++){
   const round=f.version.rounds[index];let s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
-  assert.equal(s.state,'ROUND_ACTIVE');assert.equal(s.automatic,true);assert.equal(s.roundIndex,index);
+  assert.equal(s.phase,'reading');await f.active();s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(s.state,'ROUND_ACTIVE');assert.equal(s.automatic,true);assert.equal(s.roundIndex,index);
   await f.action('PAUSE');f.advance(5000);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'PAUSED');
   await f.action('RESUME');
   for(const member of f.members){
@@ -490,11 +490,11 @@ test('autopilot: five modes, 3s reveal, 10s placements, pause every phase and fi
   }
   s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(s.finishedCount,2);assert.ok(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime)<=900);
   f.advance(901);await f.engine.reconcile();s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
-  assert.equal(s.phase,'reveal');assert.ok(s.reveal);assert.equal(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime),3000);
+  assert.equal(s.phase,'reveal');assert.ok(s.reveal);assert.equal(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime),5500);
   const points=s.leaderboard[0].points;
   await f.action('PAUSE');f.advance(20000);await f.restart();s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
   assert.equal(s.state,'PAUSED');assert.equal(s.phase,'reveal');assert.ok(s.reveal);assert.equal(s.leaderboard[0].points,points);
-  await f.action('RESUME');f.advance(2999);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'ROUND_REVEAL');
+  await f.action('RESUME');f.advance(5499);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'ROUND_REVEAL');
   f.advance(1);await f.engine.reconcile();s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
   if(index===4){assert.equal(s.state,'SESSION_COMPLETED');break;}
   assert.equal(s.phase,'placements');assert.equal(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime),10000);
@@ -508,25 +508,61 @@ test('autopilot: five modes, 3s reveal, 10s placements, pause every phase and fi
 });
 
 test('autopilot: phase-aware advance, stale commands, inactive-player timeout and background worker recovery',async t=>{
- const f=await fixture(t,getDemoQuiz(),2,true);await f.action('START');
+ const f=await fixture(t,getDemoQuiz(),2,true);await f.action('START');await f.active();
  const round=f.version.rounds[0];await f.engine.submit(f.members[0].principal,f.room.sessionId,{roundId:round.id,clientMutationId:key(),revision:1,payload:{value:144,locked:true}});
  let s=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.ok(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime)>900);
  await f.action('ADVANCE');await f.engine.reconcile();s=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.equal(s.phase,'reveal');
  const stale=s.stateVersion;await f.action('ADVANCE');await assert.rejects(f.engine.hostAction(f.host.id,f.room.sessionId,{action:'ADVANCE',expectedStateVersion:stale},key()),isCode('VERSION_CONFLICT'));
  s=await f.engine.snapshot(f.members[1].principal,f.room.sessionId);assert.equal(s.phase,'placements');assert.equal(s.leaderboard.find(p=>p.participantId===f.members[1].principal.id)?.roundPoints,0);
  await f.action('ADVANCE');assert.equal((await f.store.getSession(f.room.sessionId)).session.roundIndex,1);
- f.advance(41000);await f.engine.reconcile();s=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.equal(s.phase,'reveal');
- await f.restart();f.advance(13000);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.roundIndex,2);
+ await f.active();f.advance(41000);await f.engine.reconcile();s=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.equal(s.phase,'reveal');
+ await f.restart();f.advance(15500);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.roundIndex,2);
 });
 
 test('autopilot: unreviewed answers expire without impersonating a host or blocking the finale',async t=>{
  const rare=getDefaultRound('rare_answers');assert.equal(rare.mode,'rare_answers');rare.publicConfig.adjudication='host_review';
- const f=await fixture(t,{...getDemoQuiz(),rounds:[rare]},2,true);await f.action('START');
+ const f=await fixture(t,{...getDemoQuiz(),rounds:[rare]},2,true);await f.action('START');await f.active();
  for(const [i,m]of f.members.entries())await f.engine.submit(m.principal,f.room.sessionId,{roundId:rare.id,clientMutationId:key(),revision:1,payload:{text:i?'Unlisted answer':'Coral',locked:true}});
  f.advance(901);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'REVIEW_REQUIRED');
  f.advance(30001);await f.engine.reconcile();const s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
  assert.equal(s.phase,'reveal');assert.equal(s.leaderboard.find(p=>p.participantId===f.members[0].principal.id)?.roundPoints,1000);
  assert.equal(s.leaderboard.find(p=>p.participantId===f.members[1].principal.id)?.roundPoints,0);
  assert.equal(s.reveal?.groups?.[0]?.points,1000);assert.equal((await f.store.getSession(f.room.sessionId)).adjudications.length,0);
- f.advance(3000);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'SESSION_COMPLETED');
+ f.advance(5500);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'SESSION_COMPLETED');
+});
+
+
+test('reading retains paused time, blocks submissions, survives restart and uses the full answer clock',async t=>{
+ const f=await fixture(t,getDemoQuiz(),2,true);await f.action('START',{seconds:8});
+ let s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(s.phase,'reading');assert.equal(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime),8000);assert.equal(s.reveal,undefined);
+ await assert.rejects(f.engine.submit(f.members[0].principal,f.room.sessionId,{roundId:s.round!.id,clientMutationId:key(),revision:1,payload:{value:144,locked:true}}),isCode('ROUND_NOT_ACTIVE'));
+ f.advance(2000);await f.action('PAUSE');f.advance(60000);await f.restart();s=await f.engine.snapshot(f.members[1].principal,f.room.sessionId);assert.equal(s.phase,'reading');assert.equal(s.pausedRemainingMs,6000);
+ await f.action('RESUME');f.advance(5999);await f.engine.reconcile();assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).phase,'reading');
+ f.advance(1);await f.engine.reconcile();s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(s.state,'ROUND_ACTIVE');assert.equal(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime),s.round!.timerSeconds*1000);
+ await f.action('ADVANCE');await f.engine.reconcile();await f.action('ADVANCE');await f.action('ADVANCE');
+ s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(s.phase,'reading');assert.equal(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime),8000);
+ const version=s.stateVersion;await f.action('ADVANCE');await assert.rejects(f.engine.hostAction(f.host.id,f.room.sessionId,{action:'ADVANCE',expectedStateVersion:version},key()),isCode('VERSION_CONFLICT'));
+});
+
+test('reveal exposes immutable previous totals separately from awarded new totals',async t=>{
+ const f=await fixture(t,getDemoQuiz(),2,true);await f.action('START');await f.active();
+ const r=f.version.rounds[0];assert.equal(r.mode,'fermi');
+ for(const [i,m]of f.members.entries())await f.engine.submit(m.principal,f.room.sessionId,{roundId:r.id,clientMutationId:key(),revision:1,payload:{value:r.secretConfig.answer*(i+1),locked:true}});
+ f.advance(901);await f.engine.reconcile();const first=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
+ assert.ok(first.previousLeaderboard?.every(p=>p.points===0));
+ await f.action('ADVANCE');await f.action('ADVANCE');await f.active();
+ const rare=f.version.rounds[1];assert.equal(rare.mode,'rare_answers');
+ for(const m of f.members)await f.engine.submit(m.principal,f.room.sessionId,{roundId:rare.id,clientMutationId:key(),revision:1,payload:{text:'Coral',locked:true}});
+ f.advance(901);await f.engine.reconcile();const next=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
+ for(const p of next.leaderboard){const before=next.previousLeaderboard!.find(b=>b.participantId===p.participantId)!;assert.equal(before.points,first.leaderboard.find(b=>b.participantId===p.participantId)!.points);assert.equal(p.points,before.points+p.roundPoints);}
+ await f.restart();assert.deepEqual((await f.engine.snapshot(f.members[1].principal,f.room.sessionId)).previousLeaderboard,next.previousLeaderboard);
+});
+
+
+test('automatic skip during reading awards zero once and continues without a host tab',async t=>{
+ const f=await fixture(t,getDemoQuiz(),2,true);await f.action('START');await f.action('SKIP');
+ const first=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(first.phase,'reveal');assert.ok(first.reveal?.skipped);assert.ok(first.leaderboard.every(p=>p.points===0));
+ await f.action('PAUSE');await assert.rejects(f.action('SKIP'),isCode('INVALID_TRANSITION'));await f.action('RESUME');
+ f.advance(5500);await f.engine.reconcile();assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).phase,'placements');f.advance(10000);await f.engine.reconcile();const next=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.equal(next.phase,'reading');assert.equal(next.roundIndex,1);
+ assert.equal((await f.store.getSession(f.room.sessionId)).awards.length,2);
 });
