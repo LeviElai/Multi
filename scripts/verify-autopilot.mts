@@ -8,7 +8,7 @@ type Client = { cookie: string };
 const host: Client = {cookie:''};
 const players: Client[] = Array.from({length:3}, () => ({cookie:''}));
 async function call<T>(client:Client, path:string, method='GET', body?:unknown, status=200):Promise<T> {
-  const response = await fetch(origin + path, {method, headers:{Origin:origin!, Cookie:client.cookie,
+  const response = await fetch(origin + path, {signal:AbortSignal.timeout(45000), method, headers:{Origin:origin!, Cookie:client.cookie,
     ...(body === undefined ? {} : {'Content-Type':'application/json'}), 'Idempotency-Key':randomUUID()},
     body:body === undefined ? undefined : JSON.stringify(body)});
   const payload = await response.json() as {data:T;error?:unknown};
