@@ -27,7 +27,7 @@ export const PixelCharacter=memo(function PixelCharacter({id,avatar,mood='still'
  ][a.hair];
  const hats=['','M5 6h13v4h4v3h-7v-3H5Z','M6 5h12v2h2v4H4V7h2m5-4h3v2h-3Z','M10 1h4v3h2v3h2v3h4v2H2v-2h4V7h2V4h2Z','M4 7h3V5h10v2h3v5H4m6-5h4v3h-4Z','M6 4h3v2h6V4h3v4h4v3H2V8h4Z','M6 5h12v3h2v4H4V8h2Z','M6 4h12v3h2v10h-3v-6H7v6H4V7h2Z','M5 7h14v3h3v2H2v-2h3m5-7h3v2h-3Z'][a.hat%9];
  const hatColors=['', '#bb7666','#7caaa1','#9b87bc','#35465c','#b68e5f','#87a8bd','#9aabb4','#d8aa86'];
- const layers={hair:<path fill={hair} d={hairShape}/>,face:<> <path fill={skin} d="M7 9h10v10H7Z"/><path fill="#ffffff22" d="M7 10h3v6H7Z"/>
+ const layers={hair:<path fill={hair} stroke={a.hairColor===3||a.hairColor===4?'#77654e':'#b7c5a6'} strokeWidth="1" paintOrder="stroke" d={hairShape}/>,face:<> <path fill={skin} d="M7 9h10v10H7Z"/><path fill="#ffffff22" d="M7 10h3v6H7Z"/>
  <g className="character-face">
  {a.face===3?<path d="M8 13h2v1H8m6-1h2v1h-2" fill={eye}/>:a.face===4?<path d="M8 12h2v2H8m6-1h2v1h-2" fill={eye}/>:<path d="M8 12h2v2H8m6-2h2v2h-2" fill={eye}/>}
  {a.face===1?<path d="M10 16h4v2h-4" fill="#683d36"/>:a.face===2?<path d="M10 16h4v1h-4m1 1h2v1h-2" fill="#fff0c8"/>:a.face===5?<path d="M11 16h2v2h-2" fill="#683d36"/>:a.face===6?<path d="M10 17h4v1h-4" fill="#683d36"/>:<path d="M10 16h4v1h-4" fill="#683d36"/>}

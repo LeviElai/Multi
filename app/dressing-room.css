@@ -35,3 +35,6 @@
  .dressing-room footer{grid-row:4;padding-top:8px;justify-content:space-between;gap:6px}.dressing-room footer button{font-size:12px;padding:9px 11px;flex:1}
 }
 @media(prefers-reduced-motion:reduce){.dressing-preview *,.dressing-room .outfit-greeting,.dressing-room .outfit-reaction{animation:none!important;transition:none!important}}
+
+.belt-item{opacity:1}.dressing-mirror{align-items:flex-end;padding-bottom:14px}
+@media(max-width:600px){.dressing-mirror{padding-bottom:0}}

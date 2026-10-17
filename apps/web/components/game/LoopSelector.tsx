@@ -5,7 +5,7 @@ export function optionWindow(value:number,count:number){const radius=count<5?1:2
 /** One short, replaceable animation; no queued transitions or autoplay. */
 export function LoopSelector({label,value,count,name,onChange,renderItem}:{label:string;value:number;count:number;name:(value:number)=>string;onChange:(value:number)=>void;renderItem:(value:number)=>ReactNode}){
  const track=useRef<HTMLDivElement>(null),animation=useRef<Animation|null>(null),start=useRef<{x:number;y:number}|null>(null),swiped=useRef(false);
- function select(next:number,direction:number){animation.current?.cancel();if(!matchMedia('(prefers-reduced-motion: reduce)').matches)animation.current=track.current?.animate([{transform:`translateX(${direction*14}px)`},{transform:'translateX(0)'}],{duration:140,easing:'ease-out'})??null;onChange(wrapOption(next,count));}
+ function select(next:number,direction:number){animation.current?.cancel();if(!matchMedia('(prefers-reduced-motion: reduce)').matches)animation.current=track.current?.animate([{transform:`translateX(${direction*49}px)`},{transform:'translateX(0)'}],{duration:140,easing:'ease-out'})??null;onChange(wrapOption(next,count));}
  const options=optionWindow(value,count);
  return <section className="outfit-selector" aria-label={label}>
  <div className="selector-label"><strong>{label}</strong><span>{name(value)}</span></div>
