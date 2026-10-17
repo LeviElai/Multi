@@ -7,7 +7,7 @@ import type { Store } from '../../../packages/db/src/types';
 import { getDefaultRound, validateQuiz } from '../../../packages/game-modes/src/index';
 import { digestToken, idempotentId } from './security';
 
-export const GenerationInput = z.object({topic:z.string().trim().min(3).max(300),count:z.number().int().min(1).max(20),language:z.literal('en').default('en'),difficulty:z.enum(['easy','mixed','challenging']).default('mixed'),instructions:z.string().trim().max(600).default(''),modes:z.array(z.enum(MODES)).min(1).max(11).default(['fermi','fish','drop','stack','word_puzzle'])}).strict();
+export const GenerationInput = z.object({topic:z.string().trim().min(3).max(300),count:z.number().int().min(1).max(20),language:z.literal('en').default('en'),difficulty:z.enum(['easy','mixed','challenging']).default('mixed'),instructions:z.string().trim().max(600).default(''),distractorFor:z.object({question:z.string().trim().min(3).max(500),answer:z.string().trim().min(1).max(100)}).optional(),modes:z.array(z.enum(MODES)).min(1).max(11).default(['fermi','fish','drop','stack','word_puzzle'])}).strict();
 export type GenerationRequest=z.infer<typeof GenerationInput>;
 type Job={id:string;owner_id:string;request_json:string;request_hash:string;status:string;requested:number;period:string;result_json:string|null;quiz_id:string|null;lease_token:string|null;error_code?:string|null;updated_at:string};
 export const quotaPeriod=(now=new Date())=>now.toISOString().slice(0,7);
@@ -39,6 +39,7 @@ export async function generationStatus(store:Store,owner:string,id:string){const
 const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),answer:z.union([z.number().finite(),z.string().max(100),z.boolean()]).optional(),options:z.array(z.string().trim().min(1).max(80)).min(2).max(6).optional(),unit:z.string().max(30).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(8)})).min(2).max(32).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
 export function validatedGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const parsed=generatedSchema.parse(value);
+ if(input.distractorFor){if(input.count!==1||input.modes.length!==1||input.modes[0]!=='fish'||parsed.questions.length!==1||normalizeAnswer(String(parsed.questions[0].answer))!==normalizeAnswer(input.distractorFor.answer))throw new Error('Distractor request changed the correct answer');parsed.questions[0].question=input.distractorFor.question;}
  if(input.count>=input.modes.length&&input.modes.some(mode=>!parsed.questions.some(q=>q.mode===mode)))throw new Error('Missing requested mode');
  if(parsed.questions.length!==input.count)throw new Error('Wrong question count');
  const rounds:Round[]=parsed.questions.map(q=>{
@@ -74,7 +75,7 @@ export function generationPlan(input:GenerationRequest){
   drop:'drop answerData: {"answer":true}. A factual True/False statement, boolean answer, concise explanation. Avoid ambiguous wording.',
   fish:'fish answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once. Verify every distractor is incorrect.',
   claw:'claw answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once.',
-  sling:'sling answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once.', 
+  sling:'sling answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once.',
   size_it_up:'size_it_up: leave question and explanation empty; answerData is "{}". The server supplies a calibrated silhouette puzzle. Do not invent artwork or measurements.'
  };
  const schema={type:'object',properties:{title:{type:'string'},questions:{type:'array',items:{type:'object',properties:{mode:{type:'string',enum:input.modes},question:{type:'string'},explanation:{type:'string'},answerData:{type:'string'}},required:['mode','question','explanation','answerData']}}},required:['title','questions']};

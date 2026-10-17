@@ -3,7 +3,7 @@ import {getDefaultRound} from './fixtures';
 import {isArcade} from './arcade';
 export type QuestionType='single'|'multiple'|'boolean';
 export type AnswerKind='integer'|'approximate'|'decimal'|'boolean'|'choice'|'word'|'multiple'|'list'|'size'|'text';
-export type QuestionAnswer={type:QuestionType;kind:AnswerKind;text:string;answer:string;alternatives:string[];distractors:string[];unit:string;exact:boolean};
+export type QuestionAnswer={type:QuestionType;kind:AnswerKind;text:string;answer:string;alternatives:string[];distractors:string[];unit:string;exact:boolean;requiredCount?:number};
 export type Recommendation={games:ModeId[];reason:string;missing?:string;confidence:'high'|'moderate'|'low'};
 export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  const result=(games:ModeId[],reason:string,missing?:string,confidence:Recommendation['confidence']='high')=>({games,reason,missing,confidence});
@@ -15,7 +15,7 @@ export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  if(q.kind==='word')return /^[A-Za-z]{3,12}$/.test(q.answer)?result(['word_puzzle'],'A hidden word with letter feedback.'):result(['answer'],'Guess needs a single word of 3–12 letters.','Use a shorter word or keep text entry.','low');
  if(q.kind==='choice'){
   if(q.distractors.filter(s=>s.trim()).length<1)return result(['answer'],'Add incorrect choices to unlock the arcade games.','Add at least one incorrect choice.','low');
-  const games:ModeId[]=['fish','claw','sling'];games.sort((a,b)=>recent.slice(-3).filter(m=>m===a).length-recent.slice(-3).filter(m=>m===b).length);
+  const games:ModeId[]=q.distractors.filter(s=>s.trim()).length>3?['fish']:['fish','claw','sling'];games.sort((a,b)=>recent.slice(-3).filter(m=>m===a).length-recent.slice(-3).filter(m=>m===b).length);
   return result(games,'One correct answer and distinct alternatives.');
  }
  if(q.kind==='text')return result(['answer'],'A factual short answer. Add choices to use Fish, Claw or Sling.',undefined,'moderate');
@@ -34,9 +34,9 @@ export function answerFromRound(r:Round):QuestionAnswer{
  let answer='',alternatives:string[]=[],distractors:string[]=[];
  if(r.mode==='rare_answers')answer=r.secretConfig.answers.map(x=>x.canonical).join('|');
  else if(r.mode==='size_it_up')answer=String(r.secretConfig.targetSize);
- else if(isArcade(r)){answer=String(r.secretConfig.answer);alternatives=r.secretConfig.acceptedAlternatives;distractors=r.publicConfig.options.filter(o=>!r.secretConfig.correctOptionIds.includes(o.id)).map(o=>o.label);if(kind==='multiple')answer=r.publicConfig.options.filter(o=>r.secretConfig.correctOptionIds.includes(o.id)).map(o=>o.label).join('|');}
+ else if(isArcade(r)){answer=r.mode==='crack'?String(r.secretConfig.answer).padStart(r.publicConfig.codeLength,'0'):String(r.secretConfig.answer);alternatives=r.secretConfig.acceptedAlternatives;distractors=r.publicConfig.options.filter(o=>!r.secretConfig.correctOptionIds.includes(o.id)).map(o=>o.label);if(kind==='multiple')answer=r.publicConfig.options.filter(o=>r.secretConfig.correctOptionIds.includes(o.id)).map(o=>o.label).join('|');}
  else answer=String(r.secretConfig.answer);
- return {type,kind,text:r.question,answer,alternatives,distractors,unit:'unit' in r.publicConfig?r.publicConfig.unit:'',exact:r.scoringPolicy==='exact'||kind!=='approximate'};
+ return {type,kind,text:r.question,answer,alternatives,distractors,unit:'unit' in r.publicConfig?r.publicConfig.unit:'',requiredCount:isArcade(r)?r.publicConfig.requiredCount:undefined,exact:r.scoringPolicy==='exact'||kind!=='approximate'};
 }
 /** One canonical answer is translated between compatible interactions; no duplicate questions. */
 export function roundFromAnswer(q:QuestionAnswer,mode:ModeId,old:Round):Round{
@@ -48,10 +48,10 @@ export function roundFromAnswer(q:QuestionAnswer,mode:ModeId,old:Round):Round{
  if(r.mode==='word_puzzle'){r.secretConfig.answer=q.answer.toUpperCase();r.publicConfig.length=q.answer.length;}
  if(r.mode==='size_it_up'&&old.mode==='size_it_up')return {...old,question:q.text,questionType:q.type,answerStructure:'size'};
  if(isArcade(r)){
-  const c=r.publicConfig,s=r.secretConfig;c.unit=q.unit;c.kind=q.type==='boolean'?'boolean':q.type==='multiple'?(q.kind==='list'?'list':'multiple'):q.kind==='choice'?'choice':q.kind==='text'||mode==='answer'?'text':'number';
+  const c=r.publicConfig,s=r.secretConfig;c.unit=q.unit;c.requiredCount=q.requiredCount;c.kind=q.type==='boolean'?'boolean':q.type==='multiple'?(q.kind==='list'?'list':'multiple'):q.kind==='choice'?'choice':q.kind==='text'||mode==='answer'?'text':'number';
   s.answer=q.type==='boolean'?q.answer==='true':c.kind==='number'?safe:q.answer;s.acceptedAlternatives=q.alternatives;
   const labels=q.kind==='multiple'?q.answer.split('|').map(s=>s.trim()).filter(Boolean):[q.answer];
-  c.options=q.kind==='choice'||q.kind==='multiple'?[...labels,...q.distractors.filter(s=>s.trim())].map((label,i)=>({id:`o${i}`,label})):[];
+  c.options=q.kind==='choice'||q.kind==='multiple'?[...labels,...q.distractors.filter(s=>s.trim())].map((label,i)=>({id:`opt_${hash(old.id+label).toString(36)}`,label})):[];
   s.correctOptionIds=c.options.filter((_,i)=>i<labels.length).map(o=>o.id);
   // Deterministic shuffle hides answer position without using the answer's value as a cue.
   c.options.sort((a,b)=>hash(old.id+a.id)-hash(old.id+b.id));

@@ -15,8 +15,8 @@ const definitions:Record<typeof MODES[number],{answers:AnswerKind[];requires:str
  crack:{answers:['integer'],requires:['codeLength'],asset:'vault',alternative:'Type code or use individual digit buttons.',scoring:'Exact code; no partial digit or speed bonus.'},
 };
 /** Shared inventory, with server-safe functions independent of React/graphics. */
-export const INTERACTIONS=Object.fromEntries(MODES.map(mode=>[mode,{
- id:mode,...MODE_META[mode],...definitions[mode],playerComponent:['amountle','fermi','word_puzzle','size_it_up'].includes(mode)?'ModePlayer':'ArcadePlayer',
- revealComponent:'RoundVisualization',mobile:'Touch-first controls; responsive pixel scene.',
- validate:(round:Round)=>validateAuthorConfig(round),sanitize:sanitizeAndValidateSubmission,score:scoreRound,project:publicQuestionProjection,
-}])) as Record<typeof MODES[number],typeof definitions[typeof MODES[number]]&{id:ModeId;name:string;description:string;playerComponent:string;revealComponent:string;mobile:string;validate:typeof validateAuthorConfig;sanitize:typeof sanitizeAndValidateSubmission;score:typeof scoreRound;project:typeof publicQuestionProjection}>;
+type Interaction=typeof definitions[typeof MODES[number]]&{id:ModeId;name:string;description:string;playerComponent:string;revealComponent:string;mobile:string;validate:typeof validateAuthorConfig;sanitize:typeof sanitizeAndValidateSubmission;score:typeof scoreRound;project:typeof publicQuestionProjection};
+export const INTERACTIONS=MODES.reduce((registry,mode)=>{
+ registry[mode]={id:mode,...MODE_META[mode],...definitions[mode],playerComponent:['amountle','fermi','word_puzzle','size_it_up'].includes(mode)?'ModePlayer':'ArcadePlayer',revealComponent:'RoundVisualization',mobile:'Touch-first controls; responsive pixel scene.',validate:validateAuthorConfig,sanitize:sanitizeAndValidateSubmission,score:scoreRound,project:publicQuestionProjection};
+ return registry;
+},{} as Record<typeof MODES[number],Interaction>);

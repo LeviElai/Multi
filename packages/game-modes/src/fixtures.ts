@@ -58,7 +58,17 @@ export function getDemoQuiz(): QuizInput {
   };
 }
 
-export function getArcadeQuiz():QuizInput{return {...getDemoQuiz(),title:'The eleven-game arcade',rounds:MODES.map(getDefaultRound)};}
+export function getArcadeQuiz():QuizInput{
+ const quiz={...getDemoQuiz(),title:'The eleven-game arcade',rounds:MODES.map(getDefaultRound)};
+ for(const r of quiz.rounds){
+  if(r.mode==='draw'){r.question='A shelf has 12 boxes with 8 pencils each. How many pencils are there?';r.secretConfig.answer=96;r.publicConfig.unit='pencils';r.explanation='12 × 8 = 96 pencils.';}
+  if(r.mode==='stack'){r.question='A picnic has 7 baskets with 6 apples each. How many apples are there?';r.secretConfig.answer=42;r.publicConfig.unit='apples';r.explanation='7 × 6 = 42 apples.';}
+  if(r.mode==='crack'){r.question='In what year did World War II end?';r.secretConfig.answer=1945;r.publicConfig.unit='year';r.explanation='World War II ended in 1945.';}
+  if(r.mode==='claw'){r.question='Which of these numbers is prime?';r.publicConfig.options=[{id:'a',label:'21'},{id:'b',label:'29'},{id:'c',label:'27'}];r.secretConfig.answer='29';r.explanation='29 has no positive divisors other than 1 and itself.';}
+  if(r.mode==='sling'){r.question='Which planet is known as the Red Planet?';r.publicConfig.options=[{id:'a',label:'Venus'},{id:'b',label:'Mars'},{id:'c',label:'Jupiter'}];r.secretConfig.answer='Mars';r.explanation='Iron-rich minerals give Mars its reddish appearance.';}
+ }
+ return quiz;
+}
 
 /** New opt-in starter content. Previously saved quizzes retain their exact rounds. */
 export function getWorkshopQuiz(): QuizInput {

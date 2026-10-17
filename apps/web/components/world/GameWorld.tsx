@@ -1,5 +1,5 @@
 'use client';
-import type { CSSProperties, ReactNode } from 'react';
+import {useEffect,type CSSProperties,type ReactNode} from 'react';
 import type { ModeId } from '../../../../packages/contracts/src/index';
 import { Atmosphere } from './Atmosphere';
 import { PixelSprite } from './Sprites';
@@ -29,5 +29,6 @@ export function GameBackdrop({ mode, children, className = '' }: { mode: ModeId;
 }
 
 export function GameIntro({ mode }: { mode: ModeId }) {
+  useEffect(()=>{if(['draw','claw','drop','sling','fish','stack','crack','answer'].includes(mode))void import('../game/ArcadePlayer').catch(()=>{});},[mode]);
   return <div className={`game-intro-art world-${mode}`} aria-hidden="true"><div className="game-world-art"/><Atmosphere/><PixelSprite kind={mode}/><span>{GAME_WORLDS[mode].name}</span></div>;
 }

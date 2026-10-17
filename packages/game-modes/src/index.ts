@@ -159,7 +159,7 @@ export function scoreRound(data: SessionData, round: Round): { awards: Award[]; 
   const awards = members.map(member => ({
     roundId: round.id, participantId: member.id, points: 0,
     reason: skipped ? 'round_skipped' : member.status === 'kicked' ? 'participant_removed' : invalidIds.has(member.id) ? 'invalid_submission' : 'not_submitted',
-    scoringRevision: 1, detail: { scoringVersion: SCORING_VERSION } as Record<string, unknown>,
+    scoringRevision: 1, detail: { scoringVersion: round.questionType||round.scoringPolicy?'v4-question':SCORING_VERSION } as Record<string, unknown>,
   }));
   if (skipped) return { awards, review: [], reveal };
   if (round.mode === 'rare_answers') {

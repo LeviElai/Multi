@@ -18,8 +18,10 @@ export function validateArcade(r:ArcadeRound):ValidationIssue[]{
   if(!s.correctOptionIds.length||s.correctOptionIds.some(id=>!ids.includes(id))||new Set(s.correctOptionIds).size!==s.correctOptionIds.length)out.push(issue(r,'secretConfig.correctOptionIds','Select the correct choices.'));
   if(r.mode!=='answer'&&s.correctOptionIds.length!==1)out.push(issue(r,'secretConfig.correctOptionIds','This game requires exactly one correct choice.'));
  }
+ if(['claw','sling'].includes(r.mode)&&c.options.length>4)out.push(issue(r,'publicConfig.options','Use up to four choices for this game, or choose Fish.'));
  if(r.mode==='drop'&&typeof s.answer!=='boolean')out.push(issue(r,'secretConfig.answer','Choose True or False.'));
  if(r.mode==='answer'&&['text','list'].includes(c.kind)&&!String(s.answer).trim())out.push(issue(r,'secretConfig.answer','Enter the accepted answer or required list.'));
+ if(r.mode==='answer'&&c.kind==='list'){const entries=String(s.answer).split('|').map(normalizeAnswer);if(entries.some(x=>!x)||entries.length>30||new Set(entries).size!==entries.length||String(s.answer).split('|').some(x=>x.length>100))out.push(issue(r,'secretConfig.answer','Use 1–30 distinct answers, each at most 100 characters, with no blank entries.'));if(c.requiredCount&&c.requiredCount>entries.length)out.push(issue(r,'publicConfig.requiredCount','The required count cannot exceed the accepted set.'));}
  return out;
 }
 export function sanitizeArcade(r:ArcadeRound,p:Record<string,unknown>):Submission['payload']{
@@ -50,7 +52,7 @@ export function scoreArcade(r:ArcadeRound,p:Submission['payload']):{points:numbe
  else if(r.mode==='drop'){correct=p.choiceId===String(s.answer);selected=p.choiceId==='true'?'True':'False';n=correct?500:0;}
  else if(p.choiceId!==undefined){correct=s.correctOptionIds.includes(p.choiceId);n=correct?Math.round(1000*(1-1/c.options.length)):0;}
  else if(c.kind==='multiple'){correct=JSON.stringify([...(p.choices??[])].sort())===JSON.stringify([...s.correctOptionIds].sort());n=correct?1000:0;selected=c.options.filter(o=>p.choices?.includes(o.id)).map(o=>o.label).join(', ');}
- else if(c.kind==='list'){const expected=String(s.answer).split('|').map(normalizeAnswer).sort();correct=JSON.stringify((p.choices??[]).map(normalizeAnswer).sort())===JSON.stringify(expected);n=correct?1000:0;}
+ else if(c.kind==='list'){const expected=String(s.answer).split('|').map(normalizeAnswer).sort();const actual=(p.choices??[]).map(normalizeAnswer).sort();correct=c.requiredCount!==undefined?actual.length===c.requiredCount&&actual.every(v=>expected.includes(v)):JSON.stringify(actual)===JSON.stringify(expected);n=correct?1000:0;}
  else {correct=[String(s.answer),...s.acceptedAlternatives].some(a=>normalizeAnswer(a)===normalizeAnswer(p.text??''));n=correct?1000:0;}
  return {points:n,selected,correct,...(p.value!==undefined?{value:p.value}:{})};
 }

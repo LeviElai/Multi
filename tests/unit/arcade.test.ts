@@ -6,6 +6,7 @@ import {publicQuestionProjection,sanitizeAndValidateSubmission,validateAuthorCon
 import {scoreArcade,isArcade,validateArcade} from '../../packages/game-modes/src/arcade';
 import {recommend,roundFromAnswer,answerFromRound,questionSeed,type QuestionAnswer} from '../../packages/game-modes/src/question';
 import {recognizeNumber,type PenStroke} from '../../packages/game-modes/src/handwriting';
+import {GenerationInput,decodeGeneration} from '../../apps/game-service/src/ai';
 const q=(answer:string,text='How many?',kind:QuestionAnswer['kind']='integer'):QuestionAnswer=>({type:'single',kind,text,answer,unit:'',alternatives:[],distractors:[],exact:kind!=='approximate'});
 test('exactly eleven official games; fallback and legacy are readable but not selectable',()=>{
  assert.equal(MODES.length,11);assert.equal(new Set(MODES).size,11);assert.ok(!(MODES as readonly string[]).includes('rare_answers'));assert.ok(!(MODES as readonly string[]).includes('answer'));
@@ -44,6 +45,15 @@ test('multiple selections and required lists retain their meaning with exact mat
  const seed=questionSeed('multiple'),qa={...q('Cat|Whale','Which are mammals?','multiple'),type:'multiple' as const,distractors:['Lizard']};
  const r=roundFromAnswer(qa,'answer',seed);assert.ok(isArcade(r));assert.equal(scoreArcade(r,{choices:r.secretConfig.correctOptionIds}).points,1000);assert.equal(scoreArcade(r,{choices:r.secretConfig.correctOptionIds.slice(0,1)}).points,0);assert.throws(()=>sanitizeAndValidateSubmission(r,{choices:['o0','o0']}));
  const list=roundFromAnswer({...qa,kind:'list'},'answer',seed);assert.ok(isArcade(list));assert.equal(scoreArcade(list,{choices:['whale','CAT']}).points,1000);assert.equal(scoreArcade(list,{choices:['Cat']}).points,0);
+ list.publicConfig.requiredCount=1;assert.equal(scoreArcade(list,{choices:['Whale']}).points,1000);assert.equal(scoreArcade(list,{choices:['Lizard']}).points,0);assert.equal(scoreArcade(list,{choices:['Cat','Whale']}).points,0);
+});
+
+test('AI can produce every official interaction without live scoring calls or invented artwork',()=>{
+ const input=GenerationInput.parse({topic:'puzzles',count:11,modes:[...MODES]});
+ const questions=MODES.map(mode=>({mode,question:mode==='crack'?'In what year did World War II end?':mode==='drop'?'An octopus has three hearts.':'A self-contained quiz question.',explanation:'Creator review required.',answerData:JSON.stringify(mode==='amountle'?{groups:7,perGroup:8,unit:'sweets'}:mode==='word_puzzle'||mode==='size_it_up'?{}:mode==='drop'?{answer:true}:['fish','claw','sling'].includes(mode)?{answer:'Paris',options:['Rome','Paris','Berlin']}:mode==='crack'?{answer:1945}:mode==='draw'?{answer:206}:{answer:46,unit:'items'})}));
+ const quiz=decodeGeneration({title:'All interactions',questions},input);assert.equal(quiz.rounds.length,11);assert.deepEqual(new Set(quiz.rounds.map(r=>r.mode)),new Set(MODES));assert.ok(quiz.rounds.every(r=>r.provenance==='needs_review'));
+ const request=GenerationInput.parse({topic:'Capital of France?',count:1,modes:['fish'],distractorFor:{question:'What is the capital of France?',answer:'Paris'}});
+ assert.throws(()=>decodeGeneration({title:'Bad',questions:[{mode:'fish',question:'Different',explanation:'',answerData:JSON.stringify({answer:'Rome',options:['Paris','Rome']})}]},request),/changed the correct answer/);
 });
 test('new unanswered drafts remain incomplete; exact numeric entry does not quietly become approximation',()=>{
  const seed=questionSeed('single');assert.ok(validateAuthorConfig({...seed,question:'A question'}).some(i=>i.field==='secretConfig.answer'));

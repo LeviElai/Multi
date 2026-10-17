@@ -1,126 +1,67 @@
-# vinext-starter
+# MULTIGAME
 
-A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
+A multiplayer pixel-art quiz arcade. Creators write questions and answers; MULTIGAME recommends an interaction. Guests join with a PIN and nickname.
 
-## Prerequisites
+Live: https://multigame-levi-6fe6.vercel.app/
 
-- Node.js `>=22.13.0`
-- Portable: Windows, macOS, or Linux; no Bash required
-- Managed Linux: managed Linux runtime with Bash, `flock`, `curl`, `sha256sum`, and GNU `timeout`
-- Git is required only for publishing
+## Eleven games
 
-## Sites Lifecycle
+Count · Estimate · Guess · Draw · Size · Claw · Drop · Sling · Fish · Stack · Crack
 
-The Sites initializer copies the shared starter and selects managed-linux only when `SITES_MANAGED_LINUX_CONTAINER=1`; otherwise it selects portable. It saves the selection only in ignored `.sites-runtime/execution-profile.json`. Both profiles copy/configure first, then use the plugin's separate `install-dependencies.mjs` step to measure installation independently. Edit source under `app/` and follow the Sites skill for installation, preview, builds, and publishing.
+Creation starts with **Single Answer**, **Multiple Answers**, or **True or False**. Local recommendations preserve answer semantics and exactness, and consider question context and quiz variety. Creators can preview and select compatible alternatives. Multiple selections and required lists use conventional inputs. Legacy rarity questions require explicit creator review before publication or new hosting; historical results remain readable.
 
-Run `node <plugin-root>/scripts/configure-execution-profile.mjs` only when the profile is unknown for the current checkout and environment. Profile changes do not alter tracked source or require reinstalling otherwise-valid dependencies; restart an existing preview to use the new selection. Do not commit or upload `.sites-runtime/`.
+## Architecture
 
-This starter does not use `wrangler.jsonc`.
+- Next.js / React frontend: `app/`, `apps/web/`.
+- Persistent HTTP + Socket.IO backend: `apps/game-service/`.
+- Shared Zod contracts: `packages/contracts/`.
+- Server-safe validation, scoring and registry: `packages/game-modes/`.
+- Portable SQL persistence: `packages/db/`. Production PostgreSQL runs on Supabase in a private schema; SQLite supports local tests.
+- Vercel frontend and Render realtime backend.
 
-`install:ci` runs `npm ci` once against the shared lockfile, disables parent-workspace discovery, and includes required dev/optional dependencies despite production/omit settings. Sharp defaults to prebuilt binaries unless explicitly configured otherwise. Do not overlap installers.
+The server owns timers, accepted submissions, scores and rankings. Physics never determines correctness. Answer keys stay out of player projections before reveal. Idempotency receipts protect retries. Question metadata is a compact private JSON envelope in existing round records; published versions remain immutable.
 
-- **Portable:** Preserve host HOME, npm cache, registry, proxy, temporary paths, retry/concurrency settings, and lifecycle-script policy. Use `--prefer-offline --no-audit --no-fund`.
-- **Managed Linux:** Use the existing project-local HOME/cache/tmp setup and Linux install lock, tarball preflight, and timeout. Restore the image-seeded npm cache only when its lockfile hash matches; retain network fallback. Builds keep their existing timeout. These helpers are not invoked by the portable profile.
+## Local development
 
-`scripts/sites-env.mjs` preserves the caller's HOME, npm cache, proxy, XDG, and temporary-directory configuration while defaulting Wrangler and Miniflare state to the checkout. If npm reports an unwritable cache, select a writable path with `npm_config_cache` for that install. The `dev` and `start` scripts also keep Wrangler logs inside the checkout. Generated `.sites-runtime/` and `.wrangler/` directories are disposable and ignored by Git.
+Node.js >=22.13 is required. Install from the committed lockfile using the repository's normal installation workflow. Export the values in `.env.example` in the appropriate terminal; never commit credentials.
 
-On portable, `npm run dev` uses `vinext dev` with HMR, starting at port 5173. Vinext records the running server in ignored `.vinext/` state, rejects an ordinary duplicate launch, and recovers stale state after a stopped process; exactly simultaneous starts can race. Pass `--port <port>` or `--hostname <host>` after `npm run dev --` when needed; keep portable previews on loopback.
+Start the API with `node --import tsx apps/game-service/src/server.ts`, using PORT=4001, HOST=127.0.0.1, PUBLIC_ORIGIN=http://localhost:3005, a random PIN_PEPPER, SQLITE_PATH=.sites-runtime/local.sqlite and AUTO_MIGRATE=1.
 
-For browser QA on managed Linux, use `sites-preview start`. The project's dev script runs Vite and accepts the supervisor's `--host 0.0.0.0 --port 4173 --strictPort` arguments. The internal browser uses `http://terminal.local:4173/`; it is not a user-facing URL. The supervisor owns the preview lifecycle. The ignored local profile survives the supervisor's cleared process environment.
-
-The portable profile simulates ChatGPT sign-in only for loopback development requests. Visit `/signin-with-chatgpt?return_to=/` to sign in as `local_seedy` (`seedy@sites.test`, display name `Seedy`) and `/signout-with-chatgpt?return_to=/` to sign out. The development cookie preserves that identity across server restarts. Mock auth is disabled in the managed-linux profile and is not included in production builds; hosted authentication remains dispatch-owned.
-
-The Worker uses `vinext/server/fetch-handler`, including Vinext's config-aware image handling. After building, `npm start` runs that Worker locally through Wrangler on `127.0.0.1`, sharing `.wrangler/state` with dev preview and local D1 migrations; it does not deploy the site or simulate sign-in. Use the URL printed by the server. Pass `npm start -- --port <port>` to select a different built-preview port.
-
-Local previews use Miniflare's placeholder `Request.cf` metadata without a network lookup. Set `CLOUDFLARE_CF_FETCH_ENABLED=true` to opt into fetching preview metadata; this setting does not change hosted request metadata.
-
-Local tool usage metrics are disabled by default. Set `WRANGLER_SEND_METRICS=true` to opt in.
-
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `@cloudflare/workers-types` provides Worker types; `cloudflare-env.d.ts` declares optional `DB`/`BUCKET` bindings—update these declarations if binding names change
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Use it as the durable user key; use email and name for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive `oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty `name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by `oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use the returned `userId` as the stable user key for user-owned records; do not use email as a durable identifier.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send anonymous visitors through Sign in with ChatGPT.
-- In a Server Component, start sign-in with `<a href={chatGPTSignInPath(returnTo)} target="_top">`. The auth helper module is server-only; do not import it into a Client Component.
-- Do not use `fetch`, XHR, a client-side router, or a framework link that can prefetch the sign-in route. SIWC must start as a top-level navigation.
-- Never request the AuthAPI authorization endpoint directly. The dispatch-owned `/signin-with-chatgpt` route must start the SIWC flow.
-- Use `chatGPTSignOutPath(returnTo)` for browser sign-out links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the OAuth cookies, and identity header injection. Do not implement app routes for those reserved paths. Routes that do not import and call the helper remain anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the Sites hosting platform's access policy controls for workspace-wide restrictions, or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Local D1 migrations
-
-For a D1-backed local preview, generate SQL with `npm run db:generate`. Build once through the Sites skill's build entrypoint (or `npm run build` for standalone use) to generate `dist/server/wrangler.json`, rebuilding if bindings change. From the project root, apply each pending migration in order:
+In another terminal, set GAME_SERVICE_URL=http://127.0.0.1:4001 and run:
 
 ```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_example.sql
+node node_modules/next/dist/bin/next dev --webpack -p 3005
 ```
 
-Replace the filename with the pending migration and `DB` with your D1 binding name if different. Use `.wrangler/state`, not `.wrangler/state/v3`; Wrangler adds the versioned directories. Do not replay migrations already applied locally. This updates only the preview database; publishing applies production migrations separately.
+On PowerShell, export with `$env:VARIABLE='value'`. Create a local creator account through sign-in. Guests do not need an account. The original Sites/Vinext scripts remain available; the explicit Next commands match the deployed Vercel application.
 
-## Diagnostic Commands
+## Verification
 
-- `npm run install:ci`: perform the one locked dependency install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build the deployable Sites artifact
-- `npm run start`: preview the built Worker locally with D1/R2 support
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+```sh
+npm run typecheck
+node --import tsx --test tests/unit/*.test.ts tests/integration/*.test.ts
+node --import tsx --test tests/e2e/*.test.ts
+node node_modules/next/dist/bin/next build --webpack
+```
 
-When using the Sites plugin, follow its skill instructions for installation, builds, and publishing. These npm commands remain available for standalone use.
+Stop the dev server before building into the same `.next` directory.
 
-The portable build runs Vinext directly without a host `timeout` command. The managed-linux build uses `scripts/build-verified.sh` and its existing `SITES_BUILD_TIMEOUT` setting.
+With both local services running, `node --import tsx scripts/verify-arcade.mts` creates a private QA quiz, plays all eleven games with three independent HTTP identities and a real WebSocket, checks privacy, replay receipts, pause/resume, scoring, ties and completion, then archives the quiz. Set QA_ORIGIN and QA_SERVICE explicitly for a deployment. Credentials and cookies stay in ignored `.sites-runtime/`; reports contain no credentials. Automated QA is not human playtesting.
 
-## Learn More
+## Gameplay policies
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+- Exact answers remain exact when changing presentation. Proximity is explicit.
+- Count is irreversible. Only accepted pours count; physics is decorative.
+- Guess: 1,000 for first-try solve, minus 150 per extra attempt; finite repeated-letter allocation.
+- Single choice: correct earns `round(1000 × (1 − 1/number_of_choices))`, incorrect zero. Drop therefore awards 500. No speed or dexterity bonuses.
+- Draw: small on-device recognizer for separated non-negative whole-number digits. Recognition is best-effort and always visible, editable and confirmed. Typing is available; raw drawings are not uploaded.
+- Stack scores represented units, with bounded rendering. Crack preserves declared digit width.
+- Fish offers stationary answers; Claw/Sling offer keyboard controls; Drop has explicit aiming. Reduced motion and mute are respected.
+
+## Costs and commercial features
+
+Manual authoring, recommendations, live scoring and handwriting use no AI tokens. Gemini runs only for explicit creator requests. The 20-question monthly allowance, atomic reservations/refunds and request caps remain. Optional distractor suggestions use one credit and require review. Temporary-job maintenance does not delete saved quizzes.
+
+No paid plan, hosting upgrade, extra cloud service or ad account is provisioned. Rewarded ads remain disabled pending publisher approval, ad demand, consent and final public policies. See `docs/MONETIZATION.md`. Free capacity and cold starts remain provider limits.
+
+See `docs/ARCADE-RELEASE.md` and `docs/DECISIONS.md` for implementation and recovery details.

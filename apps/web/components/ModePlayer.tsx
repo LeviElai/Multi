@@ -1,6 +1,6 @@
 'use client';
 import dynamic from 'next/dynamic';
-const ArcadePlayer=dynamic(()=>import('./game/ArcadePlayer'));
+const ArcadePlayer=dynamic(()=>import('./game/ArcadePlayer'),{loading:()=> <p role="status" className="control-hint">Opening the arcade…</p>});
 import { newId } from '../../../packages/contracts/src/id';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Minus, Plus, Lock, Send, RotateCcw, Delete, Check, LoaderCircle } from 'lucide-react';
@@ -103,7 +103,7 @@ function Fermi({ round, disabled, busy, value, send }: ControlProps & {
 }
 catch {
     preview = 'Enter a number';
-} ; return <form onSubmit={e => { e.preventDefault(); void send({ text, locked: true }).catch(() => { }); }}><div className="number-entry"><label htmlFor="fermi-value">YOUR BEST ESTIMATE</label><input autoComplete="off" id="fermi-value" inputMode="decimal" placeholder="0" value={text} onChange={e => setText(e.target.value)} disabled={disabled} required aria-describedby="fermi-hint"/><span>{c.unit}</span></div><p className="estimate-preview" aria-live="polite">{preview || ""}</p><p className="control-hint" id="fermi-hint">K, M and B are accepted. Range {c.min.toLocaleString('en')} to {c.max.toLocaleString('en')} {c.unit}.</p><Scratchpad/><button className="btn btn-dark btn-full" disabled={disabled || busy || !text.trim() || !validNumber}><Lock size={17}/>{busy?'Sending…':'Lock estimate'}</button></form>; }
+} ; return <form onSubmit={e => { e.preventDefault(); void send({ text, locked: true }).catch(() => { }); }}><div className="number-entry"><label htmlFor="fermi-value">{round.scoringPolicy==='exact'?'YOUR ANSWER':'YOUR BEST ESTIMATE'}</label><input autoComplete="off" id="fermi-value" inputMode="decimal" placeholder="0" value={text} onChange={e => setText(e.target.value)} disabled={disabled} required aria-describedby="fermi-hint"/><span>{c.unit}</span></div><p className="estimate-preview" aria-live="polite">{preview || ""}</p><p className="control-hint" id="fermi-hint">K, M and B are accepted. Range {c.min.toLocaleString('en')} to {c.max.toLocaleString('en')} {c.unit}.</p><Scratchpad/><button className="btn btn-dark btn-full" disabled={disabled || busy || !text.trim() || !validNumber}><Lock size={17}/>{busy?'Sending…':round.scoringPolicy==='exact'?'Lock answer':'Lock estimate'}</button></form>; }
 function Rare({ disabled, busy, value, send }: ControlProps & {
     value?: string;
 }) {

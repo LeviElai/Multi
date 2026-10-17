@@ -25,7 +25,8 @@ export function playCue(cue:Cue='submit',mode?:string,eventKey?:string) {
       submit:[392,587,784],reveal:[262,330,392,523],win:[523,659,784],
       join:[330,440,659],final:[262,330,392,523,392,523,659,784,1047],
       standings:[392,523],error:[196,147],tick:[880]};
-    const pitch=mode==='rare_answers'?.75:mode==='size_it_up'?.9:mode==='amountle'?1.15:mode==='word_puzzle'?1.25:1;
+    const pitches:Record<string,number>={draw:1.05,claw:.8,drop:1.25,sling:1.15,fish:1.3,stack:.72,crack:.9,size_it_up:.9,amountle:1.15,word_puzzle:1.25};
+    const pitch=mode?pitches[mode]??1:1;
     tunes[cue].forEach((note,i)=>{
       const frequency=note*pitch;
       const oscillator=context!.createOscillator(),gain=context!.createGain();
