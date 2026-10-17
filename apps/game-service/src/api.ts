@@ -275,7 +275,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
 
     if (method === 'POST' && path === 'sessions') {
       const owner = requireUser(user); const versionId = uuid.parse(body.quizVersionId);
-      if((await ctx.store.getVersion(versionId,owner.id)).rounds.some(r=>r.mode==='rare_answers'))throw new DomainError('LEGACY_REVIEW','Update the legacy questions and publish a new version before hosting.',422);
+      if((await ctx.store.getVersion(versionId,owner.id)).rounds.some(r=>r.mode==='rare_answers'||r.mode==='answer'))throw new DomainError('LEGACY_REVIEW','Update the legacy questions and publish a new version before hosting.',422);
       await rateLimit(ctx.store.db, `session-create:${owner.id}`, 30, 60 * 60 * 1000);
       const result = await engine.createSession(owner.id, versionId, mutationKey(request));
       return ok({ ...result, hostUrl: `/host/${result.sessionId}`, joinUrl: `/join/${result.pin}` }, 201);

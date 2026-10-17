@@ -24,11 +24,11 @@ test('question recommendations distinguish counts, years, estimates, measurement
  assert.equal(recommend(q('12','Resize this object','size')).games[0],'size_it_up');
 });
 test('missing distractors never become invented facts; multi-answer structures never become single-choice games',()=>{
- const question=q('Paris','Capital of France?','choice');assert.deepEqual(recommend(question).games,['answer']);assert.ok(recommend(question).missing);
+ const question=q('Paris','Capital of France?','choice');assert.deepEqual(recommend(question).games,[]);assert.ok(recommend(question).missing);
  question.distractors=['Rome','Berlin'];assert.deepEqual(new Set(recommend(question).games),new Set(['fish','claw','sling']));assert.equal(recommend(question,['fish']).games[0],'claw');
- assert.deepEqual(recommend({...question,type:'multiple',kind:'multiple'}).games,['answer']);
- assert.deepEqual(recommend({...question,type:'multiple',kind:'list'}).games,['answer']);
- assert.equal(recommend(q('')).confidence,'low');assert.equal(recommend(q('Some answer','Ambiguous','text')).games[0],'answer');
+ assert.deepEqual(recommend({...question,type:'multiple',kind:'multiple'}).games,['fish']);
+ assert.deepEqual(recommend({...question,type:'multiple',kind:'list'}).games,[]);
+ assert.equal(recommend(q('')).confidence,'low');assert.deepEqual(recommend(q('Some answer','Ambiguous','text')).games,[]);
 });
 test('switching compatible games preserves the question, answer, exactness and identity',()=>{
  const question=q('206','How many bones in an adult human?'),seed=questionSeed('single');

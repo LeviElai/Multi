@@ -36,7 +36,7 @@ const previewPeople = [{ id: 'preview-you', nickname: 'You' }, { id: 'preview-ri
 function previewData(quiz: QuizInput, round: Round, payload: Submission['payload'], attempts: WordAttempt[], people = previewPeople): SessionData {
     const now = new Date().toISOString();
     const otherPayload = (index: number): Submission['payload'] => {
-        if(isArcade(round)){if(['draw','stack','crack'].includes(round.mode))return {value:Number(round.secretConfig.answer)+(index?1:0)};if(round.mode==='drop')return {choiceId:index?'false':'true'};if(['fish','claw','sling'].includes(round.mode))return {choiceId:round.publicConfig.options[index]?.id};if(round.publicConfig.kind==='multiple')return {choices:round.secretConfig.correctOptionIds};if(round.publicConfig.kind==='list')return {choices:String(round.secretConfig.answer).split('|')};return {text:String(round.secretConfig.answer)};}
+        if(isArcade(round)){if(['draw','stack','crack'].includes(round.mode))return {value:Number(round.secretConfig.answer)+(index?1:0)};if(round.mode==='drop')return {choiceId:index?'false':'true'};if(round.mode==='fish'&&round.publicConfig.kind==='multiple')return {choices:round.secretConfig.correctOptionIds};if(['fish','claw','sling'].includes(round.mode))return {choiceId:round.publicConfig.options[index]?.id};if(round.publicConfig.kind==='multiple')return {choices:round.secretConfig.correctOptionIds};if(round.publicConfig.kind==='list')return {choices:String(round.secretConfig.answer).split('|')};return {text:String(round.secretConfig.answer)};}
         switch (round.mode) {
             case 'fermi': return { value: Math.max(round.publicConfig.min, Math.min(round.publicConfig.max, round.publicConfig.min + Math.round((round.secretConfig.answer * (index ? 1.3 : 0.8) - round.publicConfig.min) / round.publicConfig.step) * round.publicConfig.step)) };
             case 'rare_answers': return { text: round.secretConfig.answers[Math.min(index, round.secretConfig.answers.length - 1)]?.canonical ?? 'sample answer' };
@@ -70,7 +70,7 @@ export function Preview({ quiz, initialRound = 0, compact = false, solo = false,
     const people=solo?previewPeople.slice(0,1):previewPeople;
     const round = quiz.rounds[index];
     const leaders = practiceLeaderboard(people, quiz.rounds.map(r => r.id), scores, round?.id ?? '');
-    if(round?.mode==='rare_answers')return <div className="notice">This legacy question needs the creator’s review before it can be played. Its saved answers have been preserved.</div>;
+    if(round?.mode==='rare_answers'||round?.mode==='answer')return <div className="notice">This legacy question needs the creator’s review before it can be played. Its saved answers have been preserved.</div>;
     if (!round)
         return <p>Add a round to preview it.</p>;
     try {

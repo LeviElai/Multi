@@ -16,7 +16,7 @@ export function validateArcade(r:ArcadeRound):ValidationIssue[]{
   const ids=c.options.map(o=>o.id),labels=c.options.map(o=>normalizeAnswer(o.label));
   if(c.options.length<2||new Set(ids).size!==ids.length||new Set(labels).size!==labels.length)out.push(issue(r,'publicConfig.options','Add 2–6 distinct answer choices.'));
   if(!s.correctOptionIds.length||s.correctOptionIds.some(id=>!ids.includes(id))||new Set(s.correctOptionIds).size!==s.correctOptionIds.length)out.push(issue(r,'secretConfig.correctOptionIds','Select the correct choices.'));
-  if(r.mode!=='answer'&&s.correctOptionIds.length!==1)out.push(issue(r,'secretConfig.correctOptionIds','This game requires exactly one correct choice.'));
+  if(r.mode!=='answer'&&!(r.mode==='fish'&&c.kind==='multiple')&&s.correctOptionIds.length!==1)out.push(issue(r,'secretConfig.correctOptionIds','This game requires exactly one correct choice.'));
  }
  if(['claw','sling'].includes(r.mode)&&c.options.length>4)out.push(issue(r,'publicConfig.options','Use up to four choices for this game, or choose Fish.'));
  if(r.mode==='drop'&&typeof s.answer!=='boolean')out.push(issue(r,'secretConfig.answer','Choose True or False.'));
@@ -31,7 +31,7 @@ export function sanitizeArcade(r:ArcadeRound,p:Record<string,unknown>):Submissio
   return {value:v as number};
  }
  if(r.mode==='drop'){if(p.choiceId!=='true'&&p.choiceId!=='false')invalid('Choose True or False.');return {choiceId:p.choiceId as string};}
- if(['claw','sling','fish'].includes(r.mode)){if(typeof p.choiceId!=='string'||!c.options.some(o=>o.id===p.choiceId))invalid('Choose an answer from this round.');return {choiceId:p.choiceId as string};}
+ if(['claw','sling','fish'].includes(r.mode)&&c.kind!=='multiple'){if(typeof p.choiceId!=='string'||!c.options.some(o=>o.id===p.choiceId))invalid('Choose an answer from this round.');return {choiceId:p.choiceId as string};}
  if(c.kind==='multiple'||c.kind==='list'){
   if(!Array.isArray(p.choices)||!p.choices.length||p.choices.length>30||p.choices.some(x=>typeof x!=='string'||x.length>100))invalid('Enter your selected answers.');
   const choices=(p.choices as string[]).map(x=>x.trim());

@@ -8,19 +8,19 @@ export type Recommendation={games:ModeId[];reason:string;missing?:string;confide
 export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  const result=(games:ModeId[],reason:string,missing?:string,confidence:Recommendation['confidence']='high')=>({games,reason,missing,confidence});
  if(q.kind==='size')return result(['size_it_up'],'A calibrated target and reference are needed.');
- if(!q.answer.trim())return result(['answer'],'Enter the answer to find a suitable game.','What is the correct answer?','low');
+ if(!q.answer.trim())return result([],'Enter the answer to find a suitable game.','What is the correct answer?','low');
  if(q.type==='boolean'||q.kind==='boolean')return result(['drop'],'A statement with a True or False answer.');
- if(q.type==='multiple')return result(['answer'],q.kind==='list'?'Players enter every required answer.':'Players select every correct choice.');
+ if(q.type==='multiple')return q.kind==='list'?result([],'Lists need to be rewritten as a choice question.','Enter the correct choices and at least one incorrect choice.','low'):q.distractors.some(s=>s.trim())?result(['fish'],'Catch every correct fish, then reel in your selection.'):result([],'Add an incorrect choice to make a playable fishing question.','Add at least one incorrect choice.','low');
 
  if(q.kind==='word')return /^[A-Za-z]{3,12}$/.test(q.answer)?result(['word_puzzle'],'A hidden word with letter feedback.'):result(['answer'],'Guess needs a single word of 3–12 letters.','Use a shorter word or keep text entry.','low');
  if(q.kind==='choice'){
-  if(q.distractors.filter(s=>s.trim()).length<1)return result(['answer'],'Add incorrect choices to unlock the arcade games.','Add at least one incorrect choice.','low');
+  if(q.distractors.filter(s=>s.trim()).length<1)return result([],'Add incorrect choices to unlock the arcade games.','Add at least one incorrect choice.','low');
   const games:ModeId[]=q.distractors.filter(s=>s.trim()).length>3?['fish']:['fish','claw','sling'];games.sort((a,b)=>recent.slice(-3).filter(m=>m===a).length-recent.slice(-3).filter(m=>m===b).length);
   return result(games,'One correct answer and distinct alternatives.');
  }
- if(q.kind==='text')return result(['answer'],'A factual short answer. Add choices to use Fish, Claw or Sling.',undefined,'moderate');
+ if(q.kind==='text')return result([],'Add incorrect choices for Fish, Claw or Sling.','Or choose Hidden word for a word-guessing question.','low');
  const n=Number(q.answer),whole=Number.isSafeInteger(n);
- if(!Number.isFinite(n)||Math.abs(n)>1e15)return result(['answer'],'Enter a supported numerical answer.',undefined,'low');
+ if(!Number.isFinite(n)||Math.abs(n)>1e15)return result([],'Enter a supported numerical answer.',undefined,'low');
  if(q.kind==='approximate'||!q.exact)return result(['fermi',...(whole&&n>=0&&n<=999999?['stack' as const,'draw' as const]:[])],'This answer is scored by proximity.');
  if(whole&&n>=0&&n<=99999999&&/\b(year|date|code|pin|digits?)\b/i.test(q.text))return result(['crack','draw','fermi'],'An exact year or code belongs on digit wheels.');
  if(!whole||n<0)return result(['fermi'],'Use exact numeric entry for decimals and negative values.');
@@ -40,7 +40,7 @@ export function answerFromRound(r:Round):QuestionAnswer{
 }
 /** One canonical answer is translated between compatible interactions; no duplicate questions. */
 export function roundFromAnswer(q:QuestionAnswer,mode:ModeId,old:Round):Round{
- const compatible=recommend(q).games;if(!compatible.includes(mode))mode=compatible[0];
+ const compatible=recommend(q).games;if(!compatible.includes(mode))mode=compatible[0]??'answer';
  const base=getDefaultRound(mode),n=Number(q.answer),safe=Number.isFinite(n)?n:0;
  const r={...base,id:old.id,question:q.text,answerProvided:!!q.answer.trim(),questionType:q.type,answerStructure:q.kind,scoringPolicy:q.exact?'exact' as const:'proximity' as const,provenance:old.provenance,sourceUrl:old.sourceUrl,explanation:old.explanation,allowRevision:false,timerSeconds:old.timerSeconds} as Round;
  if(r.mode==='fermi'){r.secretConfig.answer=safe;r.publicConfig={...r.publicConfig,unit:q.unit,min:-1e15,max:1e15,step:1e-6,errorMode:safe<=0?'absolute':'proportional',tolerance:Math.max(1,Math.abs(safe))};}

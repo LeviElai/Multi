@@ -26,6 +26,7 @@ export function validateAuthorConfig(round: Round): ValidationIssue[] {
   }));
   const value = parsed.data;
   const issues: ValidationIssue[] = [];
+  if(value.mode==='answer')issues.push(issue(value,'mode','Add a supported answer and choices to select one of the eleven games.'));
   if(value.answerProvided===false)issues.push(issue(value,'secretConfig.answer','Enter and confirm the correct answer.'));
   if(isArcade(value))issues.push(...validateArcade(value));
   if (value.provenance === 'needs_review') issues.push(issue(value, 'provenance', 'Review and confirm this question before publishing.'));
@@ -91,7 +92,7 @@ export function sanitizeAndValidateSubmission(round: Round, payload: unknown): S
       || ![Object.prototype, null].includes(Object.getPrototypeOf(payload))) invalid('Submit a valid answer object.');
   const fields = payload as Record<string, unknown>;
   if(isArcade(round)){
-    const allowed=['locked',...(['draw','stack','crack'].includes(round.mode)?['value']:round.mode==='drop'||['fish','sling','claw'].includes(round.mode)?['choiceId']:round.publicConfig.kind==='multiple'||round.publicConfig.kind==='list'?['choices']:['text'])];
+    const allowed=['locked',...(['draw','stack','crack'].includes(round.mode)?['value']:round.mode==='fish'&&round.publicConfig.kind==='multiple'?['choices']:round.mode==='drop'||['fish','sling','claw'].includes(round.mode)?['choiceId']:round.publicConfig.kind==='multiple'||round.publicConfig.kind==='list'?['choices']:['text'])];
     if(Object.keys(fields).some(k=>!allowed.includes(k))||(fields.locked!==undefined&&typeof fields.locked!=='boolean'))invalid('This answer contains unsupported fields.');
     return {...sanitizeArcade(round,fields),...(fields.locked===undefined?{}:{locked:fields.locked as boolean})};
   }

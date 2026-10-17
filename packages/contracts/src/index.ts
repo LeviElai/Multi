@@ -13,7 +13,7 @@ export const MODE_META: Record<ModeId,{name:string;verb:string;color:string;desc
   fish:{name:'Fish',verb:'Catch your answer',color:'#7de1ce',description:'Tap the fish carrying your answer.',symbol:'⋊'},
   stack:{name:'Stack',verb:'Build your answer',color:'#ffc778',description:'Drop numbered blocks to build your total.',symbol:'▤'},
   crack:{name:'Crack',verb:'Unlock the vault',color:'#a8bcea',description:'Turn the digit wheels and lock in your code.',symbol:'▣'},
-  answer:{name:'Answer',verb:'Make your choice',color:'#a8bcea',description:'A clear input for lists, text and multiple selections.',symbol:'✓'},
+  answer:{name:'Question setup',verb:'Finish your question',color:'#a8bcea',description:'Add an answer and choices to find a game.',symbol:'?'},
   word_puzzle:{name:'Guess',verb:'One letter at a time',color:'#f6b4d0',description:'Find the hidden word. Every guess gives you a clue.',symbol:'W'},
   size_it_up:{name:'Size',verb:'Trust your eye',color:'#bde597',description:'Drag to resize. Match the real-world proportions.',symbol:'↔'},
   amountle:{name:'Count',verb:'Ready, steady, drop!',color:'#ffc778',description:'Drop sweets to estimate the answer. Tap or hold to pour.',symbol:'⠿'},
