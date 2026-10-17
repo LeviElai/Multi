@@ -1,0 +1,67 @@
+MULTIGAME PostgreSQL migration to Supabase
+
+Status: prepared, not executed. Production remains on the existing Render database.
+Requested destination: a new MULTIGAME organization and project.
+Supabase rejected a third free project in BUILD4.ME because the account already
+owns/administers two active free projects. A new organization may still be subject
+to this account-wide limit. Do not pause unrelated projects or purchase paid capacity
+without the user's explicit choice.
+
+Architecture
+Supabase PostgreSQL becomes the persistent datastore. The Node game server and its
+authoritative round worker remain on Render; the web frontend remains on Vercel.
+Existing credential accounts, hashed passwords, authentication sessions, room PINs,
+participant credentials, quiz versions, submissions, events and scores are copied.
+This does not convert existing credential accounts into Supabase Auth users.
+
+Destination
+Use a separate private multigame schema and a dedicated server database role. Keep
+the schema outside exposed Data API schemas. Revoke public/anon/authenticated schema
+and table access; enable RLS as a second barrier. The owning server role retains
+the existing server-side authorization model. Never send DB credentials or privileged
+Supabase keys to the browser or commit them.
+Use the actual dashboard Session Pooler endpoint (port 5432) for an IPv4 Render
+service. Validate TLS and hostname; provide DATABASE_SSL_CA if its root is not in
+the runtime trust store. No rejectUnauthorized:false or global TLS bypass.
+
+Cutover procedure
+1. Provision destination and verify connection/schema permissions with real SQL.
+2. Deploy the migration preparation code to the existing backend.
+3. Set MAINTENANCE_MODE=1, with no migration target yet, and deploy. Wait until the
+   old instance is replaced and /health/ready returns maintenance:true. API traffic
+   and socket connections are blocked; the round worker does not mutate data.
+4. Keep DATABASE_URL pointing at the private Render source. Set
+   MIGRATION_SOURCE_FROZEN=1, MIGRATION_TARGET_DATABASE_URL, MIGRATION_TARGET_SCHEMA
+   and, if needed, MIGRATION_TARGET_SSL_CA. Deploy to run the server-side copy on
+   Render's private network. Do not expose the source DB to the public internet.
+5. scripts/copy-postgres.ts imports the reviewed baseline schema into the empty
+   target and copies rows in FK dependency order within a transaction. Destination
+   immutable-version triggers are temporarily disabled in that transaction and
+   restored before commit; checks/FKs remain active. Source data is read-only.
+   Per-table row counts and canonical SHA-256 signatures must match exactly.
+   PostgreSQL timestamp precision and JSON values are preserved. Nonempty targets
+   are refused; data is not silently overwritten.
+6. Retrieve database_copy_verified from deployment logs. Independently check row
+   counts, permissions, RLS, indexes and Supabase advisors. Verify old accounts,
+   quizzes and final room snapshots before opening writes on the destination.
+7. Switch DATABASE_URL to the verified Supabase URL; set DATABASE_SCHEMA=multigame
+   and DATABASE_SSL_CA as needed. Clear MIGRATION_TARGET_DATABASE_URL and set
+   MIGRATION_SOURCE_FROZEN=0, MAINTENANCE_MODE=0. Deploy the backend.
+8. Verify health, existing credentials/data, a new host plus three-player five-mode
+   automatic session, pause/resume, authorization, hidden answers and final scores.
+   Deploy/verify the existing Vercel project as needed; its backend URL is stable.
+9. Retain the source database as the pre-cutover recovery copy. Never delete it
+   automatically. Once the target accepts writes, a rollback requires freezing
+   writes and synchronizing new destination data back; merely switching URLs would
+   lose post-cutover changes.
+
+Validation already performed on preparation
+104 unit/integration tests passed, including private-schema injection rejection,
+custom CA verification, FK ordering/cycle detection and identifier escaping.
+3 HTTP/WebSocket tests passed, including ten-player gameplay/crash recovery,
+origin rejection and maintenance blocking with deployment health retained.
+TypeScript passes. Actual PostgreSQL copy, Supabase advisors, production cutover
+and post-migration live gameplay have not yet been performed.
+
+Backup tag: backup-before-supabase-20261017
+Current source Render database expiry: 15 November 2026.

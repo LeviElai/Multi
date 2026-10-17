@@ -21,10 +21,10 @@ function normalizeRow(row:Record<string,unknown>){return Object.fromEntries(Obje
 export class PostgresDatabase implements SqlDatabase {
   readonly dialect='postgres' as const;
   constructor(private readonly pool:pg.Pool){}
-  static async connect(connectionString:string):Promise<PostgresDatabase>{
+  static async connect(connectionString:string,settings:{schema?:string;sslCa?:string}={}):Promise<PostgresDatabase>{
     // TLS follows the connection string/PG environment. Never disable certificate
     // verification globally; managed providers supply their own trusted CA policy.
-    const pool=new pg.Pool({connectionString,max:10,connectionTimeoutMillis:10000,idleTimeoutMillis:30000});
+    const pool=new pg.Pool(postgresConnectionConfig(connectionString,settings));
     await pool.query('SELECT 1');return new PostgresDatabase(pool);
   }
   async query<T=Record<string,unknown>>(sql:string,params:SqlValue[]=[]):Promise<SqlResult<T>>{
@@ -60,4 +60,14 @@ export class PostgresDatabase implements SqlDatabase {
     finally{client.release();}
   }
   async close(){await this.pool.end();}
+}
+
+/** Private application schemas keep Supabase's browser Data API outside the game store. */
+export function postgresConnectionConfig(connectionString:string,settings:{schema?:string;sslCa?:string}={}):pg.PoolConfig{
+  if(settings.schema&&!/^[a-z][a-z0-9_]{0,62}$/.test(settings.schema))throw new Error('Invalid DATABASE_SCHEMA.');
+  const url=new URL(connectionString);
+  if(settings.sslCa)for(const key of ['sslmode','sslcert','sslkey','sslrootcert'])url.searchParams.delete(key);
+  return {connectionString:url.toString(),max:10,connectionTimeoutMillis:10000,idleTimeoutMillis:30000,
+    ...(settings.schema?{options:`-c search_path=${settings.schema}`} : {}),
+    ...(settings.sslCa?{ssl:{ca:settings.sslCa,rejectUnauthorized:true}}:{})};
 }

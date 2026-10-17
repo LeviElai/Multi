@@ -140,3 +140,17 @@ test('cross-origin WebSocket handshakes are rejected', {timeout:25000},async()=>
   try{const failed=new Promise<Error>(resolve=>socket.once('connect_error',resolve));socket.connect();const error=await failed;assert.ok(error);assert.equal(socket.connected,false);}
   finally{socket.disconnect();await runtime.stop();await rm(directory,{recursive:true,force:true});}
 });
+
+test('migration maintenance blocks API and socket traffic while retaining deployment health', {timeout:25000},async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'multigame-maintenance-e2e-'));
+  const runtime=await launch({...process.env,NODE_ENV:'test',DATABASE_URL:'',SQLITE_PATH:join(directory,'test.sqlite'),AUTO_MIGRATE:'1',MAINTENANCE_MODE:'1',MIGRATION_TARGET_DATABASE_URL:'',PORT:'0',HOST:'127.0.0.1',PUBLIC_ORIGIN:publicOrigin,PIN_PEPPER:randomBytes(32).toString('hex'),AUTH_BOOTSTRAP_EMAIL:'',AUTH_BOOTSTRAP_PASSWORD:''});
+  const socket=io(runtime.url,{autoConnect:false,transports:['websocket'],reconnection:false,timeout:4000,extraHeaders:{Origin:publicOrigin},auth:{sessionId:randomUUID()}});
+  try{
+    const health=await fetch(runtime.url+'/health/ready');assert.equal(health.status,200);assert.deepEqual(await health.json(),{status:'ready',maintenance:true});
+    for(const [path,method]of [['/api/v1/features','GET'],['/api/auth/register','POST'],['/api/v1/sessions/join','POST']]){
+      const response=await fetch(runtime.url+path,{method,headers:{Origin:publicOrigin}});
+      assert.equal(response.status,503);assert.equal((await response.json() as Envelope<unknown>).error?.code,'MAINTENANCE');
+    }
+    const failed=new Promise<Error>(resolve=>socket.once('connect_error',resolve));socket.connect();assert.ok(await failed);assert.equal(socket.connected,false);
+  }finally{socket.disconnect();await runtime.stop();await rm(directory,{recursive:true,force:true});}
+});

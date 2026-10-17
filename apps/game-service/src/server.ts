@@ -72,6 +72,12 @@ async function sendResponse(res:ServerResponse,response:Response,secure:boolean,
 }
 
 export async function startGameServer(environment:NodeJS.ProcessEnv=process.env) {
+  const maintenance=environment.MAINTENANCE_MODE==='1';
+  if(environment.MIGRATION_TARGET_DATABASE_URL){
+    if(!maintenance)throw new Error('Database copying requires maintenance mode.');
+    const {copyPostgresDatabase}=await import('../../../scripts/copy-postgres');
+    await copyPostgresDatabase(environment);
+  }
   const production=environment.NODE_ENV==='production';
   const publicOrigin=environmentOrigin(environment.PUBLIC_ORIGIN,production);
   const secure=publicOrigin.startsWith('https:');
@@ -98,8 +104,9 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
       if(path==='/health/live')return await sendResponse(res,Response.json({status:draining?'draining':'live'},{status:draining?503:200}),secure,null);
       if(path==='/health/ready'){
         if(draining)throw new DomainError('DRAINING','Service is draining.',503);
-        await db.query('SELECT 1');return await sendResponse(res,Response.json({status:'ready'}),secure,null);
+        await db.query('SELECT 1');return await sendResponse(res,Response.json({status:'ready',...(maintenance?{maintenance:true}:{})}),secure,null);
       }
+      if(maintenance)throw new DomainError('MAINTENANCE','Database migration in progress. Please try again shortly.',503);
       if(draining)throw new DomainError('DRAINING','Service is restarting. Retry shortly.',503);
       if(origin&&!allowedOrigin)throw new DomainError('ORIGIN_DENIED','Origin is not permitted.',403);
       if(!['GET','HEAD','OPTIONS'].includes(req.method??'GET')&&!allowedOrigin)throw new DomainError('ORIGIN_REQUIRED','A matching Origin header is required.',403);
@@ -129,7 +136,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
   const io=new SocketServer(server,{
     transports:['websocket','polling'],maxHttpBufferSize:32768,serveClient:false,
     cors:{origin:[...origins],credentials:true},
-    allowRequest:(req,callback)=>callback(null,!draining&&typeof req.headers.origin==='string'&&origins.has(req.headers.origin)),
+    allowRequest:(req,callback)=>callback(null,!maintenance&&!draining&&typeof req.headers.origin==='string'&&origins.has(req.headers.origin)),
     connectionStateRecovery:undefined,
   });
   async function authorize(connection:Connected):Promise<Principal> {
@@ -198,10 +205,10 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
   });
   // Poll committed canonical state; no transient pub/sub message is necessary for recovery.
   const timer=setInterval(async()=>{
-    if(ticking||draining)return;ticking=true;
+    if(ticking||draining||maintenance)return;ticking=true;
     try {await engine.reconcile();await broadcastSnapshots();}catch(error){log('reconcile_failed',{errorType:error instanceof Error?error.name:'unknown'});}finally{ticking=false;}
   },500);timer.unref();
-  await engine.reconcile();
+  if(!maintenance)await engine.reconcile();
   const port=Number(environment.PORT??4001);const host=environment.HOST??'0.0.0.0';
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
   log('service_started',{port:(server.address()as{port:number}).port,stage:features.stage,storage:db.dialect});

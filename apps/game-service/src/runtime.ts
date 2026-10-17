@@ -7,7 +7,7 @@ import type { SqlDatabase } from '../../../packages/db/src/types';
 
 export type RuntimeDatabase=SqlDatabase & {migrate(sql:string):Promise<void>|void;close():Promise<void>|void};
 export async function createRuntimeDatabase(environment:NodeJS.ProcessEnv=process.env):Promise<RuntimeDatabase> {
-  if(environment.DATABASE_URL) return PostgresDatabase.connect(environment.DATABASE_URL);
+  if(environment.DATABASE_URL) return PostgresDatabase.connect(environment.DATABASE_URL,{schema:environment.DATABASE_SCHEMA,sslCa:environment.DATABASE_SSL_CA});
   if(environment.NODE_ENV==='production')throw new Error('DATABASE_URL is required in production. SQLite is development/test only.');
   return new NodeSqliteDatabase(environment.SQLITE_PATH??'./multigame-dev.sqlite');
 }
