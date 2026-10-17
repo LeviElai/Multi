@@ -32,3 +32,25 @@ test('Vercel proxy removes decoded compression headers, preserves cookies, and s
     if(previous===undefined)delete process.env.GAME_SERVICE_URL;else process.env.GAME_SERVICE_URL=previous;
   }
 });
+
+test('Vercel proxy bounds backend requests and returns safe JSON on connection failure', async () => {
+  const previous = process.env.GAME_SERVICE_URL;
+  const original = globalThis.fetch;
+  process.env.GAME_SERVICE_URL = 'https://backend.example.test';
+  globalThis.fetch = async (_input, options) => {
+    assert.ok(options?.signal, 'upstream requests must have a cancellation deadline');
+    throw new Error('private upstream diagnostics must not escape');
+  };
+  try {
+    const response = await siteApi(new Request('https://frontend.example.test/api/v1/sessions/test/snapshot'));
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    const body = await response.json() as {error:{code:string;message:string}};
+    assert.equal(body.error.code, 'SERVICE_UNAVAILABLE');
+    assert.match(body.error.message, /last acknowledged answer is safe/);
+    assert.doesNotMatch(JSON.stringify(body), /private upstream/);
+  } finally {
+    globalThis.fetch = original;
+    if (previous === undefined) delete process.env.GAME_SERVICE_URL; else process.env.GAME_SERVICE_URL = previous;
+  }
+});

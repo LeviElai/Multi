@@ -6,12 +6,13 @@ import {D1DatabaseAdapter} from '../../../packages/db/src/d1';
  * the persistent service; GAME_SERVICE_URL also supports standalone Next. */
 export async function siteApi(request:Request):Promise<Response>{
  if(process.env.GAME_SERVICE_URL){
+  try {
    const source=new URL(request.url);const target=new URL(source.pathname+source.search,process.env.GAME_SERVICE_URL);
    const headers=new Headers(request.headers);headers.delete('host');headers.delete('oai-authenticated-user-id');headers.delete('oai-authenticated-user-email');headers.delete('oai-authenticated-user-full-name');
    // Node authenticates using its own secure cookie. No browser identity header
    // is promoted to a trusted creator identity by this fallback proxy.
    headers.set('accept-encoding','identity');
-   const response=await fetch(target,{method:request.method,headers,body:['GET','HEAD'].includes(request.method)?undefined:await request.arrayBuffer(),redirect:'manual'});
+   const response=await fetch(target,{method:request.method,headers,body:['GET','HEAD'].includes(request.method)?undefined:await request.arrayBuffer(),redirect:'manual',signal:AbortSignal.any([request.signal,AbortSignal.timeout(12000)])});
    if(source.pathname==='/api/v1/features' && response.ok){const body=await response.json() as {data:Record<string,unknown>};return Response.json({data:{...body.data,transport:'polling',auth:'credentials'}},{headers:{'Cache-Control':'no-store'}});}
    // fetch decodes upstream compression; forwarding its original encoding or
    // length would make the browser decode the already-decoded stream again.
@@ -19,6 +20,9 @@ export async function siteApi(request:Request):Promise<Response>{
    responseHeaders.delete('content-encoding');responseHeaders.delete('content-length');responseHeaders.delete('transfer-encoding');
    responseHeaders.set('Cache-Control','no-store');
    return new Response(response.body,{status:response.status,headers:responseHeaders});
+  } catch {
+   return Response.json({error:{code:'SERVICE_UNAVAILABLE',message:'The game service could not be reached. Your last acknowledged answer is safe. Please try again.'}},{status:503,headers:{'Cache-Control':'no-store'}});
+  }
  }
  try{
    const moduleName='cloudflare:workers';
