@@ -1,11 +1,11 @@
 MULTIGAME PostgreSQL migration to Supabase
 
-Status: prepared, not executed. Production remains on the existing Render database.
-New MULTIGAME organization created: aghlborqfrqopzvfaafx. Project creation is blocked.
-Supabase rejected a third free project in BUILD4.ME because the account already
-owns/administers two active free projects. The new organization dashboard confirms
-that it is subject to the same account-wide limit. Do not pause unrelated projects or purchase paid capacity
-without the user's explicit choice.
+Status: destination prepared; production copy and cutover pending.
+Destination: MULTIGAME, project wceqphhlgnqhlcxijtsg, Frankfurt.
+Organization: wkubrryumjwpcqtoubck (alternate account, free plan).
+Private multigame schema and dedicated server role created; 37 tables initialized.
+Session pooler connection tested with TLS 1.3 and verified hostname/CA.
+The dashboard Data API remains disabled. Unrelated projects were not modified.
 
 Architecture
 Supabase PostgreSQL becomes the persistent datastore. The Node game server and its
