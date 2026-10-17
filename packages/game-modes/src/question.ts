@@ -5,6 +5,15 @@ export type QuestionType='single'|'multiple'|'boolean';
 export type AnswerKind='integer'|'approximate'|'decimal'|'boolean'|'choice'|'word'|'multiple'|'list'|'size'|'text';
 export type QuestionAnswer={type:QuestionType;kind:AnswerKind;text:string;answer:string;alternatives:string[];distractors:string[];unit:string;exact:boolean;requiredCount?:number};
 export type Recommendation={games:ModeId[];reason:string;missing?:string;confidence:'high'|'moderate'|'low'};
+/** Magnitude buckets do not expose the target count. Large blocks plus units
+ * keep exact answers representable; reject rounds needing too many placements. */
+export function stackScale(n:number){
+ const unit=10**Math.max(0,Math.ceil(Math.log10(Math.max(1,n)/100)));
+ const values=[...new Set([1,unit,unit*5,unit*10])].sort((a,b)=>a-b);
+ let remaining=n,placements=0;
+ for(const value of [...values].reverse()){placements+=Math.floor(remaining/value);remaining%=value;}
+ return {unit,values,placements,practical:Number.isSafeInteger(n)&&n>=0&&n<=99999999&&placements<=32};
+}
 export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  const result=(games:ModeId[],reason:string,missing?:string,confidence:Recommendation['confidence']='high')=>({games,reason,missing,confidence});
  if(q.kind==='size')return result(['size_it_up'],'A calibrated target and reference are needed.');
@@ -13,7 +22,7 @@ export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  if(q.type==='multiple'&&q.kind!=='list'&&q.answer.split('|').filter(s=>s.trim()).length+q.distractors.filter(s=>s.trim()).length>6)return result([],'Fish supports up to six choices.','Split this question into smaller questions. Your answers remain saved.','low');
  if(q.type==='multiple')return q.kind==='list'?result([],'Lists need to be rewritten as a choice question.','Enter the correct choices and at least one incorrect choice.','low'):q.distractors.some(s=>s.trim())?result(['fish'],'Catch every correct fish, then reel in your selection.'):result([],'Add an incorrect choice to make a playable fishing question.','Add at least one incorrect choice.','low');
 
- if(q.kind==='word')return /^[A-Za-z]{3,12}$/.test(q.answer)?result(['word_puzzle'],'A hidden word with letter feedback.'):result(['answer'],'Guess needs a single word of 3–12 letters.','Use a shorter word or keep text entry.','low');
+ if(q.kind==='word')return /^[A-Za-z]{3,12}$/.test(q.answer)?result(['word_puzzle'],'A hidden word with letter feedback.'):result([],'Guess needs a single word of 3–12 letters.','Use a shorter word or add incorrect choices.','low');
  if(q.kind==='choice'){
   if(q.distractors.filter(s=>s.trim()).length>5)return result([],'Use up to six total choices.','Split this question into smaller questions. Your choices remain saved.','low');
   if(q.distractors.filter(s=>s.trim()).length<1)return result([],'Add incorrect choices to unlock the arcade games.','Add at least one incorrect choice.','low');
@@ -21,13 +30,13 @@ export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
   return result(games,'One correct answer and distinct alternatives.');
  }
  if(q.kind==='text')return result([],'Add incorrect choices for Fish, Claw or Sling.','Or choose Hidden word for a word-guessing question.','low');
- const n=Number(q.answer),whole=Number.isSafeInteger(n);
+ const n=Number(q.answer),whole=Number.isSafeInteger(n),stack=stackScale(n).practical?['stack' as const]:[];
  if(!Number.isFinite(n)||Math.abs(n)>1e15)return result([],'Enter a supported numerical answer.',undefined,'low');
- if(q.kind==='approximate'||!q.exact)return result(['fermi',...(whole&&n>=0&&n<=999999?['stack' as const,'draw' as const]:[])],'This answer is scored by proximity.');
+ if(q.kind==='approximate'||!q.exact)return result(['fermi',...(whole&&n>=0&&n<=999999?[...stack,'draw' as const]:[])],'This answer is scored by proximity.');
  if(whole&&n>=0&&n<=99999999&&(/\b(code|pin|digits?)\b/i.test(q.text)||/\b(in what year|which year|what year|year did|year was|year were|year of|born in|founded in)\b/i.test(q.text)))return result(['crack','draw','fermi'],'An exact year or code belongs on digit wheels.');
  if(!whole||n<0)return result(['fermi'],'Use exact numeric entry for decimals and negative values.');
- if(n<=120&&!/\b(year|code|percent|temperature|degrees?)\b/i.test(q.text+' '+q.unit))return result(['amountle','stack','draw','fermi'],'A small whole quantity works well with pouring.');
- if(n<=999999)return result(['stack','draw','crack','fermi'],'A whole number can be built, drawn or entered exactly.');
+ if(n<=120&&!/\b(year|code|percent|temperature|degrees?)\b/i.test(q.text+' '+q.unit))return result(['amountle',...stack,'draw','fermi'],'A small whole quantity works well with pouring.');
+ if(n<=999999)return result([...stack,'draw','crack','fermi'],'A whole number can be built, drawn or entered exactly.');
  return result(['fermi'],'Exact numeric entry keeps a large answer practical.');
 }
 export function answerFromRound(r:Round):QuestionAnswer{
@@ -58,8 +67,8 @@ export function roundFromAnswer(q:QuestionAnswer,mode:ModeId,old:Round):Round{
   // Deterministic shuffle hides answer position without using the answer's value as a cue.
   c.options.sort((a,b)=>hash(old.id+a.id)-hash(old.id+b.id));
   c.codeLength=Math.max(1,Math.min(8,q.answer.length));c.max=r.mode==='crack'?10**c.codeLength-1:99999999;c.min=0;
-  const scale=safe>10000?10**Math.max(0,Math.floor(Math.log10(safe))-2):1;
-  c.step=safe%scale===0?scale:1;c.blockValues=[1,5,10,25].map(v=>v*c.step);c.tolerance=Math.max(10,Math.abs(safe));
+  const scaling=stackScale(safe);
+  c.step=1;c.blockValues=scaling.values;if(r.mode==='stack')r.timerSeconds=Math.max(40,old.timerSeconds); c.tolerance=Math.max(10,Math.abs(safe));
  }
  return r;
 }
