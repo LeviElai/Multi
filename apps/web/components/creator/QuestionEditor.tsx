@@ -30,14 +30,14 @@ export function QuestionEditor({round,recent,onChange}:{round:Round;recent:ModeI
    const quiz=await api<{id:string;rounds:Round[]}>('/quizzes/'+result.quizId,{signal:controller.signal});
    const item=quiz.rounds[0];if(!('options' in item.publicConfig)||!('correctOptionIds' in item.secretConfig))throw new Error('Check the generated draft in My quizzes.');
    const correctIds=item.secretConfig.correctOptionIds;const labels=item.publicConfig.options.filter(o=>!correctIds.includes(o.id)).map(o=>o.label);
-   if(latestQ.current.text!==original.text||latestQ.current.answer!==original.answer){setAiMessage('Your question changed. The suggestions are saved as a private draft in My quizzes.');return;}
-   setDistractorText(labels.join('\n'));setFormat('choice');setManual(null);update({distractors:labels,kind:'choice'},'choice',null);
+   if(JSON.stringify(latestQ.current)!==JSON.stringify(original)){setAiMessage('Your question changed. The suggestions are saved as a private draft in My quizzes.');return;}
+   setDistractorText(labels.join('\n'));setFormat('choice');setManual(null);update({distractors:labels,kind:'choice'},'choice',null,true);
    await api('/quizzes/'+quiz.id,{method:'DELETE',signal:controller.signal});
    setAiMessage('Suggestions added · 1 question credit used. Review every option before publishing.');
   }catch(e){if(!controller.signal.aborted)setAiMessage(e instanceof Error?e.message:'Could not suggest choices.');}
   finally{aiBusy.current=false;if(!controller.signal.aborted)setGenerating(false);}
  }
- function update(patch:Partial<QuestionAnswer>,nextFormat=format,nextManual=manual){
+ function update(patch:Partial<QuestionAnswer>,nextFormat=format,nextManual=manual,needsReview=false){
   const next={...q,...patch};
   if(next.type==='boolean'){next.kind='boolean';next.exact=true;}
   else if(next.type==='multiple'){next.kind=nextFormat==='list'?'list':'multiple';next.exact=true;}
@@ -45,7 +45,7 @@ export function QuestionEditor({round,recent,onChange}:{round:Round;recent:ModeI
   else next.kind=nextFormat;
   if(nextFormat==='approximate'&&format!=='approximate')next.exact=false;
   const rec=recommend(next,recent),mode=nextManual&&rec.games.includes(nextManual)?nextManual:rec.games[0];
-  setQ(next);onChange(roundFromAnswer(next,mode,round));
+  setQ(next);onChange({...roundFromAnswer(next,mode,round),provenance:needsReview?'needs_review':round.provenance});
  }
  const number=['integer','decimal','approximate'].includes(q.kind);
  if(legacy)return <div className="notice"><h3>Review this question’s answer format</h3><p>{round.question}</p><p>Preserved answers: {q.answer.split('|').join(', ')}</p><p>The old rarity game is retired. Decide what players should do before converting this question.</p><div className="button-row"><button className="btn btn-outline" onClick={()=>{setLegacy(false);setFormat('list');update({type:'multiple',kind:'list'},'list',null);}}>Require the complete list</button><button className="btn btn-outline" onClick={()=>{setLegacy(false);setFormat('multiple');update({type:'multiple',kind:'multiple'},'multiple',null);}}>Select every correct option</button></div><small>Both formats keep the original answer set. Review the wording to match your choice.</small></div>;
