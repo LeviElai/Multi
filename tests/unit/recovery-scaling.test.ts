@@ -14,3 +14,8 @@ test('impractical Stack tails prefer another game; unsupported words never expos
  assert.equal(stackScale(100099).practical,false);
  const q:QuestionAnswer={type:'single',kind:'integer',text:'How many?',answer:'100099',alternatives:[],distractors:[],unit:'',exact:true};assert.ok(!recommend(q).games.includes('stack'));assert.equal(recommend(q).games[0],'draw');assert.deepEqual(recommend({...q,kind:'word',answer:'two words'}).games,[]);
 });
+
+test('older published Stack rounds get usable blocks without rewriting saved answers or scoring',async()=>{
+ const {getDefaultRound,publicQuestionProjection}=await import('../../packages/game-modes/src/index');const r=getDefaultRound('stack');assert.ok(isArcade(r));r.secretConfig.answer=4000;r.publicConfig.max=100000;r.publicConfig.step=1;r.publicConfig.blockValues=[1,5,10,25];const before=JSON.stringify(r);
+ const shown=publicQuestionProjection(r);assert.ok('blockValues' in shown.publicConfig);assert.ok(shown.publicConfig.blockValues.includes(100));assert.ok(shown.publicConfig.blockValues.includes(1000));assert.equal(JSON.stringify(r),before);assert.equal(scoreArcade(r,sanitizeAndValidateSubmission(r,{value:4000})).points,1000);assert.ok(!JSON.stringify(shown).includes('secretConfig'));
+});

@@ -5,15 +5,8 @@ export type QuestionType='single'|'multiple'|'boolean';
 export type AnswerKind='integer'|'approximate'|'decimal'|'boolean'|'choice'|'word'|'multiple'|'list'|'size'|'text';
 export type QuestionAnswer={type:QuestionType;kind:AnswerKind;text:string;answer:string;alternatives:string[];distractors:string[];unit:string;exact:boolean;requiredCount?:number};
 export type Recommendation={games:ModeId[];reason:string;missing?:string;confidence:'high'|'moderate'|'low'};
-/** Magnitude buckets do not expose the target count. Large blocks plus units
- * keep exact answers representable; reject rounds needing too many placements. */
-export function stackScale(n:number){
- const unit=10**Math.max(0,Math.ceil(Math.log10(Math.max(1,n)/100)));
- const values=[...new Set([1,unit,unit*5,unit*10])].sort((a,b)=>a-b);
- let remaining=n,placements=0;
- for(const value of [...values].reverse()){placements+=Math.floor(remaining/value);remaining%=value;}
- return {unit,values,placements,practical:Number.isSafeInteger(n)&&n>=0&&n<=99999999&&placements<=32};
-}
+import {stackScale} from './stack-scale';
+export {stackScale} from './stack-scale';
 export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  const result=(games:ModeId[],reason:string,missing?:string,confidence:Recommendation['confidence']='high')=>({games,reason,missing,confidence});
  if(q.kind==='size')return result(['size_it_up'],'A calibrated target and reference are needed.');

@@ -1,3 +1,4 @@
+import {stackScale} from './stack-scale';
 import { QuizInputSchema, RoundSchema } from '../../contracts/src/index';
 import type {
   Award, PublicRound, QuizInput, Reveal, ReviewItem, Round, SessionData, Submission, ValidationIssue, WordAttempt,
@@ -79,6 +80,13 @@ function deepFreeze<T>(value: T): T {
 /** An explicit allowlist, including nested Zod-stripped config; never serialize a Round directly. */
 export function publicQuestionProjection(round: Round): PublicRound {
   const clean = RoundSchema.parse(round);
+  if(clean.mode==='stack'){
+    // Older published rounds may have tiny denominations. Repair only their
+    // presentation, keeping the stored version, answer and accepted step intact.
+    let left=Number(clean.secretConfig.answer),placements=0;
+    for(const value of [...clean.publicConfig.blockValues].sort((a,b)=>b-a)){placements+=Math.floor(left/value);left%=value;}
+    if(placements>32||left){const step=clean.publicConfig.step;clean.publicConfig.blockValues=[...new Set([step,...stackScale(Number(clean.secretConfig.answer)).values.filter(v=>v%step===0)])].sort((a,b)=>a-b);}
+  }
   return deepFreeze({
     id: clean.id, mode: clean.mode, schemaVersion: clean.schemaVersion,
     question: clean.question, timerSeconds: clean.timerSeconds, maxPoints: clean.maxPoints,
