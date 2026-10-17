@@ -1,10 +1,10 @@
 MULTIGAME PostgreSQL migration to Supabase
 
 Status: prepared, not executed. Production remains on the existing Render database.
-Requested destination: a new MULTIGAME organization and project.
+New MULTIGAME organization created: aghlborqfrqopzvfaafx. Project creation is blocked.
 Supabase rejected a third free project in BUILD4.ME because the account already
-owns/administers two active free projects. A new organization may still be subject
-to this account-wide limit. Do not pause unrelated projects or purchase paid capacity
+owns/administers two active free projects. The new organization dashboard confirms
+that it is subject to the same account-wide limit. Do not pause unrelated projects or purchase paid capacity
 without the user's explicit choice.
 
 Architecture

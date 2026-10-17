@@ -71,6 +71,8 @@ export async function copyPostgresDatabase(environment:NodeJS.ProcessEnv){
     for(const table of order)await to.query(`ALTER TABLE ${quoteIdentifier(targetSchema)}.${quoteIdentifier(table)} ENABLE ROW LEVEL SECURITY`);
     await to.query(`REVOKE ALL ON SCHEMA ${quoteIdentifier(targetSchema)} FROM PUBLIC,anon,authenticated`);
     await to.query(`REVOKE ALL ON ALL TABLES IN SCHEMA ${quoteIdentifier(targetSchema)} FROM anon,authenticated`);
+    await to.query(`REVOKE ALL ON ALL FUNCTIONS IN SCHEMA ${quoteIdentifier(targetSchema)} FROM PUBLIC,anon,authenticated`);
+    for(const name of ['prevent_published_version_mutation','prevent_published_round_mutation'])await to.query(`ALTER FUNCTION ${quoteIdentifier(targetSchema)}.${quoteIdentifier(name)}() SET search_path TO ${quoteIdentifier(targetSchema)},pg_catalog`);
     await to.query('COMMIT');await from.query('COMMIT');
     process.stdout.write(JSON.stringify({event:'database_copy_verified',sourceSchema,targetSchema,tables:report.length,rows:report.reduce((n,r)=>n+r.rows,0),report})+'\n');
   }catch(error){await to?.query('ROLLBACK').catch(()=>{});await from?.query('ROLLBACK').catch(()=>{});throw error;}
