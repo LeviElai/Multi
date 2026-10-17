@@ -63,3 +63,11 @@ export function getWorkshopQuiz(): QuizInput {
  }
  return quiz;
 }
+
+/** A new authored round starts with no example question or reveal. Saved quizzes are untouched. */
+export function getEmptyRound(mode:ModeId):Round{
+ const round=getDefaultRound(mode);round.question='';round.explanation='';
+ if(round.mode==='rare_answers')round.secretConfig.answers=[];
+ if(round.mode==='word_puzzle')round.secretConfig.answer='';
+ return round;
+}

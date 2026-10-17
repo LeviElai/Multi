@@ -115,7 +115,7 @@ export class GameEngine {
     throw new DomainError('ROOM_UNAVAILABLE', 'Unable to reserve a room. Please try again.', 503);
   }
 
-  async join(pinInput: string, nicknameInput: string): Promise<{ sessionId: string; participantId: string; token: string }> {
+  async join(pinInput: string, nicknameInput: string, avatar?:Avatar): Promise<{ sessionId: string; participantId: string; token: string }> {
     const pin = pinInput.replace(/\s/g, '');
     if (!/^\d{6}$/.test(pin)) throw new DomainError('ROOM_UNAVAILABLE', 'Check the six-digit room PIN.', 404);
     const nickname = sanitizeNickname(nicknameInput);
@@ -123,7 +123,7 @@ export class GameEngine {
     if (!data || TERMINAL.has(data.session.state)) throw new DomainError('ROOM_UNAVAILABLE', 'This room is unavailable or has ended.', 404);
     if (data.session.joinLocked) throw new DomainError('JOIN_LOCKED', 'The host has closed joining for this room.', 409);
     const token = opaqueToken();
-    const result = await this.store.addPlayer(data.session.id, nickname, await digestToken(token), data.session.maxPlayers);
+    const result = await this.store.addPlayer(data.session.id, nickname, await digestToken(token), data.session.maxPlayers, avatar);
     return { sessionId: data.session.id, participantId: result.participantId, token };
   }
 

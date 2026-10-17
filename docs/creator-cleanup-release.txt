@@ -1,0 +1,12 @@
+MULTIGAME creator cleanup — 17 October 2026
+
+Recovery checkpoint: 67b698fc45fec3d1460f3fb8a637bbd779a2e9b3.
+The new migration is additive: one compact appearance record per account and a safe generation error code. Existing drafts, published versions, memberships, answers and scores remain intact. The previous app version can run with this migration present.
+
+Creator: compact AI entry, blank new questions, first-publish details dialog, explicit library opt-in and visible share action. Obsolete audience/theme controls removed. Join copy simplified.
+Account: durable character editing and a prominent billing link. Billing shows the real monthly allowance, used, reserved, bonus, remaining and reset date. Character artwork/editor is loaded only when needed.
+Think v3.2: bounded spelling tolerance, ambiguous corrections reviewed, valid-answer base score and confidence-adjusted rarity. Two different valid answers earn 400 each; a match earns 200. No LLM judging or paid retry loop.
+AI: local formatting cleanup, complete-category instructions, host review for unexpected generated Think answers, safe diagnostic codes and quota refunds. Existing token limits, monthly/daily caps, retention and small connection pool retained.
+Ads: publisher approval and ad setup remain pending. Unavailable ads show an explanation instead of a disabled reward button. No ad revenue is claimed and no paid plan was enabled.
+
+Validation: typecheck, 135 unit/integration tests, 3 HTTP/Socket.IO end-to-end tests, optimized Next production build. Browser checks: 390px create/billing without overflow, blank Size question, first-publish dialog, library listing, saved character survives reload, misspelled Think answer scores. Production smoke checks are reported in chat.

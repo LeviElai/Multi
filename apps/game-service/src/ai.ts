@@ -1,3 +1,4 @@
+import {normalizeAnswer} from '../../../packages/game-modes/src/shared';
 import { z } from 'zod';
 import { DomainError, MODES, QuizInputSchema, type QuizInput, type Round } from '../../../packages/contracts/src/index';
 import type { Store } from '../../../packages/db/src/types';
@@ -6,7 +7,7 @@ import { digestToken, idempotentId } from './security';
 
 export const GenerationInput = z.object({topic:z.string().trim().min(3).max(300),count:z.number().int().min(1).max(20),language:z.literal('en').default('en'),difficulty:z.enum(['easy','mixed','challenging']).default('mixed'),instructions:z.string().trim().max(600).default(''),modes:z.array(z.enum(MODES)).min(1).max(5).default(['fermi','rare_answers','word_puzzle'])}).strict();
 export type GenerationRequest=z.infer<typeof GenerationInput>;
-type Job={id:string;owner_id:string;request_json:string;request_hash:string;status:string;requested:number;period:string;result_json:string|null;quiz_id:string|null;lease_token:string|null;updated_at:string};
+type Job={id:string;owner_id:string;request_json:string;request_hash:string;status:string;requested:number;period:string;result_json:string|null;quiz_id:string|null;lease_token:string|null;error_code?:string|null;updated_at:string};
 export const quotaPeriod=(now=new Date())=>now.toISOString().slice(0,7);
 export async function quota(store:Store,owner:string,now=new Date()){
  const period=quotaPeriod(now);
@@ -28,11 +29,12 @@ export async function queueGeneration(store:Store,owner:string,key:string,input:
  if(job.status==='rejected')throw new DomainError('AI_QUOTA','You have no room for that many questions this month. Try a smaller quiz.',429);
  return jobView(job);
 }
-const jobView=(job:Job)=>({id:job.id,status:job.status,quizId:job.quiz_id,message:job.status==='failed'?'We could not make a valid quiz. Your questions were returned.':undefined});
+const jobView=(job:Job)=>({id:job.id,status:job.status,quizId:job.quiz_id,message:job.status==='failed'?(job.error_code==='PROVIDER_UNAVAILABLE'?'The question maker is temporarily unavailable. Your credits were returned.':job.error_code==='TIMEOUT'?'The request took too long. Your credits were returned.':'The draft did not pass the game checks. Your credits were returned. Try a narrower topic or fewer game types.'):undefined});
+function failureCode(error:unknown){const message=error instanceof Error?error.message:'';return /timeout|abort|Incomplete generation/i.test(message)?'TIMEOUT':/Provider status|fetch failed/i.test(message)?'PROVIDER_UNAVAILABLE':error instanceof z.ZodError?'ANSWER_FORMAT':'GAME_CHECK';}
 export async function generationStatus(store:Store,owner:string,id:string){const job=(await store.db.query<Job>('SELECT * FROM creator_generations WHERE id=? AND owner_id=?',[id,owner])).rows[0];if(!job)throw new DomainError('NOT_FOUND','This generation is unavailable.',404);return jobView(job);}
 
 // Structured, bounded output; the model cannot select IDs, provenance, URLs or execute tools.
-const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),answer:z.number().finite().optional(),unit:z.string().max(20).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(3)})).min(4).max(12).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
+const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),answer:z.number().finite().optional(),unit:z.string().max(20).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(8)})).min(2).max(32).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
 export function validatedGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const parsed=generatedSchema.parse(value);
  if(input.count>=input.modes.length&&input.modes.some(mode=>!parsed.questions.some(q=>q.mode===mode)))throw new Error('Missing requested mode');
@@ -43,7 +45,7 @@ export function validatedGeneration(value:unknown,input:GenerationRequest):QuizI
   if(r.mode==='fermi'){if(q.answer===undefined||q.answer<=0)throw new Error('Numeric answer required');r.secretConfig.answer=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'',max:Math.min(1e15,Math.max(100,q.answer*8)),tolerance:q.answer,step:Number.isInteger(q.answer)?1:0.001};}
   if(r.mode==='amountle'){if(q.answer===undefined||!Number.isInteger(q.answer)||q.answer<1||q.answer>1000)throw new Error('Count must be 1–1000');r.secretConfig.answer=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'items',maxCount:Math.min(10000,Math.max(30,q.answer*2)),tolerance:Math.max(10,q.answer/2)};}
   if(r.mode==='word_puzzle'){if(!q.word)throw new Error('Word required');if(new RegExp('\\b'+q.word+'\\b','i').test(q.question))throw new Error('Clue gives away the word');r.secretConfig.answer=q.word;r.publicConfig.length=q.word.length;}
-  if(r.mode==='rare_answers'){if(!q.answers)throw new Error('Scoped answer set required');r.secretConfig.answers=q.answers;}
+  if(r.mode==='rare_answers'){if(!q.answers)throw new Error('Scoped answer set required');r.secretConfig.answers=q.answers;r.publicConfig.adjudication='host_review';}
   if(r.mode==='size_it_up'){if(!q.referenceSize||!q.answer||q.answer<=0||!q.referenceLabel||!q.targetLabel||!q.asset||!q.referenceAsset)throw new Error('Size fields required');const ratio=q.answer/q.referenceSize;if(ratio<0.4||ratio>3.5)throw new Error('Unplayable size ratio');r.secretConfig.targetSize=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'m',referenceSize:q.referenceSize,referenceLabel:q.referenceLabel,targetLabel:q.targetLabel,asset:q.asset,referenceAsset:q.referenceAsset,minRatio:Math.max(0.1,ratio/3),maxRatio:Math.min(6,Math.max(3,ratio*2))};}
   return r;
  });
@@ -57,7 +59,7 @@ export function generationPlan(input:GenerationRequest){
   fermi:'fermi answerData: {"answer":144,"unit":"tiles"}. Positive numeric answer (at most 3 decimals), interesting estimation or self-contained arithmetic.',
   amountle:'amountle answerData: {"groups":6,"perGroup":8,"unit":"sweets"}. Use a self-contained multiplication challenge relevant to the topic, with both factors as digits in the question. Both factors are integers 2..50, product <=1000. Server computes the answer. unit MUST match the counted noun in your question. Never give the product. Do not use biological trivia.',
   word_puzzle:'word_puzzle answerData: {"word":"ORBIT"}. English word 3..12 uppercase letters. Write a definition clue. NEVER include the word, an anagram, or a list of its letters in the question.',
-  rare_answers:'rare_answers answerData: {"answers":[{"canonical":"Mercury","aliases":[]}]}. Include 4..12 valid entries, 0..3 genuine spelling/synonym aliases each (case is already ignored). Define a bounded category in the question without listing answers.',
+  rare_answers:'rare_answers answerData: {"answers":[{"canonical":"Mercury","aliases":[]}]}. Include 4..12 valid entries, 0..3 genuine spelling/synonym aliases each (case is already ignored). Use a small, clearly bounded category with a COMPLETE accepted set (4..12 entries), never an incomplete sample of a broad category. Do not list answers in the question.',
   size_it_up:'size_it_up answerData: {"answer":1.5,"referenceSize":1.75,"referenceLabel":"1.75 m person","targetLabel":"Car","unit":"m","asset":"car","referenceAsset":"person"}. Use EXACTLY these calibrated house measurements. Ask the player to judge the car height beside the person, without giving 1.5 or the target ratio. Explain that our reference car is 1.5 m tall; real car models vary.'
  };
  const schema={type:'object',properties:{title:{type:'string'},questions:{type:'array',items:{type:'object',properties:{mode:{type:'string',enum:input.modes},question:{type:'string'},explanation:{type:'string'},answerData:{type:'string'}},required:['mode','question','explanation','answerData']}}},required:['title','questions']};
@@ -66,11 +68,20 @@ export function generationPlan(input:GenerationRequest){
 }
 export function decodeGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const wire=z.object({title:z.string(),questions:z.array(z.object({mode:z.enum(MODES),question:z.string(),explanation:z.string(),answerData:z.string().max(12000)})).max(20)}).parse(value);
- return validatedGeneration({title:wire.title,questions:wire.questions.map(({answerData,...question})=>{const data:unknown=JSON.parse(answerData);if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Invalid answer fields');if(question.mode==='amountle'){
+ return validatedGeneration({title:wire.title,questions:wire.questions.map(({answerData,...question})=>{const data:unknown=JSON.parse(answerData.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Invalid answer fields');if(question.mode==='amountle'){
   const factors=z.object({groups:z.number().int().min(2).max(50),perGroup:z.number().int().min(2).max(50),unit:z.string().max(20)}).parse(data);
   if(!new RegExp('\\b'+factors.groups+'\\b').test(question.question)||!new RegExp('\\b'+factors.perGroup+'\\b').test(question.question))throw new Error('Count needs explicit factors');
   return {...question,answer:factors.groups*factors.perGroup,unit:factors.unit};
- }return {...data,...question};})},input);
+ }
+  const fields={...data} as Record<string,unknown>;
+  if(question.mode==='word_puzzle'&&typeof fields.word==='string')fields.word=fields.word.trim().toUpperCase();
+  if(question.mode==='rare_answers'&&Array.isArray(fields.answers)){
+    const entries=fields.answers as {canonical:unknown;aliases?:unknown}[];
+    const keys=new Set(entries.filter(e=>typeof e?.canonical==='string').map(e=>normalizeAnswer(e.canonical as string)));
+    const seen=new Set<string>(),aliasKeys=new Set<string>();
+    fields.answers=entries.filter(e=>{if(typeof e?.canonical!=='string')return true;const key=normalizeAnswer(e.canonical);if(seen.has(key))return false;seen.add(key);return true;}).map(e=>({...e,aliases:Array.isArray(e.aliases)?e.aliases.filter(a=>{if(typeof a!=='string')return true;const key=normalizeAnswer(a);if(keys.has(key)||aliasKeys.has(key))return false;aliasKeys.add(key);return true;}):[]}));
+  }
+  return {...fields,...question};})},input);
 }
 export async function geminiGenerate(input:GenerationRequest,key:string,model='gemini-3.5-flash-lite',onUsage?:RecordUsage,fetcher:typeof fetch=fetch):Promise<QuizInput>{
  if(!/^[a-zA-Z0-9.-]+$/.test(model))throw new Error('Invalid model');
@@ -91,7 +102,7 @@ export async function runGenerationWorker(store:Store,generate:(input:Generation
  const job=(await store.db.query<Job>("SELECT * FROM creator_generations WHERE status IN ('generated','queued') ORDER BY created_at LIMIT 1")).rows[0];if(!job)return false;
  if(job.status==='queued'){
   const token=crypto.randomUUID();const claim=await store.db.query("UPDATE creator_generations SET status='processing',lease_token=?,updated_at=? WHERE id=? AND status='queued'",[token,now.toISOString(),job.id]);if(!claim.changes)return false;
-  try{const quiz=await generate(GenerationInput.parse(JSON.parse(job.request_json)),async usage=>{await store.db.query("UPDATE creator_generations SET input_tokens=?,output_tokens=?,model_id=? WHERE id=? AND status='processing' AND lease_token=?",[usage.input,usage.output,usage.model,job.id,token]);});await store.db.query("UPDATE creator_generations SET status='generated',result_json=?,updated_at=? WHERE id=? AND status='processing' AND lease_token=?",[JSON.stringify(QuizInputSchema.parse(quiz)),new Date().toISOString(),job.id,token]);}catch{await failGeneration(store,job);return true;}
+  try{const quiz=await generate(GenerationInput.parse(JSON.parse(job.request_json)),async usage=>{await store.db.query("UPDATE creator_generations SET input_tokens=?,output_tokens=?,model_id=? WHERE id=? AND status='processing' AND lease_token=?",[usage.input,usage.output,usage.model,job.id,token]);});await store.db.query("UPDATE creator_generations SET status='generated',result_json=?,updated_at=? WHERE id=? AND status='processing' AND lease_token=?",[JSON.stringify(QuizInputSchema.parse(quiz)),new Date().toISOString(),job.id,token]);}catch(error){await failGeneration(store,job,failureCode(error));return true;}
  }
  const current=(await store.db.query<Job>("SELECT * FROM creator_generations WHERE id=? AND status='generated'",[job.id])).rows[0];if(!current)return true;
  const input=QuizInputSchema.parse(JSON.parse(current.result_json!));const quizId=await idempotentId('ai-draft',job.owner_id,job.id);
@@ -102,7 +113,7 @@ export async function runGenerationWorker(store:Store,generate:(input:Generation
  ]);
  return true;
 }
-async function failGeneration(store:Store,job:Job){const nonce=crypto.randomUUID();await store.db.batch([
- {sql:"UPDATE creator_generations SET status='failed',lease_token=?,updated_at=? WHERE id=? AND status='processing'",params:[nonce,new Date().toISOString(),job.id]},
+async function failGeneration(store:Store,job:Job,errorCode='TIMEOUT'){const nonce=crypto.randomUUID();await store.db.batch([
+ {sql:"UPDATE creator_generations SET status='failed',lease_token=?,updated_at=?,error_code=? WHERE id=? AND status='processing'",params:[nonce,new Date().toISOString(),errorCode,job.id]},
  {sql:'UPDATE ai_usage_periods SET reserved=reserved-? WHERE owner_id=? AND period=? AND EXISTS(SELECT 1 FROM creator_generations WHERE id=? AND lease_token=?)',params:[job.requested,job.owner_id,job.period,job.id,nonce]}
 ]);}

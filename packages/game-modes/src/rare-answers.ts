@@ -44,6 +44,28 @@ function makeCatalog(round: RareRound): Map<string, Canonical> {
   return catalog;
 }
 
+/** One insertion, deletion, substitution or adjacent swap; never fuzzy-match numbers
+ * or very short names. Ambiguous corrections require a host decision. */
+function minorTypo(a:string,b:string):boolean{
+  if(Math.min(a.length,b.length)<4||Math.abs(a.length-b.length)>1||/\d/u.test(a+b))return false;
+  if(Math.min(a.length,b.length)<6&&a[0]!==b[0])return false;
+  if(a.length===b.length){
+    const different:number[]=[];
+    for(let i=0;i<a.length;i++)if(a[i]!==b[i]){different.push(i);if(different.length>2)return false;}
+    if(different.length===1)return true;
+    const [i,j]=different;
+    return different.length===2&&j===i+1&&a[i]===b[j]&&a[j]===b[i];
+  }
+  const shorter=a.length<b.length?a:b,longer=a.length<b.length?b:a;
+  let i=0;while(i<shorter.length&&shorter[i]===longer[i])i++;
+  return shorter.slice(i)===longer.slice(i+1);
+}
+function typoMatch(key:string,catalog:Map<string,Canonical>):Resolution|null{
+  const candidates=new Map<string,Canonical>();
+  for(const [alias,canonical]of catalog)if(minorTypo(key,alias))candidates.set(canonical.key,canonical);
+  return candidates.size===1?{status:'accepted',canonical:[...candidates.values()][0]}:candidates.size>1?{status:'pending'}:null;
+}
+
 /** Latest decision wins; tie order is deterministic and independent of array order. */
 function latestDecisions(round: RareRound, adjudications: Adjudication[]): Map<string, Adjudication> {
   const result = new Map<string, Adjudication>();
@@ -53,7 +75,7 @@ function latestDecisions(round: RareRound, adjudications: Adjudication[]): Map<s
   return result;
 }
 
-function resolve(key: string, round: RareRound, catalog: Map<string, Canonical>, decisions: Map<string, Adjudication>): Resolution {
+function resolve(key: string, round: RareRound, catalog: Map<string, Canonical>, decisions: Map<string, Adjudication>, reviewAmbiguous:boolean): Resolution {
   let current = key;
   let approved = false;
   let label = key;
@@ -79,6 +101,8 @@ function resolve(key: string, round: RareRound, catalog: Map<string, Canonical>,
     const known = catalog.get(current);
     if (known) return { status: 'accepted', canonical: known };
     if (approved) return { status: 'accepted', canonical: { key: current, label } };
+    const corrected=typoMatch(current,catalog);
+    if(corrected)return corrected.status==='pending'&&!reviewAmbiguous?{status:'rejected'}:corrected;
     return { status: round.publicConfig.adjudication === 'host_review' ? 'pending' : 'rejected' };
   }
 }
@@ -87,6 +111,7 @@ export function scoreRare(
   round: RareRound,
   submitted: Map<string, string>,
   adjudications: Adjudication[],
+  reviewAmbiguous=true,
 ): {
   results: Map<string, { points: number; reason: string; canonical?: string; frequency?: number; acceptedPlayers?: number }>;
   review: ReviewItem[];
@@ -99,7 +124,7 @@ export function scoreRare(
   const frequencies = new Map<string, { label: string; count: number }>();
   for (const [participantId, text] of submitted) {
     const key = normalizeAnswer(text);
-    const resolution = resolve(key, round, catalog, decisions);
+    const resolution = resolve(key, round, catalog, decisions, reviewAmbiguous);
     resolved.set(participantId, resolution);
     if (resolution.status === 'pending') {
       const previous = reviewMap.get(key);
@@ -112,9 +137,10 @@ export function scoreRare(
   }
   const review = [...reviewMap.values()].sort((a, b) => compareText(a.answerKey, b.answerKey));
   const acceptedPlayers = [...frequencies.values()].reduce((sum, group) => sum + group.count, 0);
+  // A valid answer earns 200. Two virtual matches soften the rarity bonus when
+  // the sample is small: two different valid answers earn 400 each, not 1000.
   const scoreFrequency = (frequency: number) => review.length ? 0
-    : acceptedPlayers === 1 ? 1000
-      : points(1000 * (acceptedPlayers - frequency) / Math.max(1, acceptedPlayers - 1));
+    : points(200 + 800 * (acceptedPlayers - frequency) / (acceptedPlayers + 2));
   const results = new Map<string, { points: number; reason: string; canonical?: string; frequency?: number; acceptedPlayers?: number }>();
   for (const [participantId, resolution] of resolved) {
     if (review.length) {

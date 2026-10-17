@@ -110,7 +110,7 @@ test('ten players finish five modes with immutable scores, private projections, 
     await f.action('REVEAL');
     const revealed = await f.engine.snapshot(f.members[0].principal, f.room.sessionId);
     assert.ok(revealed.reveal);
-    assert.equal(revealed.leaderboard[0].roundPoints, round.mode === 'rare_answers' ? 0 : 1000);
+    assert.equal(revealed.leaderboard[0].roundPoints, round.mode === 'rare_answers' ? 200 : 1000);
     const events = await f.store.events(f.room.sessionId, 0);
     assert.equal(JSON.stringify(events).includes('secretConfig'), false);
     assert.equal(JSON.stringify(events).includes('ORBIT'), false);
@@ -122,7 +122,7 @@ test('ten players finish five modes with immutable scores, private projections, 
   const final = await f.engine.snapshot(f.hostPrincipal, f.room.sessionId);
   assert.equal(final.state, 'SESSION_COMPLETED');
   assert.equal(final.leaderboard.length, 10);
-  assert.ok(final.leaderboard.every(row => row.points === 4000 && row.rank === 1));
+  assert.ok(final.leaderboard.every(row => row.points === 4200 && row.rank === 1));
   assert.deepEqual(final.leaderboard.map(row => row.participantId), f.members.map(member => member.principal.id));
   assert.equal(Number((await f.db.query<{ n: number }>('SELECT COUNT(*) AS n FROM scoring_runs')).rows[0].n), 5);
   assert.equal(Number((await f.db.query<{ n: number }>('SELECT COUNT(*) AS n FROM round_scores')).rows[0].n), 50);
@@ -175,9 +175,9 @@ test('rare unknowns remain private and unresolved across restart, then alias dec
   await f.engine.review(f.host.id, f.room.sessionId, { roundId: round.id, answerKey: hostSnapshot.review![0].answerKey, decision: 'accept', canonical: 'United Kingdom', expectedStateVersion: hostSnapshot.stateVersion }, key());
   await f.action('REVEAL');
   const result = await f.engine.snapshot(f.members[0].principal, f.room.sessionId);
-  assert.equal(result.leaderboard.find(row => row.participantId === f.members[0].principal.id)?.roundPoints, 500);
-  assert.equal(result.leaderboard.find(row => row.participantId === f.members[1].principal.id)?.roundPoints, 500);
-  assert.equal(result.leaderboard.find(row => row.participantId === f.members[2].principal.id)?.roundPoints, 1000);
+  assert.equal(result.leaderboard.find(row => row.participantId === f.members[0].principal.id)?.roundPoints, 360);
+  assert.equal(result.leaderboard.find(row => row.participantId === f.members[1].principal.id)?.roundPoints, 360);
+  assert.equal(result.leaderboard.find(row => row.participantId === f.members[2].principal.id)?.roundPoints, 520);
 });
 
 test('word duplicate IDs/words and racing final attempts never exceed a durable attempt budget', async t => {
@@ -393,12 +393,12 @@ test('moderation cannot retroactively change a revealed rarity calculation or hi
   await f.action('KICK', { participantId: f.members[1].principal.id, reason: 'Host moderation.' });
   await f.action('REVEAL');
   const shown = await f.engine.snapshot(f.members[0].principal, f.room.sessionId);
-  assert.equal(shown.ownPoints, 500);
-  assert.equal(shown.reveal?.groups?.find(group => group.answer.toLowerCase() === 'coral')?.points, 500);
+  assert.equal(shown.ownPoints, 360);
+  assert.equal(shown.reveal?.groups?.find(group => group.answer.toLowerCase() === 'coral')?.points, 360);
   assert.equal(shown.reveal?.groups?.find(group => group.answer.toLowerCase() === 'coral')?.count, 2);
   await f.action('END', { reason: 'Party ended after the reveal.' });
   const ended = await f.engine.snapshot(f.members[0].principal, f.room.sessionId);
-  assert.equal(ended.ownPoints, 500); assert.equal(ended.reveal?.groups?.[0].points, shown.reveal?.groups?.[0].points);
+  assert.equal(ended.ownPoints, 360); assert.equal(ended.reveal?.groups?.[0].points, shown.reveal?.groups?.[0].points);
   const audit = await f.db.query<{ detail: string }>("SELECT detail FROM audit_logs WHERE session_id=? AND action='host.end'", [f.room.sessionId]);
   assert.equal(JSON.parse(audit.rows[0].detail).reason, 'Party ended after the reveal.');
 });
@@ -414,7 +414,7 @@ test('removing the sole unresolved rare response finalizes review instead of lea
   await f.action('KICK', { participantId: f.members[1].principal.id });
   assert.equal((await f.store.getSession(f.room.sessionId)).session.state, 'ROUND_SCORED');
   await f.action('REVEAL');
-  assert.equal((await f.engine.snapshot(f.members[0].principal, f.room.sessionId)).ownPoints, 1000);
+  assert.equal((await f.engine.snapshot(f.members[0].principal, f.room.sessionId)).ownPoints, 200);
 });
 
 for(const playerCount of [2,3,5,10])test(`${playerCount} players: five-mode round podium evidence, tied winners and cumulative standings survive recovery`,async t=>{
@@ -525,9 +525,9 @@ test('autopilot: unreviewed answers expire without impersonating a host or block
  for(const [i,m]of f.members.entries())await f.engine.submit(m.principal,f.room.sessionId,{roundId:rare.id,clientMutationId:key(),revision:1,payload:{text:i?'Unlisted answer':'Coral',locked:true}});
  f.advance(901);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'REVIEW_REQUIRED');
  f.advance(30001);await f.engine.reconcile();const s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
- assert.equal(s.phase,'reveal');assert.equal(s.leaderboard.find(p=>p.participantId===f.members[0].principal.id)?.roundPoints,1000);
+ assert.equal(s.phase,'reveal');assert.equal(s.leaderboard.find(p=>p.participantId===f.members[0].principal.id)?.roundPoints,200);
  assert.equal(s.leaderboard.find(p=>p.participantId===f.members[1].principal.id)?.roundPoints,0);
- assert.equal(s.reveal?.groups?.[0]?.points,1000);assert.equal((await f.store.getSession(f.room.sessionId)).adjudications.length,0);
+ assert.equal(s.reveal?.groups?.[0]?.points,200);assert.equal((await f.store.getSession(f.room.sessionId)).adjudications.length,0);
  f.advance(5500);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'SESSION_COMPLETED');
 });
 

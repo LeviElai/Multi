@@ -162,7 +162,7 @@ test('Rare validation rejects ambiguous aliases and unsafe answer catalogs', () 
   assert.deepEqual(validateAuthorConfig(round), []);
 });
 
-test('Rare V3 frequency denominator includes only final valid answers', () => {
+test('Rare V3.2 rarity is confidence-adjusted using only final valid answers', () => {
   const round = forMode('rare_answers');
   round.secretConfig.answers = Array.from({ length: 11 }, (_, index) => ({ canonical: `Color ${index}`, aliases: index === 0 ? ['primary'] : [] }));
   const ids = Array.from({ length: 22 }, (_, index) => `p${index}`);
@@ -171,9 +171,9 @@ test('Rare V3 frequency denominator includes only final valid answers', () => {
   const data = session(round, ids, records);
   const result = scoreRound(data, round);
   const value = scores(data, round);
-  assert.equal(value.p0, 526);
-  assert.equal(value.p9, 526);
-  assert.equal(value.p10, 1000);
+  assert.equal(value.p0, 564);
+  assert.equal(value.p9, 564);
+  assert.equal(value.p10, 891);
   assert.equal(value.p20, 0);
   assert.equal(value.p21, 0);
   assert.equal(result.reveal.groups?.find(group => group.answer === 'Color 0')?.count, 10);
@@ -183,13 +183,13 @@ test('Rare V3 frequency denominator includes only final valid answers', () => {
 test('Rare singleton, zero-valid, all-duplicate, latest-revision and kicked-player cases', () => {
   const round = forMode('rare_answers');
   const data = session(round, ['a', 'b', 'c'], [submission(round, 'a', { text: 'mint' })]);
-  assert.deepEqual(scores(data, round), { a: 1000, b: 0, c: 0 });
+  assert.deepEqual(scores(data, round), { a: 200, b: 0, c: 0 });
   data.submissions.push(submission(round, 'b', { text: 'mint' }));
-  assert.deepEqual(scores(data, round), { a: 0, b: 0, c: 0 });
+  assert.deepEqual(scores(data, round), { a: 200, b: 200, c: 0 });
   data.submissions.unshift(submission(round, 'b', { text: 'sky' }, 2));
-  assert.deepEqual(scores(data, round), { a: 1000, b: 1000, c: 0 });
+  assert.deepEqual(scores(data, round), { a: 400, b: 400, c: 0 });
   data.members[1].status = 'kicked';
-  assert.deepEqual(scores(data, round), { a: 1000, b: 0, c: 0 });
+  assert.deepEqual(scores(data, round), { a: 200, b: 0, c: 0 });
   data.submissions = [submission(round, 'c', { text: 'unlisted' })];
   assert.deepEqual(scores(data, round), { a: 0, b: 0, c: 0 });
 });
@@ -208,9 +208,9 @@ test('Rare review keeps all scores provisional and recomputes alias frequencies 
   data.adjudications = [decision(round, 'fresh', 'mint')];
   result = scoreRound(data, round);
   assert.deepEqual(result.review, []);
-  assert.deepEqual(scores(data, round), { a: 333, b: 333, c: 1000, d: 333 });
+  assert.deepEqual(scores(data, round), { a: 333, b: 333, c: 600, d: 333 });
   data.adjudications.push(decision(round, 'fresh', '', 'reject', '2026-10-16T10:01:00.000Z'));
-  assert.deepEqual(scores(data, round), { a: 1000, b: 0, c: 1000, d: 0 });
+  assert.deepEqual(scores(data, round), { a: 400, b: 0, c: 400, d: 0 });
 });
 
 test('Rare accepted alias chains and cycles form one consistent canonical bucket', () => {
@@ -218,7 +218,7 @@ test('Rare accepted alias chains and cycles form one consistent canonical bucket
   round.publicConfig.adjudication = 'host_review';
   const data = session(round, ['a', 'b', 'c'], [submission(round, 'a', { text: 'aaa' }), submission(round, 'b', { text: 'bbb' }), submission(round, 'c', { text: 'Sky' })]);
   data.adjudications = [decision(round, 'aaa', 'bbb'), decision(round, 'bbb', 'ccc'), decision(round, 'ccc', 'bbb')];
-  assert.deepEqual(scores(data, round), { a: 500, b: 500, c: 1000 });
+  assert.deepEqual(scores(data, round), { a: 360, b: 360, c: 520 });
   assert.equal(scoreRound(data, round).reveal.groups?.length, 2);
 });
 
@@ -345,4 +345,21 @@ test('Numeric score curves are bounded integers and symmetric under reciprocal p
       assert.ok(score >= 0 && score <= 1000);
     }
   }
+});
+
+
+test('Think minor typos share a canonical bucket; ambiguous spellings require review',()=>{
+ const round=forMode('rare_answers');round.secretConfig.answers=[{canonical:'Goalkeeper',aliases:['Keeper']},{canonical:'Defender',aliases:[]}];
+ const data=session(round,['a','b'],[submission(round,'a',{text:'Goalkeper'}),submission(round,'b',{text:'Goalkeeper'})]);
+ assert.deepEqual(scores(data,round),{a:200,b:200});assert.equal(scoreRound(data,round).reveal.groups?.[0].count,2);
+ data.submissions=[submission(round,'a',{text:'Defned er'.replace(' ','')}),submission(round,'b',{text:'Keeper'})];
+ assert.deepEqual(scores(data,round),{a:400,b:400});
+ round.secretConfig.answers=[{canonical:'Mars',aliases:[]},{canonical:'Mare',aliases:[]}];data.submissions=[submission(round,'a',{text:'Mart'})];
+ assert.equal(scoreRound(data,round).review.length,1);assert.deepEqual(scores(data,round),{a:0,b:0});
+ data.reviewTimeoutRoundId=round.id;assert.equal(scoreRound(data,round).review.length,0);assert.deepEqual(scores(data,round),{a:0,b:0});
+ round.secretConfig.answers=[{canonical:'Color 1',aliases:[]}];data.submissions=[submission(round,'a',{text:'Color 2'})];assert.equal(scores(data,round).a,0);
+});
+test('Think small rooms do not award maximum points just for different answers',()=>{
+ const round=forMode('rare_answers');
+ for(const count of [1,2,3]){const ids=Array.from({length:count},(_,i)=>'p'+i);const data=session(round,ids,ids.map((id,i)=>submission(round,id,{text:['Mint','Coral','Sky'][i]})));const expected=[200,400,520][count-1];assert.ok(Object.values(scores(data,round)).every(score=>score===expected));}
 });

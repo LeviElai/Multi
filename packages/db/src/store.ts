@@ -1,3 +1,4 @@
+import type {Avatar} from '../../contracts/src/avatar';
 import { DomainError, QuizInputSchema, DraftQuizInputSchema, type Quiz, type QuizInput, type QuizVersion, type Round, type SessionData, type SessionRecord, type Principal, type SessionEvent, type Submission, type WordAttempt, type Adjudication, type Award } from '../../contracts/src/index';
 import type { Store, SqlDatabase, SqlStatement, SqlValue, MutationResult } from './types';
 import {avatarFor,AvatarSchema} from '../../contracts/src/avatar';
@@ -133,21 +134,21 @@ export class SqlStore implements Store {
     const row=(await this.db.query("SELECT id FROM participants WHERE session_id=? AND token_digest=? AND status='active' AND token_expires_at>?",[sessionId,tokenDigest,this.now().toISOString()])).rows[0];
     return row?{role:'player',id:String(row.id),sessionId}:null;
   }
-  async addPlayer(sessionId:string,nickname:string,tokenDigest:string,maxPlayers:number):Promise<{participantId:string}>{
+  async addPlayer(sessionId:string,nickname:string,tokenDigest:string,maxPlayers:number,customAvatar?:Avatar):Promise<{participantId:string}>{
     for(let attempt=0;attempt<128;attempt++){
-      try{return await this.addPlayerOnce(sessionId,nickname,tokenDigest,maxPlayers);}
+      try{return await this.addPlayerOnce(sessionId,nickname,tokenDigest,maxPlayers,customAvatar);}
       catch(error){if(!(error instanceof DomainError)||error.code!=='VERSION_CONFLICT'||attempt===127)throw error;await new Promise(resolve=>setTimeout(resolve,Math.min(24,2**attempt)+Math.random()*12));}
     }
     throw conflict();
   }
-  private async addPlayerOnce(sessionId:string,nickname:string,tokenDigest:string,maxPlayers:number):Promise<{participantId:string}>{
+  private async addPlayerOnce(sessionId:string,nickname:string,tokenDigest:string,maxPlayers:number,customAvatar?:Avatar):Promise<{participantId:string}>{
     const prior=await this.findPlayer(sessionId,tokenDigest);if(prior)return {participantId:prior.id};
     const row=(await this.db.query('SELECT * FROM sessions WHERE id=?',[sessionId])).rows[0];if(!row)throw missing();
     const current=toSession(row),nonce=crypto.randomUUID(),id=crypto.randomUUID(),now=this.now().toISOString(),expiresAt=new Date(this.now().getTime()+7*86400000).toISOString(),guard=this.sessionGuard(sessionId,nonce);
     if(current.joinLocked)throw new DomainError('JOIN_LOCKED','The host has locked joining.',409);
     const cap=Math.min(current.maxPlayers,maxPlayers);
     const members=(await this.getSession(sessionId)).members;const occupied=new Set(members.map(m=>json(avatarFor(m.id,m.avatar))));
-    let avatar=avatarFor(id);for(let attempt=1;occupied.has(json(avatar))&&attempt<100;attempt++)avatar=avatarFor(id+':'+attempt);
+    let avatar=customAvatar??avatarFor(id);for(let attempt=1;!customAvatar&&occupied.has(json(avatar))&&attempt<100;attempt++)avatar=avatarFor(id+':'+attempt);
     const statements:SqlStatement[]=[{sql:"UPDATE sessions SET state_version=state_version+1,latest_seq=latest_seq+1,last_mutation_id=? WHERE id=? AND state_version=? AND join_locked=0 AND state NOT IN ('SESSION_COMPLETED','SESSION_ABORTED') AND (SELECT COUNT(*) FROM participants WHERE session_id=? AND status='active')<?",params:[nonce,sessionId,current.stateVersion,sessionId,cap]},insert('participants',['id','session_id','nickname','display_name_norm','token_digest','token_expires_at','status','joined_at','last_seen_at'],[id,sessionId,nickname,nickname.normalize('NFKC').trim().toLocaleLowerCase('en'),tokenDigest,expiresAt,'active',now,now],guard),...this.eventStatements(sessionId,nonce,current.latestSeq+1,current.stateVersion+1,'member.joined',{participantId:id,avatar},now)];
     const result=await this.db.batch(statements);
     if(!result[0].changes){const duplicate=await this.findPlayer(sessionId,tokenDigest);if(duplicate)return {participantId:duplicate.id};const latest=(await this.db.query('SELECT join_locked FROM sessions WHERE id=?',[sessionId])).rows[0];if(latest?.join_locked)throw new DomainError('JOIN_LOCKED','The host has locked joining.',409);const count=Number((await this.db.query("SELECT COUNT(*) AS n FROM participants WHERE session_id=? AND status='active'",[sessionId])).rows[0].n);if(count>=cap)throw new DomainError('ROOM_FULL','This room has reached its player limit.',409);throw conflict();}

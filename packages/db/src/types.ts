@@ -1,3 +1,4 @@
+import type {Avatar} from '../../contracts/src/avatar';
 import type {Quiz,QuizInput,QuizVersion,SessionData,SessionRecord,Principal,SessionEvent} from '../../contracts/src/index';
 export type SqlValue=string|number|null;
 export interface SqlStatement {sql:string;params?:SqlValue[]}
@@ -18,7 +19,7 @@ export interface Store {
   getSession(id:string):Promise<SessionData>;
   findSessionByPinDigest(digest:string):Promise<SessionData|null>;
   findPlayer(sessionId:string,tokenDigest:string):Promise<Principal|null>;
-  addPlayer(sessionId:string,nickname:string,tokenDigest:string,maxPlayers:number):Promise<{participantId:string}>;
+  addPlayer(sessionId:string,nickname:string,tokenDigest:string,maxPlayers:number,customAvatar?:Avatar):Promise<{participantId:string}>;
   createDisplay(sessionId:string,tokenDigest:string,expiresAt:string):Promise<void>;
   findDisplay(tokenDigest:string):Promise<Principal|null>;
   revokeDisplays(sessionId:string):Promise<void>;

@@ -19,3 +19,7 @@
 ## Evaluation transport
 
 The private Sites build uses D1 and 1.1-second snapshot polling. Deadlines remain server-authoritative; inactive rooms reconcile when requested. Continuous background reconciliation and Socket.IO run in the separate Node service. Private Sites access restricts guest reach; do not advertise this URL as an open party beta.
+
+- 2026-10-17, explicit user correction: Think scoring v3.2 replaces the original V3 formula. A valid answer earns 200 + round(800 × (accepted players − group count) / (accepted players + 2)), rounded once at the end. Two distinct valid answers earn 400 each; matches earn 200. Invalid/unsubmitted answers earn zero and never inflate the rarity denominator. The small-sample adjustment prevents automatic 1,000-point ties in tiny rooms.
+- Think spelling correction is deterministic and costs no API tokens: exact/alias matches first, then one unique minor edit (including adjacent transposition) for names of at least four characters. Numbers and short names are never fuzzy matched. Multiple candidate canonical answers enter host review; explicit host decisions override correction. This is bounded typo tolerance, not semantic AI judging.
+- Account characters are one compact server-owned JSON record per creator, included in exports and passed atomically into new room joins. No new paid service, autoscaling, recurring job, or provider retry was added.

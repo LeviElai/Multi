@@ -1,0 +1,49 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {NodeSqliteDatabase} from '../../packages/db/src/sqlite';
+import {SqlStore} from '../../packages/db/src/store';
+import {migrateRuntimeDatabase} from '../../apps/game-service/src/runtime';
+import {handleApi} from '../../apps/game-service/src/api';
+import {GameEngine} from '../../apps/game-service/src/engine';
+import {avatarFor,type Avatar} from '../../packages/contracts/src/avatar';
+import {getDemoQuiz,getEmptyRound} from '../../packages/game-modes/src/fixtures';
+import {MODES} from '../../packages/contracts/src/index';
+import {GenerationInput,decodeGeneration,queueGeneration,runGenerationWorker,generationStatus,quota} from '../../apps/game-service/src/ai';
+
+async function payload<T>(response:Response):Promise<T>{return ((await response.json()) as {data:T}).data;}
+async function fixture(t:test.TestContext){const db=new NodeSqliteDatabase(':memory:');await migrateRuntimeDatabase(db);const store=new SqlStore(db);const owner=await store.ensureUser(crypto.randomUUID(),'Character owner');t.after(()=>db.close());return{db,store,owner};}
+test('account appearance is owner-scoped, survives reload, exports and joins atomically with the saved look',async t=>{
+ const {store,owner}=await fixture(t),other=await store.ensureUser(crypto.randomUUID(),'Other');
+ const call=(path:string,method='GET',body?:unknown,user:typeof owner|null=owner)=>handleApi(new Request(`https://test.example/api/v1/${path}`,{method,headers:{Origin:'https://test.example','Content-Type':'application/json','Idempotency-Key':crypto.randomUUID()},body:body?JSON.stringify(body):undefined}),{store,user,pinSecret:'test-account-look-secret'});
+ assert.equal((await call('account/appearance','GET',undefined,null)).status,401);
+ const avatar={...avatarFor(owner.id),hair:9,hat:8,skin:7};
+ assert.equal((await call('account/appearance','PATCH',{avatar,ownerId:other.id})).status,422);
+ assert.equal((await call('account/appearance','PATCH',{avatar})).status,200);
+ assert.deepEqual((await payload<{avatar:Avatar}>(await call('account/appearance'))).avatar,avatar);
+ assert.notDeepEqual((await payload<{avatar:Avatar}>(await call('account/appearance','GET',undefined,other))).avatar,avatar);
+ assert.deepEqual((await payload<{avatar:Avatar}>(await call('account/export'))).avatar,avatar);
+ const quiz=await store.createQuiz(owner.id,getDemoQuiz()),version=await store.publishQuiz(quiz.id,owner.id,quiz.revision);
+ const engine=new GameEngine(store,undefined,{pinSecret:'test-account-look-secret'}),room=await engine.createSession(owner.id,version.id,crypto.randomUUID());
+ const response=await call('sessions/join','POST',{pin:room.pin,nickname:'My saved character'});assert.equal(response.status,201);
+ const joined=await payload<{participantId:string}>(response);const restored=new SqlStore(store.db);
+ assert.deepEqual((await restored.getSession(room.sessionId)).members.find(m=>m.id===joined.participantId)?.avatar,avatar);
+});
+test('new manual rounds keep empty questions and reveals through durable saves',async t=>{
+ const {store,owner}=await fixture(t);const input={...getDemoQuiz(),rounds:MODES.map(getEmptyRound)};
+ const quiz=await store.createQuiz(owner.id,input),saved=await store.getQuiz(quiz.id,owner.id);
+ assert.ok(saved.rounds.every(r=>r.question===''&&r.explanation===''));
+ const think=saved.rounds.find(r=>r.mode==='rare_answers');if(think?.mode==='rare_answers')assert.deepEqual(think.secretConfig.answers,[]);
+});
+test('AI formatting cleanup accepts case, fenced answer JSON and redundant aliases without extra calls',()=>{
+ const input=GenerationInput.parse({topic:'football',count:2,modes:['word_puzzle','rare_answers']});
+ const quiz=decodeGeneration({title:'Football',questions:[{mode:'word_puzzle',question:'A player who protects the net.',explanation:'The keeper defends the goal.',answerData:'```json\n{"word":" keeper "}\n```'},{mode:'rare_answers',question:'Name one of the four main football positions.',explanation:'Pick a position.',answerData:JSON.stringify({answers:[{canonical:'Goalkeeper',aliases:['goalkeeper','Keeper']},{canonical:'Defender',aliases:[]},{canonical:'Midfielder',aliases:[]},{canonical:'Forward',aliases:['Striker']},{canonical:'forward',aliases:[]}]})}]},input);
+ const word=quiz.rounds[0];if(word.mode==='word_puzzle')assert.equal(word.secretConfig.answer,'KEEPER');
+ const rare=quiz.rounds[1];if(rare.mode==='rare_answers'){assert.equal(rare.secretConfig.answers.length,4);assert.deepEqual(rare.secretConfig.answers[0].aliases,['Keeper']);}
+ assert.ok(quiz.rounds.every(r=>r.provenance==='needs_review'));
+});
+test('failed generation keeps a safe diagnostic and returns credits once',async t=>{
+ const {store,db,owner}=await fixture(t);const job=await queueGeneration(store,owner.id,crypto.randomUUID(),GenerationInput.parse({topic:'football',count:5}));
+ await runGenerationWorker(store,async()=>{throw new Error('Provider status 503');});
+ assert.equal((await db.query<{error_code:string}>('SELECT error_code FROM creator_generations WHERE id=?',[job.id])).rows[0].error_code,'PROVIDER_UNAVAILABLE');
+ assert.match((await generationStatus(store,owner.id,job.id)).message??'',/temporarily unavailable/);assert.equal((await quota(store,owner.id)).remaining,20);
+});

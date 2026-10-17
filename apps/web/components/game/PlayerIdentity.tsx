@@ -73,11 +73,11 @@ export function CharacterItem({detail,value,avatar}:{detail:LookKey;value:number
  if((detail==='hat'||detail==='accessory')&&value===0||detail==='hair'&&value===9)return <svg className="item-none" viewBox="0 0 16 16" aria-hidden="true" shapeRendering="crispEdges"><path fill="currentColor" d="M3 2h2v2h2v2h2V4h2V2h2v3h-2v2H9v2h2v2h2v3h-2v-2H9v-2H7v2H5v2H3v-3h2V9h2V7H5V5H3Z"/></svg>;
  return <PixelCharacter id="item-preview" avatar={{...avatar,[detail]:value}} part={detail}/>;
 }
-export function CharacterEditor({member,sessionId,onSaved}:{member:Member;sessionId:string;onSaved:()=>void}){
+export function CharacterEditor({member,sessionId,onSaved,onSaveAvatar}:{member:Member;sessionId?:string;onSaved:()=>void;onSaveAvatar?:(avatar:Avatar)=>Promise<void>}){
  const [open,setOpen]=useState(false),[draft,setDraft]=useState(()=>avatarFor(member.id,member.avatar)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[reaction,setReaction]=useState(0);
  const dialog=useRef<HTMLDialogElement>(null),trigger=useRef<HTMLButtonElement>(null);
  useEffect(()=>{if(open)dialog.current?.showModal();else if(dialog.current?.open){dialog.current.close();trigger.current?.focus();}},[open]);
- async function save(){if(busy)return;setBusy(true);setError('');try{await post(`/sessions/${sessionId}/appearance?role=player`,{avatar:draft});onSaved();setOpen(false);}catch(e){setError(e instanceof Error?e.message:'Look not saved. Try again.');}finally{setBusy(false);}}
+ async function save(){if(busy)return;setBusy(true);setError('');try{if(onSaveAvatar)await onSaveAvatar(draft);else if(sessionId)await post(`/sessions/${sessionId}/appearance?role=player`,{avatar:draft});else throw new Error('No character save destination.');onSaved();setOpen(false);}catch(e){setError(e instanceof Error?e.message:'Look not saved. Try again.');}finally{setBusy(false);}}
  function choose(key:LookKey,value:number){setDraft(v=>({...v,[key]:value}));setReaction(v=>v+1);playCue('adjust');}
  return <><button ref={trigger} className="btn btn-outline edit-look" onClick={()=>{setDraft(avatarFor(member.id,member.avatar));setReaction(0);setError('');setOpen(true);}}>Edit look</button>
  <dialog ref={dialog} className="look-editor dressing-room" onCancel={()=>setOpen(false)} onClose={()=>setOpen(false)} aria-labelledby="look-title">

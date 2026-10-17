@@ -2,7 +2,7 @@ import { GenerationInput, queueGeneration, generationStatus, quota } from './ai'
 import { adsReady, rewardTicket, claimReward, type AdsConfig } from './ads';
 import { browseCommunity, communityQuiz, CommunityInput, shareCommunity, copyCommunity } from './community';
 import { z } from 'zod';
-import {AvatarSchema} from '../../../packages/contracts/src/avatar';
+import {avatarFor,AvatarSchema} from '../../../packages/contracts/src/avatar';
 import { DomainError, HostActionSchema, QuizInputSchema, DraftQuizInputSchema, RoundSchema, SubmitSchema, WordGuessSchema } from '../../../packages/contracts/src/index';
 import type { Features, Principal, Quiz, QuizInput, Profile } from '../../../packages/contracts/src/index';
 import type { Store } from '../../../packages/db/src/types';
@@ -279,12 +279,26 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       const result = await engine.createSession(owner.id, versionId, mutationKey(request));
       return ok({ ...result, hostUrl: `/host/${result.sessionId}`, joinUrl: `/join/${result.pin}` }, 201);
     }
+    if (path === 'account/appearance' && (method === 'GET' || method === 'PATCH')) {
+      const owner=requireUser(user);
+      if(method==='PATCH'){
+        const {avatar}=z.object({avatar:AvatarSchema}).strict().parse(body);
+        await rateLimit(ctx.store.db,`account-look:${owner.id}`,30,60000);
+        await ctx.store.db.query('INSERT INTO creator_avatars (owner_id,avatar_json,updated_at) VALUES (?,?,?) ON CONFLICT(owner_id) DO UPDATE SET avatar_json=excluded.avatar_json,updated_at=excluded.updated_at',[owner.id,JSON.stringify(avatar),new Date().toISOString()]);
+        return ok({avatar});
+      }
+      const row=(await ctx.store.db.query<{avatar_json:string}>('SELECT avatar_json FROM creator_avatars WHERE owner_id=?',[owner.id])).rows[0];
+      return ok({avatar:row?AvatarSchema.parse(JSON.parse(row.avatar_json)):avatarFor(owner.id)});
+    }
     if (method === 'POST' && path === 'sessions/join') {
       await rateLimit(ctx.store.db, `join:${ipDigest}`, 90, 60 * 1000);
       await assertRateBudget(ctx.store.db, `pin-failures:${ipDigest}`, 20);
       const input = z.object({ pin: z.string().max(12), nickname: z.string().max(100) }).parse(body);
       let result: Awaited<ReturnType<GameEngine['join']>>;
-      try { result = await engine.join(input.pin, input.nickname); }
+      try {
+        const saved=user?(await ctx.store.db.query<{avatar_json:string}>('SELECT avatar_json FROM creator_avatars WHERE owner_id=?',[user.id])).rows[0]:undefined;
+        result = await engine.join(input.pin, input.nickname, saved?AvatarSchema.parse(JSON.parse(saved.avatar_json)):undefined);
+      }
       catch (error) {
         if (error instanceof DomainError && error.code === 'ROOM_UNAVAILABLE') await rateLimit(ctx.store.db, `pin-failures:${ipDigest}`, 20, 60 * 1000);
         throw error;
@@ -378,7 +392,8 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
     }
     if (path === 'account/export' && method === 'GET') {
       const owner = requireUser(user);
-      return ok({ account: owner, quizzes: await ctx.store.listQuizzes(owner.id), exportedAt: new Date().toISOString(), scope: 'Account profile and owned quiz drafts. Session and moderation records can be requested through privacy requests.' });
+      const look=(await ctx.store.db.query<{avatar_json:string}>('SELECT avatar_json FROM creator_avatars WHERE owner_id=?',[owner.id])).rows[0];
+      return ok({ account: owner, avatar:look?JSON.parse(look.avatar_json):avatarFor(owner.id), quizzes: await ctx.store.listQuizzes(owner.id), exportedAt: new Date().toISOString(), scope: 'Account profile and owned quiz drafts. Session and moderation records can be requested through privacy requests.' });
     }
     if (path.startsWith('admin')) throw new DomainError('FORBIDDEN', 'Administrative access is not configured for this account.', 403);
     if (path === 'billing' && method === 'GET') return ok({ enabled: false, plan: 'free', status: 'not_configured', message: 'Payments are disabled during private alpha.' });

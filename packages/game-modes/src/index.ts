@@ -153,7 +153,7 @@ export function scoreRound(data: SessionData, round: Round): { awards: Award[]; 
   }));
   if (skipped) return { awards, review: [], reveal };
   if (round.mode === 'rare_answers') {
-    const rare = scoreRare(round, new Map([...canonical].map(([id, payload]) => [id, payload.text!])), data.adjudications);
+    const rare = scoreRare(round, new Map([...canonical].map(([id, payload]) => [id, payload.text!])), data.adjudications,data.reviewTimeoutRoundId!==round.id);
     awards.forEach(award => {
       const result = rare.results.get(award.participantId);
       if (result) {

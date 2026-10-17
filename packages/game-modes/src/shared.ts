@@ -1,7 +1,7 @@
 import { DomainError } from '../../contracts/src/index';
 import type { Round, ValidationIssue } from '../../contracts/src/index';
 
-export const SCORING_VERSION = 'v3.1';
+export const SCORING_VERSION = 'v3.2';
 export const MAX_NUMBER = 1e15;
 export type FermiRound = Extract<Round, { mode: 'fermi' }>;
 export type RareRound = Extract<Round, { mode: 'rare_answers' }>;
