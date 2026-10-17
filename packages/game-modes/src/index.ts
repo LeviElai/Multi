@@ -133,6 +133,7 @@ function revealFor(round: Round, skipped: boolean): Reveal {
  * ROUND_REVEAL. Nonempty review means all returned awards are provisional zeros.
  */
 export function scoreRound(data: SessionData, round: Round): { awards: Award[]; review: ReviewItem[]; reveal: Reveal } {
+  if(data.reviewTimeoutRoundId===round.id&&round.mode==='rare_answers')round={...round,publicConfig:{...round.publicConfig,adjudication:'allowlist'}};
   const skipped = data.voidRoundIds.includes(round.id);
   const reveal = revealFor(round, skipped);
   const members = [...new Map(data.members.map(member => [member.id, member])).values()].sort((a, b) => compareText(a.id, b.id));

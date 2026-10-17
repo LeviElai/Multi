@@ -31,6 +31,6 @@ export async function siteApi(request:Request):Promise<Response>{
    let display=encoded??email??'Creator';
    if(encoded&&request.headers.get('oai-authenticated-user-full-name-encoding')==='percent-encoded-utf-8'){try{display=decodeURIComponent(encoded);}catch{display=email??'Creator';}}
    const user=externalId&&email?await store.ensureUser(externalId,display):null;
-   return handleApi(request,{store,user,pinSecret:env.MULTIGAME_PIN_SECRET,cookieSecure:true,maxPlayers:25,features:{ai:false,billing:false,ads:false,stage:'private_alpha',transport:'polling'}});
+   return handleApi(request,{store,user,pinSecret:env.MULTIGAME_PIN_SECRET,cookieSecure:true,maxPlayers:25,automatic:true,features:{ai:false,billing:false,ads:false,stage:'private_alpha',transport:'polling'}});
  }catch(e){console.error(JSON.stringify({event:'site_adapter_failed',type:e instanceof Error?e.name:'UnknownError'}));return Response.json({error:{code:'SERVICE_UNAVAILABLE',message:'The game service is temporarily unavailable. Please try again.',requestId:crypto.randomUUID()}},{status:503,headers:{'Cache-Control':'no-store'}});}
 }

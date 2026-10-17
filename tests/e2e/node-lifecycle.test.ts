@@ -44,7 +44,7 @@ async function command<T>(socket:Socket,event:string,payload:unknown):Promise<En
 
 test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash recovery', {timeout:90000},async()=>{
   const directory=await mkdtemp(join(tmpdir(),'multigame-node-e2e-'));
-  const environment:NodeJS.ProcessEnv={...process.env,NODE_ENV:'test',DATABASE_URL:'',SQLITE_PATH:join(directory,'session.sqlite'),AUTO_MIGRATE:'1',PORT:'0',HOST:'127.0.0.1',PUBLIC_ORIGIN:publicOrigin,PIN_PEPPER:randomBytes(32).toString('hex'),AUTH_BOOTSTRAP_EMAIL:'host@example.test',AUTH_BOOTSTRAP_PASSWORD:'local-test-password-strong',AUTH_BOOTSTRAP_NAME:'Test Host'};
+  const environment:NodeJS.ProcessEnv={...process.env,NODE_ENV:'test',AUTOMATIC_FLOW:'0',DATABASE_URL:'',SQLITE_PATH:join(directory,'session.sqlite'),AUTO_MIGRATE:'1',PORT:'0',HOST:'127.0.0.1',PUBLIC_ORIGIN:publicOrigin,PIN_PEPPER:randomBytes(32).toString('hex'),AUTH_BOOTSTRAP_EMAIL:'host@example.test',AUTH_BOOTSTRAP_PASSWORD:'local-test-password-strong',AUTH_BOOTSTRAP_NAME:'Test Host'};
   let runtime=await launch(environment);const sockets:Socket[]=[];
   const call=async<T=Record<string,unknown>>(path:string,method='GET',body?:unknown,cookie='',expected=200,headers:Record<string,string>={})=>{
     const response=await fetch(`${runtime.url}${path}`,{method,headers:{Origin:publicOrigin,...(body!==undefined?{'Content-Type':'application/json'}:{}),...(cookie?{Cookie:cookie}:{}),'Idempotency-Key':randomUUID(),...headers},body:body!==undefined?JSON.stringify(body):undefined});

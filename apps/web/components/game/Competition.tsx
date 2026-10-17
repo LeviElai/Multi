@@ -4,6 +4,7 @@ import type { Snapshot, Leader } from '../../../../packages/contracts/src/index'
 import { roundPlacements, rankMovement } from '../../lib/competition';
 import { playCue } from '../../lib/audio';
 import Reveal from '../Reveal';
+import ContinuousResults from './ContinuousResults';
 import type { CSSProperties } from 'react';
 
 export function PlayerScore({ snapshot: s }: { snapshot: Snapshot }) {
@@ -25,8 +26,9 @@ export function Standings({ leaders, ownId, compact = false }: {
 }) {
     const root = useRef<HTMLElement>(null);
     const previous = useRef(new Map<string, number>());
-    useLayoutEffect(() => { const nodes = root.current?.querySelectorAll<HTMLElement>('[data-player]'); nodes?.forEach(node => { const id = node.dataset.player!, y = node.getBoundingClientRect().top, old = previous.current.get(id); if (old !== undefined && old !== y && !matchMedia('(prefers-reduced-motion: reduce)').matches)
-        node.animate([{ transform: `translateY(${old - y}px)` }, { transform: 'translateY(0)' }], { duration: 450, easing: 'ease-out' }); previous.current.set(id, y); }); }, [leaders.map(p => p.participantId + ':' + p.points).join('|')]);
+    useLayoutEffect(() => { const nodes = root.current?.querySelectorAll<HTMLElement>('[data-player]'); nodes?.forEach(node => { const id = node.dataset.player!, y = node.getBoundingClientRect().top, old = previous.current.get(id) ?? (y + rankMovement(leaders,id)*node.getBoundingClientRect().height); if (old !== undefined && old !== y && !matchMedia('(prefers-reduced-motion: reduce)').matches)
+        node.animate([{ transform: `translateY(${old - y}px)` }, { transform: 'translateY(0)' }], { duration: 300, easing: 'ease-out' }); previous.current.set(id, y); }); }, [leaders.map(p => p.participantId + ':' + p.points).join('|')]);
+    useLayoutEffect(()=>{const list=root.current?.querySelector('ol'),own=root.current?.querySelector<HTMLElement>('.is-you');if(list&&own){const top=own.offsetTop-list.offsetTop;if(top<list.scrollTop||top+own.offsetHeight>list.scrollTop+list.clientHeight)list.scrollTop=Math.max(0,top-list.clientHeight/2+own.offsetHeight/2);}},[ownId,leaders.map(p=>p.participantId+':'+p.rank).join('|')]);
     return <section ref={root} className={'standings-board ' + (compact ? 'standings-compact' : '')} aria-label="Overall standings"><header><h2>{compact ? "Placements" : "The placements"}</h2><span>Total points</span></header><ol>{leaders.map((p, index) => { const movement = rankMovement(leaders, p.participantId); return <li style={{"--row": Math.min(index, 12)} as CSSProperties} data-player={p.participantId} key={p.participantId} className={p.participantId === ownId ? 'is-you' : ''}><b className="standing-rank">{p.rank}</b><span className="standing-name">{p.nickname}{p.participantId === ownId && p.nickname !== 'You' && <small>You</small>}</span><span className={"standing-move " + (movement < 0 ? "move-down" : "")} aria-label={movement > 0 ? `Up ${movement} places` : movement < 0 ? `Down ${-movement} places` : 'No rank change'}>{movement > 0 ? '↑' + movement : movement < 0 ? '↓' + (-movement) : '—'}</span><span className="standing-score" key={p.points}><strong>{p.points.toLocaleString('en')}</strong>{p.roundPoints > 0 && <small>+{p.roundPoints} this round</small>}</span></li>; })}</ol>{!leaders.length && <p>No players yet.</p>}{!compact && leaders.length > 0 && <p className="standings-caption">{leaders.length === 1 && leaders[0].nickname === 'You' ? 'Your total so far.' : <>{leaders.filter(p => p.rank === 1).map(p => p.nickname).join(' & ')} {leaders.filter(p => p.rank === 1).length > 1 ? 'share the lead' : leaders[0].nickname === 'You' ? 'lead overall' : 'leads overall'}. Equal scores share a place.</>}</p>}</section>;
 }
 export function RoundPodium({ snapshot: s }: {
@@ -52,6 +54,7 @@ export function RoundResults({ snapshot: s, onStage, busy = false }: {
     const rows = roundPlacements(s.leaderboard, s.roundAwards);
     const best = rows[0]?.roundPoints ?? 0;
     const winners = rows.filter(p => p.roundPoints === best);
+    if(s.automatic)return <ContinuousResults snapshot={s}/>;
     return <div className="round-results"><nav className="result-tabs" aria-label="Round results stages">{(['standings', 'reveal'] as const).map((v, i) => <button key={v} aria-pressed={phase === v} disabled={busy} onClick={() => { if (onStage)
         onStage(v);
     else

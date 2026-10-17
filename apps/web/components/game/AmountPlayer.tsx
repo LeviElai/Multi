@@ -4,7 +4,7 @@ import type {Round,PublicRound,Submission,Ack} from '../../../../packages/contra
 import {PourQueue} from '../../lib/pour-state';
 import {Lock} from 'lucide-react';
 import {PourControl} from './PourControl';
-export default function Amount({ round, disabled, initial, send }: {round:PublicRound;disabled:boolean;busy?:boolean;initial?:number;send:(payload:Submission['payload'])=>Promise<Ack>}) {
+export default function Amount({ round, disabled, initial, send, paused=false }: {round:PublicRound;paused?:boolean;disabled:boolean;busy?:boolean;initial?:number;send:(payload:Submission['payload'])=>Promise<Ack>}) {
     const c = round.publicConfig as Extract<Round, {
         mode: 'amountle';
     }>['publicConfig'];
@@ -23,7 +23,7 @@ export default function Amount({ round, disabled, initial, send }: {round:Public
     useEffect(() => { if (initial !== undefined)
         queue.reconcile(initial); }, [initial, queue]);
     useEffect(()=>{if(!disabled)void queue.flush()},[disabled,queue]);
-    return <><PourControl count={queue.accepted} onAdd={amount => queue.add(amount ?? 1, c.maxCount)} disabled={disabled || locking || queue.requested >= c.maxCount} seed={round.id} unit={c.unit || 'objects'} flow={Math.max(1, Math.min(10,Math.ceil(c.maxCount / Math.max(100, round.timerSeconds * 10))))}/>
+    return <><PourControl paused={paused} count={queue.accepted} onAdd={amount => queue.add(amount ?? 1, c.maxCount)} disabled={disabled || locking || queue.requested >= c.maxCount} seed={round.id} unit={c.unit || 'objects'} flow={Math.max(1, Math.min(10,Math.ceil(c.maxCount / Math.max(100, round.timerSeconds * 10))))}/>
  <button className="btn btn-dark btn-full count-lock" disabled={disabled || locking || queue.pending || queue.failed} onClick={async()=>{setLocking(true);try{await queue.flush();if(!queue.failed&&!queue.pending)await send({count:queue.accepted,locked:true});}catch{}finally{setLocking(false);}}}><Lock size={16}/>{locking ? "Locking…" : "Lock pour"}</button>
  <div className="pour-sync" role="status" aria-live="polite">{queue.pending ? 'Pouring…' : queue.failed ? <>Pour not received. {disabled ? 'Only accepted pours count.' : <button className="text-link" onClick={() => void queue.flush()}>Retry</button>}</> : disabled ? 'Last accepted pour locked.' : 'Pours appear when received.'}</div></>;
 }

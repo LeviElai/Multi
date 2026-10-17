@@ -1,0 +1,13 @@
+MULTIGAME - reactions and automatic play, 17 October 2026
+
+Count uses screen-space candy collisions instead of overlapping 3D projection. Visible pieces have a two-pixel contact margin; simulation stops after settling. The illustration is capped at 96 pieces; accepted count and scoring remain independent, exact and server-authoritative. Reduced motion uses a non-overlapping grid.
+
+Each game has an acknowledgement-only pixel scene: Size clamps, Count jar lid, Guess book/letters, Think fish dive and Estimate telescope launch. Information appears immediately. Small feedback uses 100ms presses, 240ms transitions and brief stepped scenes. Existing mute and reduced-motion settings remain supported. Approved SVG backgrounds and final podium assets are unchanged.
+
+New multiplayer rooms default to automatic play. Historical rooms retain their existing manual flow. Server worker advances gameplay -> 3s reveal -> 10s placements -> following gameplay; final reveal goes straight to podium. All finished players shorten gameplay to a 900ms acknowledgement window. Disconnected/inactive players cannot hold a room past its deadline. Host disconnection does not stop the server; reconnect restores authoritative phase/deadline.
+
+Pause saves time and phase; resume restores it. Phase-aware advance ends play with accepted answers scored, shortens reveal, or starts the next round. Unknown Think answers have 30s for host review, then unreviewed entries receive zero. Review never invents a host approval. Room events and deadlines survive backend restart; no schema migration required.
+
+Verification: 100 unit/integration tests, 2 HTTP/WebSocket tests and optimized Next.js build passed. scripts/verify-autopilot.mts exercises three isolated player cookies and a host over real HTTP, all five games, automatic transitions, pause/resume in each phase, display access, authorization, reconnection, final scores and logout. Local run passed. Production run recorded separately on release.
+
+Scope: shared foreground cards, question frames, buttons, avatars, loading/error states and gameplay/results surfaces are updated centrally. No billing integration is enabled. Real-device testing and a real group playtest remain outside automated verification. Free Render PostgreSQL expires 15 November 2026; migrate or upgrade before then.

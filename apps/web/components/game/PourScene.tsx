@@ -1,11 +1,12 @@
 'use client';
 import {useEffect,useRef} from 'react';
-import {createBody,stepBodies,MAX_BODIES,type Body} from '../../lib/pour-physics';
+import {createBody,stepBodies,MAX_BODIES,settleBodies,type Body} from '../../lib/pour-physics';
 const palette=[['#ffd487','#c27c51','#fff0bf'],['#91d8cb','#419d9b','#caffdf'],['#bca7e5','#7862ac','#efdaff'],['#f3a3a9','#b96987','#ffd6bd'],['#92bde7','#537bb6','#c6e5ff']];
-export default function PourScene({count,seed,finalFraction=1}:{count:number;seed:string;finalFraction?:number}){
+export default function PourScene({count,seed,finalFraction=1,paused=false}:{paused?:boolean;count:number;seed:string;finalFraction?:number}){
+ const pausedRef=useRef(paused);pausedRef.current=paused;
  const canvas=useRef<HTMLCanvasElement>(null),desired=useRef(count),fraction=useRef(finalFraction),wake=useRef(()=>{});
  desired.current=count;fraction.current=finalFraction;
- useEffect(()=>wake.current(),[count,finalFraction]);
+ useEffect(()=>wake.current(),[count,finalFraction,paused]);
  useEffect(()=>{
   const el=canvas.current,ctx=el?.getContext('2d');if(!el||!ctx)return;
   el.width=360;el.height=370;ctx.imageSmoothingEnabled=false;
@@ -21,12 +22,12 @@ export default function PourScene({count,seed,finalFraction=1}:{count:number;see
    box(54,67,252,251,'#14283a');box(62,61,236,266,'#1b3847');
    box(64,72,232,247,'#203e4a');box(73,81,214,231,'#244652');
    for(const b of [...bodies].sort((a,b)=>a.z-b.z||a.y-b.y)){
-    const x=Math.round(180+b.x*.86+b.z*.25),y=Math.round(310-b.y-b.z*.17);
-    const r=Math.max(2,Math.round(b.r*(b===bodies[bodies.length-1]?Math.cbrt(fraction.current):1)));
+    const x=Math.round(180+b.x),y=Math.round(310-b.y);
+    const r=Math.max(2,Math.round((b.r-2)*(b===bodies[bodies.length-1]?Math.cbrt(fraction.current):1)));
     const [base,shade,shine]=palette[b.color%palette.length];
-    box(x-r-1,y-r+3,r*2+2,r*2-4,'#182a3b');
-    box(x-r+2,y-r,r*2-4,r*2,shade);box(x-r,y-r+3,r*2,r*2-6,shade);
-    box(x-r+2,y-r+2,r*2-6,r*2-5,base);
+    box(x-r,y-r+4,r*2,r*2-8,'#182a3b');
+    box(x-r+3,y-r,r*2-6,r*2,shade);box(x-r,y-r+4,r*2,r*2-8,shade);
+    box(x-r+3,y-r+2,r*2-6,r*2-4,base);box(x-r+1,y-r+4,r*2-4,r*2-8,base);
     box(x-r+3,y-r+3,Math.max(2,r-3),3,shine);
     if(b.shape===1)box(x-2,y-2,4,4,shine);
     if(b.shape===2){box(x-r+2,y-1,r*2-5,3,shade);box(x-1,y-r+3,3,r*2-7,shine);}
@@ -39,16 +40,16 @@ export default function PourScene({count,seed,finalFraction=1}:{count:number;see
    box(169,32,22,5,'#f4d497');
   };
   const frame=(time:number)=>{
-   raf=0;if(document.hidden){last=0;return;}
+   raf=0;if(pausedRef.current){draw();return;}if(document.hidden){last=0;return;}
    const dt=last?Math.min((time-last)/1000,1/30):1/60;last=time;
    const target=Math.min(MAX_BODIES,desired.current);
    if(target<rendered){bodies.length=0;rendered=0;}
    let spawned=0;while(rendered<target&&spawned++<4){
     const b=createBody(seed,rendered++);
-    if(reduced){const i=rendered-1;b.x=-78+i%7*26;b.z=-39+Math.floor(i/7)%4*26;b.y=11+Math.floor(i/28)*22;b.vy=0;}
+    if(reduced){const i=rendered-1;b.x=-100+i%11*20;b.z=0;b.y=10+Math.floor(i/11)*20;b.vy=0;}
     bodies.push(b);until=time+4000;
    }
-   if(!reduced)stepBodies(bodies,dt);draw();
+   if(!reduced)stepBodies(bodies,dt);if(!reduced&&time>=until)settleBodies(bodies);draw();
    if(rendered<target||(!reduced&&time<until))raf=requestAnimationFrame(frame);
   };
   const start=()=>{if(!raf){last=0;raf=requestAnimationFrame(frame);}};

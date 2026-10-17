@@ -14,7 +14,7 @@ test('result pacing is configurable and deterministic across a reconnect',()=>{a
 test('visual shape sequence is seeded, bounded, finite, and settles without changing the count',()=>{
  assert.deepEqual(createBody('round-a',5),createBody('round-a',5));assert.notDeepEqual(createBody('round-a',5),createBody('round-b',5));
  const bodies=Array.from({length:MAX_BODIES},(_,i)=>createBody('test',i));for(let t=0;t<600;t++)stepBodies(bodies,1/60);
- assert.equal(bodies.length,MAX_BODIES);assert.ok(bodies.every(b=>Number.isFinite(b.y)&&b.y>=b.r&&Math.abs(b.x)<=110-b.r&&Math.abs(b.z)<=65-b.r));assert.ok(bodies.every(b=>b.y<160));
+ assert.equal(bodies.length,MAX_BODIES);assert.ok(bodies.every(b=>Number.isFinite(b.y)&&b.y>=b.r&&Math.abs(b.x)<=110-b.r&&Math.abs(b.z)<=65-b.r));assert.ok(bodies.every(b=>b.y<250)); // A flat jar builds a taller visible pile than the former depth layers.
 });
 
 test('practice totals exclude scores from deleted or regenerated quiz rounds',async()=>{

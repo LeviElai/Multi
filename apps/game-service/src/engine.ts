@@ -5,7 +5,7 @@ import { normalizeAnswer, publicQuestionProjection, sanitizeAndValidateSubmissio
 import { digestPin, digestToken, idempotentId, newPin, opaqueToken, sanitizeNickname } from './security';
 
 type Clock = () => number;
-export type EngineOptions = { pinSecret?: string; maxPlayers?: number };
+export type EngineOptions = { pinSecret?: string; maxPlayers?: number; automatic?:boolean };
 export type StateReceipt = { state: SessionState; stateVersion: number };
 export type ReviewDecision = { roundId: string; answerKey: string; decision: 'accept' | 'reject'; canonical?: string; expectedStateVersion: number };
 const TERMINAL = new Set<SessionState>(['SESSION_COMPLETED', 'SESSION_ABORTED']);
@@ -55,7 +55,7 @@ function awardCurrent(data: SessionData, awards: Award[]): void {
   data.awards = [...data.awards.filter((award) => award.roundId !== round.id), ...awards.map((award) => ({ ...award, scoringRevision: revision }))];
 }
 function visibleRoundIds(data: SessionData, currentAlreadyRevealed = false): Set<string> {
-  return new Set(data.quiz.rounds.filter((_, index) => index < data.session.roundIndex || (index === data.session.roundIndex && (REVEALED.has(data.session.state) || currentAlreadyRevealed))).map((round) => round.id));
+  return new Set(data.quiz.rounds.filter((_, index) => index < data.session.roundIndex || (index === data.session.roundIndex && (REVEALED.has(data.session.state === 'PAUSED' ? data.pausedPhase! : data.session.state) || currentAlreadyRevealed))).map((round) => round.id));
 }
 export function leaderboardProjection(data: SessionData, currentAlreadyRevealed = false): Leader[] {
   const visible = visibleRoundIds(data, currentAlreadyRevealed);
@@ -89,7 +89,7 @@ export class GameEngine {
       const pinDigest = await digestPin(pin, this.options.pinSecret ?? '');
       if (await this.store.findSessionByPinDigest(pinDigest)) continue;
       const record: SessionRecord = { id, versionId, hostId, pin, pinDigest, state: 'LOBBY', stateVersion: 0, roundIndex: -1, deadlineAt: null, pausedRemainingMs: null, extensionCount: 0, joinLocked: false, createdAt: new Date(this.clock()).toISOString(), completedAt: null, lastMutationId: key, latestSeq: 0, maxPlayers: this.options.maxPlayers ?? 25 };
-      try { await this.store.createSession(record); const committed = await this.store.getSession(id); return { sessionId: id, pin: committed.session.pin }; }
+      try { await this.store.createSession(record); if(this.options.automatic)await this.store.mutate(id,undefined,hostId,'enable-autopilot-v1',data=>stateChanged(data,'session.autopilot')); const committed = await this.store.getSession(id); return { sessionId: id, pin: committed.session.pin }; }
       catch (error) {
         // The other identical request may have committed before this one.
         try {
@@ -133,14 +133,16 @@ export class GameEngine {
       if (latestReveal.rows[0]) abortedAfterReveal = JSON.parse(latestReveal.rows[0].payload).roundIndex === data.session.roundIndex;
     }
     const leaderboard = leaderboardProjection(data, abortedAfterReveal);
-    const result: Snapshot = { id, title: data.quiz.title, theme: data.quiz.theme, role: principal.role, state: data.session.state, stateVersion: data.session.stateVersion, serverTime: new Date(this.clock()).toISOString(), latestSeq: data.session.latestSeq, deadlineAt: data.session.deadlineAt, pausedRemainingMs: data.session.pausedRemainingMs, roundIndex: data.session.roundIndex, roundCount: data.quiz.rounds.length, round: round ? publicQuestionProjection(round) : null, joinLocked: data.session.joinLocked, members: principal.role === 'host' ? data.members : data.members.filter((member) => member.status === 'active'), ownAttempts, answerCount: answered.size, solvedCount: solved.size, leaderboard, maxPlayers: data.session.maxPlayers };
+    const effective=data.session.state==='PAUSED'?data.pausedPhase??'ROUND_ACTIVE':data.session.state;
+    const phase=effective==='ROUND_REVEAL'?'reveal':effective==='INTERMISSION'?'placements':'play';
+    const result: Snapshot = { automatic:data.automatic,phase,phaseId:round?.id+':'+phase,finishedCount:round ? finishedPlayers(data).size : 0,id, title: data.quiz.title, theme: data.quiz.theme, role: principal.role, state: data.session.state, stateVersion: data.session.stateVersion, serverTime: new Date(this.clock()).toISOString(), latestSeq: data.session.latestSeq, deadlineAt: data.session.deadlineAt, pausedRemainingMs: data.session.pausedRemainingMs, roundIndex: data.session.roundIndex, roundCount: data.quiz.rounds.length, round: round ? publicQuestionProjection(round) : null, joinLocked: data.session.joinLocked, members: principal.role === 'host' ? data.members : data.members.filter((member) => member.status === 'active'), ownAttempts, answerCount: answered.size, solvedCount: solved.size, leaderboard, maxPlayers: data.session.maxPlayers };
     if (principal.role === 'host') result.pin = data.session.pin;
     if (principal.role === 'player') {
       result.participantId = principal.id;
       result.ownSubmission = ownSubmission;
       result.ownPoints = leaderboard.find((row) => row.participantId === principal.id)?.points ?? 0;
     }
-    if (round && (REVEALED.has(data.session.state) || abortedAfterReveal)) {
+    if (round && (REVEALED.has(effective) || abortedAfterReveal)) {
       // Membership may change after scoring. Reconstruct the frozen scoring
       // cohort from the immutable ledger so a later kick cannot rewrite rarity.
       const scored = new Map(data.awards.filter(award => award.roundId === round.id).map(award => [award.participantId, award]));
@@ -192,17 +194,17 @@ export class GameEngine {
         if (session.state !== 'LOBBY') throw new DomainError('INVALID_TRANSITION', 'This room has already started.', 409);
         if (!data.members.some((member) => member.status === 'active')) throw new DomainError('NO_PLAYERS', 'Wait for at least one player before starting.', 409);
         session.roundIndex = 0; session.extensionCount = 0;
-        transition(data, 'ROUND_PREPARE', new Date(now + PREPARATION_MS).toISOString());
+        transition(data, data.automatic ? 'ROUND_ACTIVE' : 'ROUND_PREPARE', new Date(now + (data.automatic ? currentRound(data).timerSeconds*1000 : PREPARATION_MS)).toISOString());
         return finish('round.preparing');
       }
       if (action.action === 'PAUSE') {
-        if (session.state !== 'ROUND_ACTIVE' || !session.deadlineAt || Date.parse(session.deadlineAt) <= now) throw new DomainError('INVALID_TRANSITION', 'Only an active round can be paused.', 409);
+        if (!['ROUND_ACTIVE',...(data.automatic?['ROUND_REVEAL','INTERMISSION']:[])].includes(session.state) || !session.deadlineAt || Date.parse(session.deadlineAt) <= now) throw new DomainError('INVALID_TRANSITION', 'Only an active round can be paused.', 409);
         session.pausedRemainingMs = Math.max(0, Date.parse(session.deadlineAt) - now);
-        transition(data, 'PAUSED'); return finish('round.paused');
+        data.pausedPhase=session.state;transition(data, 'PAUSED'); return finish(data.automatic?'phase.paused.'+beforeState:'round.paused');
       }
       if (action.action === 'RESUME') {
         if (session.state !== 'PAUSED') throw new DomainError('INVALID_TRANSITION', 'This round is not paused.', 409);
-        transition(data, 'ROUND_ACTIVE', new Date(now + (session.pausedRemainingMs ?? 0)).toISOString());
+        transition(data, data.automatic ? data.pausedPhase??'ROUND_ACTIVE' : 'ROUND_ACTIVE', new Date(now + (session.pausedRemainingMs ?? 0)).toISOString());
         session.pausedRemainingMs = null; return finish('round.resumed');
       }
       if (action.action === 'EXTEND') {
@@ -215,6 +217,14 @@ export class GameEngine {
           session.deadlineAt = new Date(Date.parse(session.deadlineAt) + duration).toISOString();
         }
         session.extensionCount += 1; return finish('round.deadline_changed');
+      }
+      if(action.action==='ADVANCE' && data.automatic){
+        const phase=session.state==='PAUSED'?data.pausedPhase:session.state;session.pausedRemainingMs=null;
+        if(phase==='REVIEW_REQUIRED'){session.deadlineAt=new Date(now).toISOString();return finish('review.finishing');}
+        if(phase==='ROUND_ACTIVE'){transition(data,'ROUND_LOCKED',new Date(now).toISOString());return finish('round.locked');}
+        if(phase==='ROUND_REVEAL'){if(session.roundIndex===data.quiz.rounds.length-1){completeSession(data,now);return finish('session.completed');}transition(data,'INTERMISSION',new Date(now+10000).toISOString());return finish('placements.started');}
+        if(phase==='INTERMISSION'){startFollowingRound(data,now);return finish('round.started');}
+        throw new DomainError('INVALID_TRANSITION','Wait for the current phase.',409);
       }
       if (action.action === 'LOCK') {
         if (!['ROUND_ACTIVE', 'PAUSED'].includes(session.state)) throw new DomainError('INVALID_TRANSITION', 'Only an active or paused round can be locked.', 409);
@@ -273,6 +283,7 @@ export class GameEngine {
       const acceptedAt = new Date(now).toISOString();
       const submission = { id: crypto.randomUUID(), roundId: input.roundId, participantId: player.id, clientMutationId: input.clientMutationId, revision: input.revision, payload, acceptedAt };
       data.submissions = [...data.submissions.filter((item) => item.roundId !== input.roundId || item.participantId !== player.id), submission];
+      shortenFinishedRound(data,now);
       return changed(data, { clientMutationId: input.clientMutationId, accepted: true as const, serverRevision: input.revision, acceptedAt, ...(round.mode === 'amountle' ? {acceptedCount: payload.count} : {}) }, 'answer.received');
     });
   }
@@ -294,6 +305,7 @@ export class GameEngine {
       const attempt = previous.length + 1;
       const acceptedAt = new Date(now).toISOString();
       data.attempts.push({ id: crypto.randomUUID(), roundId: round.id, participantId: player.id, clientMutationId: input.clientMutationId, attempt, guess, feedback, solved, acceptedAt });
+      shortenFinishedRound(data,now);
       return changed(data, { clientMutationId: input.clientMutationId, accepted: true as const, serverRevision: attempt, acceptedAt, feedback, solved, attempt }, 'word.attempt_received');
     });
   }
@@ -305,6 +317,7 @@ export class GameEngine {
       const round = currentRound(data);
       const finish = (eventType: string): MutationResult<StateReceipt> => ({ ...stateChanged(data, eventType), audit: { action: 'host.rare_review', targetId: round.id, detail: { decision: input.decision, answerDigest } } });
       if (data.session.state !== 'REVIEW_REQUIRED' || round.mode !== 'rare_answers' || round.id !== input.roundId) throw new DomainError('REVIEW_CLOSED', 'This round is not awaiting review.', 409);
+      if(data.automatic&&data.session.deadlineAt&&Date.parse(data.session.deadlineAt)<=this.clock())throw new DomainError('REVIEW_CLOSED','Review time is over.',409);
       const answerKey = normalizeAnswer(input.answerKey);
       const candidates = scoreRound(data, round).review;
       if (!candidates.some((candidate) => candidate.answerKey === answerKey) && !data.adjudications.some((item) => item.roundId === round.id && item.answerKey === answerKey)) throw new DomainError('ANSWER_UNAVAILABLE', 'That answer is not in this review queue.', 404);
@@ -338,12 +351,15 @@ export class GameEngine {
         const data = await this.store.getSession(sessionId);
         const state = data.session.state;
         const now = this.clock();
-        const immediate = state === 'ROUND_LOCKED' || state === 'ROUND_EVALUATING';
-        if (!immediate && (!data.session.deadlineAt || Date.parse(data.session.deadlineAt) > now || !['ROUND_PREPARE', 'ROUND_COUNTDOWN', 'ROUND_ACTIVE', 'INTERMISSION'].includes(state))) break;
+        const immediate = state === 'ROUND_LOCKED' || state === 'ROUND_EVALUATING' || (data.automatic && state === 'ROUND_SCORED');
+        if (!immediate && (!data.session.deadlineAt || Date.parse(data.session.deadlineAt) > now || !['ROUND_PREPARE', 'ROUND_COUNTDOWN', 'ROUND_ACTIVE', 'REVIEW_REQUIRED', 'ROUND_REVEAL', 'INTERMISSION'].includes(state))) break;
         try {
           await this.store.mutate(sessionId, data.session.stateVersion, `worker:${sessionId}`, `reconcile:${data.session.stateVersion}:${state}`, (current) => {
             const session = current.session;
             const scheduled = Date.parse(session.deadlineAt ?? new Date(this.clock()).toISOString());
+            if(current.automatic && session.state==='REVIEW_REQUIRED'){current.reviewTimeoutRoundId=currentRound(current).id;const scored=scoreRound(current,currentRound(current));awardCurrent(current,scored.awards);transition(current,'ROUND_SCORED');return stateChanged(current,'review.timed_out');}
+            if(current.automatic && session.state==='ROUND_SCORED'){transition(current,'ROUND_REVEAL',new Date(this.clock()+3000).toISOString());return stateChanged(current,'round.revealed');}
+            if(current.automatic && session.state==='ROUND_REVEAL'){if(session.roundIndex===current.quiz.rounds.length-1){completeSession(current,scheduled);return stateChanged(current,'session.completed');}transition(current,'INTERMISSION',new Date(scheduled+10000).toISOString());return stateChanged(current,'placements.started');}
             if (session.state === 'ROUND_PREPARE') {
               transition(current, 'ROUND_COUNTDOWN', new Date(scheduled + COUNTDOWN_MS).toISOString()); return stateChanged(current, 'round.countdown');
             }
@@ -358,9 +374,10 @@ export class GameEngine {
             }
             if (session.state === 'ROUND_EVALUATING') {
               const result = scoreRound(current, currentRound(current));
-              if (result.review.length) { transition(current, 'REVIEW_REQUIRED'); return stateChanged(current, 'round.review_required'); }
+              if (result.review.length) { transition(current, 'REVIEW_REQUIRED',current.automatic?new Date(this.clock()+30000).toISOString():null); return stateChanged(current, 'round.review_required'); }
               awardCurrent(current, result.awards); transition(current, 'ROUND_SCORED'); return stateChanged(current, 'round.scored');
             }
+            if(current.automatic && session.state==='INTERMISSION'){startFollowingRound(current,scheduled);return stateChanged(current,'round.started');}
             if (session.state === 'INTERMISSION') {
               if (session.roundIndex + 1 >= current.quiz.rounds.length) {
                 transition(current, 'SESSION_COMPLETED'); session.completedAt = new Date(this.clock()).toISOString(); session.joinLocked = true;
@@ -377,4 +394,24 @@ export class GameEngine {
     }
     return { reconciled };
   }
+}
+
+function finishedPlayers(data:SessionData):Set<string>{
+ const round=currentRound(data);
+ return new Set(data.members.filter(m=>m.status==='active').filter(m=>{
+  if(round.mode==='word_puzzle'){const a=data.attempts.filter(a=>a.roundId===round.id&&a.participantId===m.id);return a.some(a=>a.solved)||a.length>=round.publicConfig.maxAttempts;}
+  const sub=data.submissions.find(s=>s.roundId===round.id&&s.participantId===m.id);
+  return !!sub&&(sub.payload.locked===true||(round.mode!=='amountle'&&!round.allowRevision));
+ }).map(m=>m.id));
+}
+function shortenFinishedRound(data:SessionData,now:number){
+ const eligible=data.members.filter(m=>m.status==='active');
+ if(data.automatic&&eligible.length&&finishedPlayers(data).size===eligible.length&&data.session.deadlineAt)
+  data.session.deadlineAt=new Date(Math.min(Date.parse(data.session.deadlineAt),now+900)).toISOString();
+}
+function completeSession(data:SessionData,now:number){transition(data,'SESSION_COMPLETED');data.session.completedAt=new Date(now).toISOString();data.session.joinLocked=true;}
+function startFollowingRound(data:SessionData,now:number){
+ if(data.session.roundIndex+1>=data.quiz.rounds.length){completeSession(data,now);return;}
+ data.session.roundIndex++;data.session.extensionCount=0;data.session.pausedRemainingMs=null;
+ transition(data,'ROUND_ACTIVE',new Date(now+currentRound(data).timerSeconds*1000).toISOString());
 }

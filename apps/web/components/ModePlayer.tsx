@@ -13,6 +13,7 @@ import { RareAnswerControl } from './world/RareExperience';
 
 import Amount from './game/AmountPlayer';
 import Scratchpad from './game/Scratchpad';
+import SubmissionReaction from './game/SubmissionReaction';
 import { ScaleStage } from './game/ScaleStage';
 export { ScaleStage } from './game/ScaleStage';
 type Props = {
@@ -30,6 +31,7 @@ export default function ModePlayer({ snapshot: s, onUpdate, onLocalSubmit, disab
         return; const delay = Date.parse(s.deadlineAt) - Date.parse(s.serverTime); const timer = setTimeout(() => setExpired(true), Math.max(0, delay)); return () => clearTimeout(timer); }, [s.deadlineAt, s.state]);
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
+    const [acceptedPayload,setAcceptedPayload]=useState(s.ownSubmission?.payload);
     const [locked, setLocked] = useState(!!s.ownSubmission?.payload.locked);
     const rev = useRef(s.ownSubmission?.revision ?? 0);
     const pending = useRef<{
@@ -49,8 +51,8 @@ export default function ModePlayer({ snapshot: s, onUpdate, onLocalSubmit, disab
         const deliver = async (item: NonNullable<typeof pending.current>) => {
             const ack = onLocalSubmit ? await onLocalSubmit(item.payload) : await post<Ack>(`/sessions/${s.id}/submissions`, { roundId: r.id, clientMutationId: item.key, revision: item.revision, payload: item.payload });
             pending.current = null;
-            if (item.payload.locked)
-                setLocked(true);
+            if (item.payload.locked) setLocked(true);
+            setAcceptedPayload(item.payload);
             onUpdate();
             return ack;
         };
@@ -79,7 +81,7 @@ export default function ModePlayer({ snapshot: s, onUpdate, onLocalSubmit, disab
         }
     }, [r.id, s.id, s.state, offline, expired, onLocalSubmit, onUpdate]);
     const disabled = offline || expired || s.state !== 'ROUND_ACTIVE' || locked;
-    return <div className={'mode-player player-' + r.mode} style={{ '--mode-color': MODE_META[r.mode].color } as React.CSSProperties}>{r.mode === 'fermi' ? <Fermi round={r} disabled={disabled} busy={busy} value={s.ownSubmission?.payload.value} send={send}/> : r.mode === 'rare_answers' ? <Rare round={r} disabled={disabled} busy={busy} value={s.ownSubmission?.payload.text} send={send}/> : r.mode === 'word_puzzle' ? <Word disabled={disabled} snapshot={s} onUpdate={onUpdate} onLocalSubmit={onLocalSubmit} onError={setError}/> : r.mode === 'size_it_up' ? <Size round={r} disabled={disabled} busy={busy} initial={s.ownSubmission?.payload.ratio} send={send}/> : <Amount round={r} disabled={disabled} busy={busy} initial={s.ownSubmission?.payload.count} send={send}/>}{error && <div className="notice error" role="alert">{error}</div>}{locked && <div className="answer-confirmation" role="status"><Check size={18}/> Answer locked.</div>}<details className="game-rules"><summary>Rules & points</summary><p>{r.mode === "word_puzzle" ? "Correct on the first try earns 1,000 points. Each extra guess costs 150 points. Tile labels show right place, wrong place or not used." : r.mode === "rare_answers" ? "Only accepted answers score. Fewer matching players means more points, up to 1,000. Matching answers receive equal points." : r.mode === "amountle" ? "Your last accepted pour is scored, up to 1,000 points. Closer to the answer earns more. There is no undo." : "The closer you are to the answer, the more you earn: up to 1,000 points."} No speed bonus.</p></details><div className="sync-hint" role="status">{busy ? <><LoaderCircle size={13} className="spin"/> Sending to the host…</> : s.ownSubmission ? <><Check size={13}/> Answer received</> : expired ? 'Time is up. No answer was received.' : r.mode !== 'word_puzzle' ? 'Your answer stays private until the reveal.' : ''}</div></div>;
+    return <div className={'mode-player player-' + r.mode + (locked ? ' mode-locked' : '')} style={{ '--mode-color': MODE_META[r.mode].color } as React.CSSProperties}><div className="mode-inputs">{r.mode === 'fermi' ? <Fermi round={r} disabled={disabled} busy={busy} value={s.ownSubmission?.payload.value} send={send}/> : r.mode === 'rare_answers' ? <Rare round={r} disabled={disabled} busy={busy} value={s.ownSubmission?.payload.text} send={send}/> : r.mode === 'word_puzzle' ? <Word disabled={disabled} snapshot={s} onUpdate={onUpdate} onLocalSubmit={onLocalSubmit} onError={setError}/> : r.mode === 'size_it_up' ? <Size round={r} disabled={disabled} busy={busy} initial={s.ownSubmission?.payload.ratio} send={send}/> : <Amount round={r} paused={s.state==="PAUSED"} disabled={disabled} busy={busy} initial={s.ownSubmission?.payload.count} send={send}/>}</div>{error && <div className="notice error" role="alert">{error}</div>}{locked && <SubmissionReaction mode={r.mode} value={r.mode==="fermi"?String(acceptedPayload?.value??acceptedPayload?.text??s.ownSubmission?.payload.value??""):r.mode==="size_it_up"?(acceptedPayload?.ratio??s.ownSubmission?.payload.ratio??1).toFixed(2)+"×":r.mode==="rare_answers"?(acceptedPayload?.text??s.ownSubmission?.payload.text):String(acceptedPayload?.count??s.ownSubmission?.payload.count??0)} finished={s.finishedCount} players={s.members.filter(m=>m.status==="active").length}/>}<details className="game-rules"><summary>Rules & points</summary><p>{r.mode === "word_puzzle" ? "Correct on the first try earns 1,000 points. Each extra guess costs 150 points. Tile labels show right place, wrong place or not used." : r.mode === "rare_answers" ? "Only accepted answers score. Fewer matching players means more points, up to 1,000. Matching answers receive equal points." : r.mode === "amountle" ? "Your last accepted pour is scored, up to 1,000 points. Closer to the answer earns more. There is no undo." : "The closer you are to the answer, the more you earn: up to 1,000 points."} No speed bonus.</p></details><div className="sync-hint" role="status">{busy ? <><LoaderCircle size={13} className="spin"/> Sending to the host…</> : s.ownSubmission ? null : expired ? 'Time is up. No answer was received.' : r.mode !== 'word_puzzle' ? 'Your answer stays private until the reveal.' : ''}</div></div>;
 }
 type ControlProps = {
     round: PublicRound;
@@ -176,6 +178,7 @@ function Word({ snapshot: s, onUpdate, onLocalSubmit, onError, disabled }: {
         e.preventDefault();
         key(e.key);
     } }; window.addEventListener('keydown', fn); return () => window.removeEventListener('keydown', fn); });
+    if(solved || attempts.length>=c.maxAttempts)return <SubmissionReaction mode="word_puzzle" solved={solved} value={attempts.at(-1)?.guess} attempts={attempts.length} finished={s.finishedCount} players={s.members.filter(m=>m.status==="active").length}/>;
     return <div className="word-game"><div className="word-grid" role="group" aria-label="Word guesses" style={{ '--letters': c.length } as React.CSSProperties}>{Array.from({ length: c.maxAttempts }, (_, i) => <div className="word-row" key={i}>{Array.from({ length: c.length }, (_, j) => { const a = attempts[i]; const letters = a ? Array.from(new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(a.guess), x => x.segment) : i === attempts.length ? chars : []; return <span key={j} className={'word-tile ' + (a ? a.feedback[j] : letters[j] ? 'filled' : '')} style={{ '--i': j } as React.CSSProperties} aria-label={letters[j] ? `${letters[j]}, ${a ? a.feedback[j] : 'not submitted'}` : 'empty'}>{letters[j] ?? ''}</span>; })}</div>)}</div><div className="word-legend"><span><i className="exact"/>Right place</span><span><i className="present"/>Wrong place</span><span><i className="absent"/>Not used</span></div>{solved ? <p className="answer-confirmation"><Check size={18}/> Solved in {attempts.length} {attempts.length === 1 ? 'guess' : 'guesses'}.</p> : <><label className="sr-only" htmlFor="word-input">Type a {c.length}-letter guess</label><input id="word-input" className="word-accessible-input" value={guess} onChange={e => setGuess(e.target.value.toUpperCase().replace(/[^\p{L}\p{M}]/gu, '').slice(0, c.length * 2))} placeholder="Or type your word here" disabled={finished || busy || !!pendingGuess.current} onKeyDown={e => { if (e.key === 'Enter') {
         e.preventDefault();
         void submit();

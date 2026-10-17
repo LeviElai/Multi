@@ -1,20 +1,32 @@
-/** Visual-only 3D sphere-bound collision solver. No gameplay state is derived from bodies. */
+/** Screen-space candy collisions. Visual state never determines accepted quantity or score. */
 export type Body={x:number;y:number;z:number;vx:number;vy:number;vz:number;r:number;angle:number;spin:number;shape:number;color:number};
 export const MAX_BODIES=96;
-export function seededValue(seed:string,index:number){let h=2166136261;for(const c of seed+':'+index){h=Math.imul(h^c.charCodeAt(0),16777619)}return (h>>>0)/4294967296;}
-export function createBody(seed:string,index:number):Body{const r=11;return {x:(seededValue(seed,index*7)-.5)*90,y:260+index%3*18,z:(seededValue(seed,index*7+1)-.5)*65,vx:(seededValue(seed,index*7+2)-.5)*65,vy:-10,vz:(seededValue(seed,index*7+3)-.5)*30,r,angle:seededValue(seed,index*7+4)*Math.PI,spin:(seededValue(seed,index*7+5)-.5)*5,shape:Math.floor(seededValue(seed,index*7+6)*3),color:index%5};}
+export function seededValue(seed:string,index:number){let h=2166136261;for(const c of seed+':'+index)h=Math.imul(h^c.charCodeAt(0),16777619);return(h>>>0)/4294967296;}
+export function createBody(seed:string,index:number):Body{return{x:(seededValue(seed,index*7)-.5)*75,y:268+index%4*26,z:0,vx:(seededValue(seed,index*7+2)-.5)*90,vy:-15,vz:0,r:10,angle:0,spin:0,shape:index%3,color:index%5};}
+export function settleBodies(bodies:Body[],passes=512){
+ for(let pass=0;pass<passes;pass++){
+  let overlap=false;
+  for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){
+   const a=bodies[i],b=bodies[j];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+   const diameter=a.r+b.r;if(d>=diameter-.001)continue;overlap=true;
+   if(d<.001){dx=.001;dy=.001;d=Math.hypot(dx,dy);}
+   const nx=dx/d,ny=dy/d,shift=(diameter-d+.001)*.5;
+   a.x-=nx*shift;a.y-=ny*shift;b.x+=nx*shift;b.y+=ny*shift;
+   const closing=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+   if(closing<0){const impulse=-closing*.52;a.vx-=nx*impulse;a.vy-=ny*impulse;b.vx+=nx*impulse;b.vy+=ny*impulse;}
+   a.vx*=.993;b.vx*=.993;
+  }
+  for(const b of bodies){b.y=Math.max(b.r,b.y);b.x=Math.max(-110+b.r,Math.min(110-b.r,b.x));b.z=0;b.vz=0;}
+  if(!overlap)break;
+ }
+}
 export function stepBodies(bodies:Body[],dt:number){
- const step=Math.min(dt,1/30);let energy=0;
- for(const b of bodies){b.vy-=450*step;b.x+=b.vx*step;b.y+=b.vy*step;b.z+=b.vz*step;b.angle+=b.spin*step;b.spin*=.995;
-  if(b.y<b.r){b.y=b.r;b.vy=Math.abs(b.vy)*.24;b.vx*=.92;b.vz*=.92;b.spin*=.8;}
-  for(const axis of ['x','z'] as const){const limit=(axis==='x'?110:65)-b.r;if(Math.abs(b[axis])>limit){b[axis]=Math.sign(b[axis])*limit;if(axis==='x')b.vx*=-.4;else b.vz*=-.4;}}
+ const duration=Math.min(Math.max(dt,0),1/20),steps=Math.max(1,Math.ceil(duration/(1/120)));
+ for(let i=0;i<steps;i++){
+  const t=duration/steps;
+  for(const b of bodies){b.vy-=450*t;b.x+=b.vx*t;b.y+=b.vy*t;if(b.y<b.r){b.y=b.r;b.vy=Math.abs(b.vy)*.08;b.vx*=.85;}
+   if(Math.abs(b.x)>110-b.r){b.x=Math.sign(b.x)*(110-b.r);b.vx*=-.25;}}
+  settleBodies(bodies,24);
  }
- for(let pass=0;pass<3;pass++)for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){
-  const a=bodies[i],b=bodies[j];let dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z;let d=Math.hypot(dx,dy,dz);const rr=a.r+b.r;if(d>=rr)continue;if(d<.001){dx=.01;d=.01;}const nx=dx/d,ny=dy/d,nz=dz/d,overlap=(rr-d)*.51;
-  a.x-=nx*overlap;a.y-=ny*overlap;a.z-=nz*overlap;b.x+=nx*overlap;b.y+=ny*overlap;b.z+=nz*overlap;
-  const v=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny+(b.vz-a.vz)*nz;if(v<0){const impulse=-v*.62;a.vx-=nx*impulse;a.vy-=ny*impulse;a.vz-=nz*impulse;b.vx+=nx*impulse;b.vy+=ny*impulse;b.vz+=nz*impulse;}
-  a.vx*=.98;a.vz*=.98;b.vx*=.98;b.vz*=.98;a.spin*=.97;b.spin*=.97;
- }
- for(const b of bodies){b.y=Math.max(b.r,b.y);b.x=Math.max(-110+b.r,Math.min(110-b.r,b.x));b.z=Math.max(-65+b.r,Math.min(65-b.r,b.z));energy+=Math.abs(b.vx)+Math.abs(b.vy)+Math.abs(b.vz);}
- return energy;
+ return bodies.reduce((sum,b)=>sum+Math.abs(b.vx)+Math.abs(b.vy),0);
 }

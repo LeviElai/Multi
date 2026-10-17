@@ -7,7 +7,7 @@ import { GameEngine } from './engine';
 import { assertRateBudget, assertSameOrigin, cookieValue, digestToken, idempotentId, mutationKey, participantCookie, rateLimit } from './security';
 
 export type ApiUser = { id: string; displayName: string };
-export type ApiContext = { store: Store; user: ApiUser | null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; clientIp?: string };
+export type ApiContext = { store: Store; user: ApiUser | null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; automatic?:boolean; clientIp?: string };
 const DEFAULT_FEATURES: Features = { ai: false, billing: false, ads: false, stage: 'private_alpha', transport: 'polling' };
 const uuid = z.string().uuid();
 const revision = z.number().int().positive();
@@ -113,7 +113,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
     const method = request.method.toUpperCase();
     if (!url.pathname.startsWith('/api/v1/')) throw new DomainError('NOT_FOUND', 'This endpoint does not exist.', 404);
     assertSameOrigin(request);
-    const engine = new GameEngine(ctx.store, undefined, { pinSecret: ctx.pinSecret, maxPlayers: ctx.maxPlayers });
+    const engine = new GameEngine(ctx.store, undefined, { pinSecret: ctx.pinSecret, maxPlayers: ctx.maxPlayers, automatic:ctx.automatic });
     const features: Features = { ...DEFAULT_FEATURES, ...ctx.features, ai: false, billing: false, ads: false };
     const body = !['GET', 'HEAD', 'DELETE'].includes(method) ? await readJson(request) : {};
     const user = ctx.user;

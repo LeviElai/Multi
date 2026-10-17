@@ -84,7 +84,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
   const {db,store}=await createRuntime(environment);
   const auth=new CreatorAuth(store,db,secure);
   try {await auth.initialize(environment);}catch(error){await db.close();throw error;}
-  const engine=new GameEngine(store,()=>Date.now(),{pinSecret,maxPlayers});
+  const engine=new GameEngine(store,()=>Date.now(),{pinSecret,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0'});
   const features:Features={ai:false,billing:false,ads:false,stage:'private_alpha',transport:'socket',auth:'credentials'};
   const limiter=new RateLimiter();let draining=false;let ticking=false;
   let broadcastTimer:NodeJS.Timeout|undefined;let broadcasting=false;let broadcastAgain=false;
@@ -116,7 +116,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
       if(path==='/api/v1/sessions/join'&&!limiter.allow(`join:${address}`,90,60000))throw new DomainError('RATE_LIMITED','Too many join attempts. Try again in a minute.',429);
       const request=await webRequest(req,allowedOrigin??publicOrigin);
       const authResponse=await auth.handle(request);
-      const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers});
+      const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0'});
       await sendResponse(res,response,secure,allowedOrigin);
       if(req.method!=='GET'&&response.ok)scheduleBroadcast();
       log('http_request',{method:req.method,path:safeLogPath,status:response.status,durationMs:Date.now()-started});
@@ -187,7 +187,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
         const url=new URL(connection.request.url);url.pathname=`/api/v1/sessions/${connection.sessionId}/${route}`;
         const headers=new Headers(connection.request.headers);headers.set('Content-Type','application/json');
         if(typeof data.idempotencyKey==='string')headers.set('Idempotency-Key',data.idempotencyKey);
-        const response=await handleApi(new Request(url,{method:'POST',headers,body:JSON.stringify(data)}),{store,user:await auth.identify(connection.request),features,cookieSecure:secure,pinSecret,clientIp:requestAddress(socket.request,environment.TRUST_PROXY==='1'),maxPlayers});
+        const response=await handleApi(new Request(url,{method:'POST',headers,body:JSON.stringify(data)}),{store,user:await auth.identify(connection.request),features,cookieSecure:secure,pinSecret,clientIp:requestAddress(socket.request,environment.TRUST_PROXY==='1'),maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0'});
         const result=await response.json() as {data?:unknown;error?:unknown};
         if(typeof ack==='function')ack(result);
         if(response.ok){if(event==='answer.submit'||event==='word.guess')socket.emit('answer.ack',result.data);scheduleBroadcast();}

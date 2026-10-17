@@ -105,7 +105,7 @@ export class SqlStore implements Store {
     for(let attempt=0;attempt<6;attempt++){
       const row=(await this.db.query('SELECT * FROM sessions WHERE id=?',[id])).rows[0];if(!row)throw missing();
       const session=toSession(row);
-      const [quiz,members,submissions,attempts,adjudications,awards,voids]=await Promise.all([
+      const [quiz,members,submissions,attempts,adjudications,awards,voids,flow]=await Promise.all([
         this.getVersion(session.versionId),
         this.db.query('SELECT id,nickname,status,joined_at FROM participants WHERE session_id=? ORDER BY joined_at,id',[id]),
         this.db.query('SELECT s.* FROM submissions s WHERE s.session_id=? AND NOT EXISTS (SELECT 1 FROM submissions n WHERE n.session_id=s.session_id AND n.participant_id=s.participant_id AND n.round_id=s.round_id AND n.revision>s.revision)',[id]),
@@ -113,9 +113,10 @@ export class SqlStore implements Store {
         this.db.query('SELECT a.* FROM adjudications a WHERE a.session_id=? AND NOT EXISTS (SELECT 1 FROM adjudications n WHERE n.session_id=a.session_id AND n.round_id=a.round_id AND n.answer_key=a.answer_key AND n.adjudication_revision>a.adjudication_revision)',[id]),
         this.db.query('SELECT r.round_id,r.scoring_revision,s.participant_id,s.points,s.reason,s.detail FROM round_score_current c JOIN scoring_runs r ON r.id=c.scoring_run_id JOIN round_scores s ON s.scoring_run_id=r.id WHERE c.session_id=? ORDER BY r.round_id,s.participant_id',[id]),
         this.db.query('SELECT round_id FROM session_rounds WHERE session_id=? AND voided=1',[id]),
+        this.db.query("SELECT EXISTS(SELECT 1 FROM session_events WHERE session_id=? AND type='session.autopilot') AS automatic, (SELECT type FROM session_events WHERE session_id=? AND type LIKE 'phase.paused.%' ORDER BY seq DESC LIMIT 1) AS paused_phase, (SELECT payload FROM session_events WHERE session_id=? AND type='review.timed_out' ORDER BY seq DESC LIMIT 1) AS review_timeout",[id,id,id]),
       ]);
       const latest=(await this.db.query('SELECT state_version FROM sessions WHERE id=?',[id])).rows[0];if(!latest||Number(latest.state_version)!==session.stateVersion)continue;
-      return {session,quiz,members:members.rows.map(m=>({id:String(m.id),nickname:String(m.nickname),status:m.status as 'active'|'kicked',joinedAt:iso(m.joined_at)})),submissions:submissions.rows.map(toSubmission),attempts:attempts.rows.map(toAttempt),adjudications:adjudications.rows.map(toAdjudication),awards:awards.rows.map(a=>({roundId:String(a.round_id),participantId:String(a.participant_id),points:Number(a.points),reason:String(a.reason),scoringRevision:Number(a.scoring_revision),detail:parse(a.detail)})),voidRoundIds:voids.rows.map(v=>String(v.round_id))};
+      return {reviewTimeoutRoundId:flow.rows[0]?.review_timeout?quiz.rounds[parse<{roundIndex:number}>(flow.rows[0].review_timeout).roundIndex]?.id:undefined,automatic:Boolean(flow.rows[0]?.automatic),pausedPhase:flow.rows[0]?.paused_phase ? String(flow.rows[0].paused_phase).split('.').at(-1) as SessionRecord['state'] : undefined,session,quiz,members:members.rows.map(m=>({id:String(m.id),nickname:String(m.nickname),status:m.status as 'active'|'kicked',joinedAt:iso(m.joined_at)})),submissions:submissions.rows.map(toSubmission),attempts:attempts.rows.map(toAttempt),adjudications:adjudications.rows.map(toAdjudication),awards:awards.rows.map(a=>({roundId:String(a.round_id),participantId:String(a.participant_id),points:Number(a.points),reason:String(a.reason),scoringRevision:Number(a.scoring_revision),detail:parse(a.detail)})),voidRoundIds:voids.rows.map(v=>String(v.round_id))};
     }
     throw conflict();
   }
@@ -205,6 +206,6 @@ export class SqlStore implements Store {
     }
     return statements;
   }
-  async overdueSessions(now:string):Promise<string[]>{return (await this.db.query("SELECT id FROM sessions WHERE (deadline_at<=? AND state IN ('ROUND_PREPARE','ROUND_COUNTDOWN','ROUND_ACTIVE','ROUND_REVEAL','INTERMISSION')) OR state IN ('ROUND_LOCKED','ROUND_EVALUATING') ORDER BY created_at LIMIT 200",[now])).rows.map(r=>String(r.id));}
+  async overdueSessions(now:string):Promise<string[]>{return (await this.db.query("SELECT id FROM sessions WHERE (deadline_at<=? AND state IN ('ROUND_PREPARE','ROUND_COUNTDOWN','ROUND_ACTIVE','REVIEW_REQUIRED','ROUND_REVEAL','INTERMISSION')) OR state IN ('ROUND_LOCKED','ROUND_EVALUATING','ROUND_SCORED') ORDER BY created_at LIMIT 200",[now])).rows.map(r=>String(r.id));}
   async events(sessionId:string,after:number):Promise<SessionEvent[]>{return (await this.db.query('SELECT * FROM session_events WHERE session_id=? AND seq>? ORDER BY seq LIMIT 500',[sessionId,after])).rows.map(r=>({eventId:String(r.event_id),sessionId:String(r.session_id),seq:Number(r.seq),type:String(r.type),occurredAt:iso(r.occurred_at),stateVersion:Number(r.state_version),payload:parse(r.payload)}));}
 }
