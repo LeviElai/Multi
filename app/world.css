@@ -119,7 +119,7 @@ button:focus-visible,a:focus-visible,input:focus-visible {
   image-rendering: pixelated;
 }
 .village-scene .scene-painting {
-  background-image: url('/art/arcade-harbor.webp');
+  background-image: url('/art/pixel/harbor.svg');
 }
 .harbor-hero .scene-painting:after {
   content: '';
@@ -547,7 +547,7 @@ button:focus-visible,a:focus-visible,input:focus-visible {
 }
 /* Quiet Reef. Decoration is inert; all gameplay remains normal DOM. */
 .ocean-scene .scene-painting {
-  background-image: url('/art/quiet-reef.webp');
+  background-image: url('/art/pixel/reef.svg');
   background-position: center bottom;
 }
 .ocean-scene:after {
