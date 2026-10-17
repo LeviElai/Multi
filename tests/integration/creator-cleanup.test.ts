@@ -47,3 +47,21 @@ test('failed generation keeps a safe diagnostic and returns credits once',async 
  assert.equal((await db.query<{error_code:string}>('SELECT error_code FROM creator_generations WHERE id=?',[job.id])).rows[0].error_code,'PROVIDER_UNAVAILABLE');
  assert.match((await generationStatus(store,owner.id,job.id)).message??'',/temporarily unavailable/);assert.equal((await quota(store,owner.id)).remaining,20);
 });
+
+
+test('AI cannot invent Size artwork or leave Count facts implicit',()=>{
+ const input=GenerationInput.parse({topic:'football',count:2,modes:['size_it_up','amountle']});
+ const quiz=decodeGeneration({title:'Football',questions:[
+ {mode:'size_it_up',question:'Resize a football goal.',explanation:'Unsupported model suggestion.',answerData:JSON.stringify({answer:2.44,referenceSize:1.75,asset:'goal',referenceAsset:'person',referenceLabel:'Person',targetLabel:'Goal',unit:'m'})},
+ {mode:'amountle',question:'How many players in 7 matches?',explanation:'Assumes an unstated team size.',answerData:JSON.stringify({groups:7,perGroup:22,unit:'players'})}
+ ]},input);
+ const size=quiz.rounds[0];if(size.mode!=='size_it_up')throw new Error('Size missing');assert.equal(size.publicConfig.asset,'car');assert.equal(size.secretConfig.targetSize,1.5);assert.doesNotMatch(size.question,/goal|1[.,]5/);
+ const count=quiz.rounds[1];if(count.mode!=='amountle')throw new Error('Count missing');assert.equal(count.secretConfig.answer,154);assert.match(count.question,/7 groups have 22 players each/);assert.doesNotMatch(count.question,/154/);
+});
+
+
+test('a meaningful clue containing its answer becomes a fill-in-the-blank clue locally',()=>{
+ const input=GenerationInput.parse({topic:'football',count:1,modes:['word_puzzle']});
+ const quiz=decodeGeneration({title:'Tactics',questions:[{mode:'word_puzzle',question:'Name the 5-letter tactic where teams press opponents after losing possession.',explanation:'The tactic is PRESS.',answerData:'{"word":"PRESS"}'}]},input);
+ assert.match(quiz.rounds[0].question,/_____/);assert.doesNotMatch(quiz.rounds[0].question,/\bpress\b/i);assert.equal(quiz.rounds[0].provenance,'needs_review');
+});

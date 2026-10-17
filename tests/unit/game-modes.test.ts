@@ -1,3 +1,4 @@
+import {rarePoints} from '../../packages/game-modes/src/rare-answers';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Adjudication, Round, SessionData, Submission, WordAttempt } from '../../packages/contracts/src/index';
@@ -362,4 +363,17 @@ test('Think minor typos share a canonical bucket; ambiguous spellings require re
 test('Think small rooms do not award maximum points just for different answers',()=>{
  const round=forMode('rare_answers');
  for(const count of [1,2,3]){const ids=Array.from({length:count},(_,i)=>'p'+i);const data=session(round,ids,ids.map((id,i)=>submission(round,id,{text:['Mint','Coral','Sky'][i]})));const expected=[200,400,520][count-1];assert.ok(Object.values(scores(data,round)).every(score=>score===expected));}
+});
+
+
+test('Think formula scales with every valid player count through 200 and penalizes matching frequency',()=>{
+ assert.deepEqual([1,2,3,5,10,20].map(n=>rarePoints(n,1)),[200,400,520,657,800,891]);
+ let previous=0;
+ for(let n=1;n<=200;n++){
+   const unique=rarePoints(n,1);assert.ok(unique>=previous&&unique<=1000);previous=unique;
+   let prior=unique;
+   for(let matches=1;matches<=n;matches++){const score=rarePoints(n,matches);assert.ok(score<=prior&&score>=200);prior=score;}
+   assert.equal(rarePoints(n,n),200);
+ }
+ assert.equal(rarePoints(3,4),0);assert.equal(rarePoints(3,0),0);
 });

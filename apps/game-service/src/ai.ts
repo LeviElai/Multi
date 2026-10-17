@@ -30,11 +30,11 @@ export async function queueGeneration(store:Store,owner:string,key:string,input:
  return jobView(job);
 }
 const jobView=(job:Job)=>({id:job.id,status:job.status,quizId:job.quiz_id,message:job.status==='failed'?(job.error_code==='PROVIDER_UNAVAILABLE'?'The question maker is temporarily unavailable. Your credits were returned.':job.error_code==='TIMEOUT'?'The request took too long. Your credits were returned.':'The draft did not pass the game checks. Your credits were returned. Try a narrower topic or fewer game types.'):undefined});
-function failureCode(error:unknown){const message=error instanceof Error?error.message:'';return /timeout|abort|Incomplete generation/i.test(message)?'TIMEOUT':/Provider status|fetch failed/i.test(message)?'PROVIDER_UNAVAILABLE':error instanceof z.ZodError?'ANSWER_FORMAT':'GAME_CHECK';}
+function failureCode(error:unknown){const message=error instanceof Error?error.message:'';return /timeout|abort|Incomplete generation/i.test(message)?'TIMEOUT':/Provider status|fetch failed/i.test(message)?'PROVIDER_UNAVAILABLE':error instanceof z.ZodError?('ANSWER_FORMAT:'+error.issues.slice(0,3).map(i=>i.path.join('.')+':'+i.code).join(',')).slice(0,240):'GAME_CHECK';}
 export async function generationStatus(store:Store,owner:string,id:string){const job=(await store.db.query<Job>('SELECT * FROM creator_generations WHERE id=? AND owner_id=?',[id,owner])).rows[0];if(!job)throw new DomainError('NOT_FOUND','This generation is unavailable.',404);return jobView(job);}
 
 // Structured, bounded output; the model cannot select IDs, provenance, URLs or execute tools.
-const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),answer:z.number().finite().optional(),unit:z.string().max(20).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(8)})).min(2).max(32).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
+const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),answer:z.number().finite().optional(),unit:z.string().max(30).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(8)})).min(2).max(32).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
 export function validatedGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const parsed=generatedSchema.parse(value);
  if(input.count>=input.modes.length&&input.modes.some(mode=>!parsed.questions.some(q=>q.mode===mode)))throw new Error('Missing requested mode');
@@ -56,11 +56,11 @@ export type TokenUsage={input:number;output:number;model:string};
 export type RecordUsage=(usage:TokenUsage)=>Promise<void>;
 export function generationPlan(input:GenerationRequest){
  const rules:Record<GenerationRequest['modes'][number],string>={
-  fermi:'fermi answerData: {"answer":144,"unit":"tiles"}. Positive numeric answer (at most 3 decimals), interesting estimation or self-contained arithmetic.',
-  amountle:'amountle answerData: {"groups":6,"perGroup":8,"unit":"sweets"}. Use a self-contained multiplication challenge relevant to the topic, with both factors as digits in the question. Both factors are integers 2..50, product <=1000. Server computes the answer. unit MUST match the counted noun in your question. Never give the product. Do not use biological trivia.',
+  fermi:'fermi answerData: {"answer":144,"unit":"tiles"}. Positive numeric answer (at most 3 decimals). Use a self-contained estimation puzzle with every needed number in the question, not outside trivia or current tournament formats.',
+  amountle:'amountle answerData: {"groups":6,"perGroup":8,"unit":"sweets"}. Choose two integer factors 2..50, product <=1000, and a short counted noun relevant to the topic. Leave question and explanation empty: the server writes the multiplication puzzle and computes the answer.',
   word_puzzle:'word_puzzle answerData: {"word":"ORBIT"}. English word 3..12 uppercase letters. Write a definition clue. NEVER include the word, an anagram, or a list of its letters in the question.',
-  rare_answers:'rare_answers answerData: {"answers":[{"canonical":"Mercury","aliases":[]}]}. Include 4..12 valid entries, 0..3 genuine spelling/synonym aliases each (case is already ignored). Use a small, clearly bounded category with a COMPLETE accepted set (4..12 entries), never an incomplete sample of a broad category. Do not list answers in the question.',
-  size_it_up:'size_it_up answerData: {"answer":1.5,"referenceSize":1.75,"referenceLabel":"1.75 m person","targetLabel":"Car","unit":"m","asset":"car","referenceAsset":"person"}. Use EXACTLY these calibrated house measurements. Ask the player to judge the car height beside the person, without giving 1.5 or the target ratio. Explain that our reference car is 1.5 m tall; real car models vary.'
+  rare_answers:'rare_answers answerData: {"answers":[{"canonical":"Mercury","aliases":[]}]}. Include 4..12 valid entries, 0..3 genuine spelling/synonym aliases each (case is already ignored). Use a small, clearly bounded category with a COMPLETE accepted set (4..12 entries), never an incomplete sample of a broad category. Do not list answers in the question. Avoid time-dependent winner lists.',
+  size_it_up:'size_it_up: leave question and explanation empty; answerData is "{}". The server supplies a calibrated silhouette puzzle. Do not invent artwork or measurements.'
  };
  const schema={type:'object',properties:{title:{type:'string'},questions:{type:'array',items:{type:'object',properties:{mode:{type:'string',enum:input.modes},question:{type:'string'},explanation:{type:'string'},answerData:{type:'string'}},required:['mode','question','explanation','answerData']}}},required:['title','questions']};
  const prompt=`Write exactly ${input.count} accurate, fun English quiz questions. Only the selected modes; use each at least once if count permits. Keep every non-Size question relevant to the requested topic. Each answerData is a JSON-encoded object string with the EXACT keys below, using varied new values suitable for the topic; examples demonstrate format only, do not copy them. Questions <=250 characters, explanations <=320 characters with concise reasoning. ${input.modes.map(m=>rules[m]).join(' ')} Use precise nouns and units; do not conflate arms and tentacles or other distinct quantities. Use stable facts or fully specified puzzles, not advice, personal data, offensive or disputed claims or current events. Do not invent sources. Check arithmetic, scope and hidden-word privacy. No extra commentary.`;
@@ -68,13 +68,34 @@ export function generationPlan(input:GenerationRequest){
 }
 export function decodeGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const wire=z.object({title:z.string(),questions:z.array(z.object({mode:z.enum(MODES),question:z.string(),explanation:z.string(),answerData:z.string().max(12000)})).max(20)}).parse(value);
- return validatedGeneration({title:wire.title,questions:wire.questions.map(({answerData,...question})=>{const data:unknown=JSON.parse(answerData.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Invalid answer fields');if(question.mode==='amountle'){
-  const factors=z.object({groups:z.number().int().min(2).max(50),perGroup:z.number().int().min(2).max(50),unit:z.string().max(20)}).parse(data);
-  if(!new RegExp('\\b'+factors.groups+'\\b').test(question.question)||!new RegExp('\\b'+factors.perGroup+'\\b').test(question.question))throw new Error('Count needs explicit factors');
-  return {...question,answer:factors.groups*factors.perGroup,unit:factors.unit};
+ let sizeIndex=0;
+ return validatedGeneration({title:wire.title,questions:wire.questions.map(({answerData,...question})=>{
+  if(question.mode==='size_it_up'){
+    // Only shipped artwork and explicit house calibrations can enter a Size draft.
+    // Model-suggested objects (e.g. an unsupported football goal) are never trusted.
+    const presets=[
+      {answer:1.5,referenceSize:1.75,referenceLabel:'1.75 m person',targetLabel:'City car',asset:'car',referenceAsset:'person',question:'How tall would you make the city car beside a 1.75 m person?'},
+      {answer:0.3,referenceSize:0.2,referenceLabel:'20 cm reference',targetLabel:'Bottle',asset:'bottle',referenceAsset:'block',question:'Resize the bottle beside the 20 cm reference block.'},
+      {answer:6,referenceSize:3,referenceLabel:'3 m tower',targetLabel:'Young tree',asset:'tree',referenceAsset:'tower',question:'How tall would you make the young tree beside a 3 m tower?'},
+      {answer:12,referenceSize:5,referenceLabel:'5 m tower',targetLabel:'Model rocket',asset:'rocket',referenceAsset:'tower',question:'Match the model rocket to its expected height beside a 5 m tower.'},
+    ];
+    const preset=presets[sizeIndex++%presets.length];
+    return {...preset,mode:question.mode,unit:'m',explanation:`For this house silhouette, the ${preset.targetLabel.toLowerCase()} is ${preset.answer} m tall, or ${(preset.answer/preset.referenceSize).toFixed(2)} times the reference. Real objects vary.`};
+  }
+  const data:unknown=JSON.parse(answerData.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Invalid answer fields');if(question.mode==='amountle'){
+  const factors=z.object({groups:z.number().int().min(2).max(50),perGroup:z.number().int().min(2).max(50),unit:z.string().trim().min(1).max(30)}).parse(data);
+  const answer=factors.groups*factors.perGroup;
+  return {...question,question:`${factors.groups} groups have ${factors.perGroup} ${factors.unit} each. How many ${factors.unit} are there in total?`,explanation:`${factors.groups} x ${factors.perGroup} = ${answer} ${factors.unit}.`,answer,unit:factors.unit};
  }
   const fields={...data} as Record<string,unknown>;
-  if(question.mode==='word_puzzle'&&typeof fields.word==='string')fields.word=fields.word.trim().toUpperCase();
+  if(question.mode==='word_puzzle'&&typeof fields.word==='string'){
+    fields.word=fields.word.trim().toUpperCase();
+    if(/^[A-Z]{3,12}$/.test(fields.word as string)){
+      const hidden=new RegExp('\\b'+fields.word+'\\b','gi');
+      question.question=question.question.replace(hidden,'_'.repeat((fields.word as string).length));
+      if(question.question.replace(/[^a-z]/gi,'').length<12)throw new Error('A meaningful clue is required');
+    }
+  }
   if(question.mode==='rare_answers'&&Array.isArray(fields.answers)){
     const entries=fields.answers as {canonical:unknown;aliases?:unknown}[];
     const keys=new Set(entries.filter(e=>typeof e?.canonical==='string').map(e=>normalizeAnswer(e.canonical as string)));

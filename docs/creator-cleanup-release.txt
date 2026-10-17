@@ -9,4 +9,7 @@ Think v3.2: bounded spelling tolerance, ambiguous corrections reviewed, valid-an
 AI: local formatting cleanup, complete-category instructions, host review for unexpected generated Think answers, safe diagnostic codes and quota refunds. Existing token limits, monthly/daily caps, retention and small connection pool retained.
 Ads: publisher approval and ad setup remain pending. Unavailable ads show an explanation instead of a disabled reward button. No ad revenue is claimed and no paid plan was enabled.
 
-Validation: typecheck, 135 unit/integration tests, 3 HTTP/Socket.IO end-to-end tests, optimized Next production build. Browser checks: 390px create/billing without overflow, blank Size question, first-publish dialog, library listing, saved character survives reload, misspelled Think answer scores. Production smoke checks are reported in chat.
+Validation: typecheck, 138 unit/integration tests, 3 HTTP/Socket.IO end-to-end tests, optimized Next production build. Browser checks: 390px create/billing without overflow, blank Size question, first-publish dialog, library listing, saved character survives reload, misspelled Think answer scores. Production smoke checks are reported in chat.
+
+Live football verification exposed unsupported model-selected Size artwork and implicit Count factors. Size now uses shipped house calibrations; Count questions and answers are assembled locally from validated factors. This removes two failure sources and reduces output tokens. No automatic paid retry was added.
+The same captured response also leaked its Guess answer inside a longer clue. The server now masks the answer as a blank while requiring a meaningful remaining clue. Regression tests cover all three failure cases without additional model calls.

@@ -107,6 +107,11 @@ function resolve(key: string, round: RareRound, catalog: Map<string, Canonical>,
   }
 }
 
+export function rarePoints(validPlayers:number,frequency:number):number{
+  if(!Number.isInteger(validPlayers)||!Number.isInteger(frequency)||frequency<1||frequency>validPlayers)return 0;
+  return points(200+800*(validPlayers-frequency)/(validPlayers+2));
+}
+
 export function scoreRare(
   round: RareRound,
   submitted: Map<string, string>,
@@ -140,7 +145,7 @@ export function scoreRare(
   // A valid answer earns 200. Two virtual matches soften the rarity bonus when
   // the sample is small: two different valid answers earn 400 each, not 1000.
   const scoreFrequency = (frequency: number) => review.length ? 0
-    : points(200 + 800 * (acceptedPlayers - frequency) / (acceptedPlayers + 2));
+    : rarePoints(acceptedPlayers,frequency);
   const results = new Map<string, { points: number; reason: string; canonical?: string; frequency?: number; acceptedPlayers?: number }>();
   for (const [participantId, resolution] of resolved) {
     if (review.length) {
