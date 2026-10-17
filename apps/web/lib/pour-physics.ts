@@ -1,9 +1,9 @@
 /** Screen-space candy collisions. Visual state never determines accepted quantity or score. */
 export type Body={x:number;y:number;z:number;vx:number;vy:number;vz:number;r:number;angle:number;spin:number;shape:number;color:number};
-export const MAX_BODIES=96;
+export const MAX_BODIES=128;
 export function seededValue(seed:string,index:number){let h=2166136261;for(const c of seed+':'+index)h=Math.imul(h^c.charCodeAt(0),16777619);return(h>>>0)/4294967296;}
 export function createBody(seed:string,index:number):Body{return{x:(seededValue(seed,index*7)-.5)*75,y:268+index%4*26,z:0,vx:(seededValue(seed,index*7+2)-.5)*90,vy:-15,vz:0,r:10,angle:0,spin:0,shape:index%3,color:index%5};}
-export function settleBodies(bodies:Body[],passes=512){
+export function settleBodies(bodies:Body[],passes=1024){
  for(let pass=0;pass<passes;pass++){
   let overlap=false;
   for(let i=0;i<bodies.length;i++)for(let j=i+1;j<bodies.length;j++){

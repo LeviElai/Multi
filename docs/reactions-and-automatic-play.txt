@@ -1,6 +1,6 @@
 MULTIGAME - reactions and automatic play, 17 October 2026
 
-Count uses screen-space candy collisions instead of overlapping 3D projection. Visible pieces have a two-pixel contact margin; simulation stops after settling. The illustration is capped at 96 pieces; accepted count and scoring remain independent, exact and server-authoritative. Reduced motion uses a non-overlapping grid.
+Count uses screen-space candy collisions instead of overlapping 3D projection. Visible pieces have a two-pixel contact margin; simulation stops after settling. The illustration is capped at 128 pieces; accepted count and scoring remain independent, exact and server-authoritative. Reduced motion uses a non-overlapping grid.
 
 Each game has an acknowledgement-only pixel scene: Size clamps, Count jar lid, Guess book/letters, Think fish dive and Estimate telescope launch. Information appears immediately. Small feedback uses 100ms presses, 240ms transitions and brief stepped scenes. Existing mute and reduced-motion settings remain supported. Approved SVG backgrounds and final podium assets are unchanged.
 

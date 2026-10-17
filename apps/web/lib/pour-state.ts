@@ -1,3 +1,4 @@
+import {MAX_BODIES} from './pour-physics';
 /** A pour is visible only after the server acknowledges it. Queueing never awards objects. */
 export class PourQueue {
   accepted: number;
@@ -48,7 +49,7 @@ export class PourQueue {
 }
 /** A bounded visual representation with exact represented mass; no hidden truncation. */
 export function pourRepresentation(count: number) {
-  const unit = count <= 96 ? 1 : 10 ** Math.ceil(Math.log10(count / 96));
+  const unit = Math.max(1, Math.ceil(count / MAX_BODIES));
   const pieces = Math.ceil(count / unit);
   const finalFraction = pieces ? (count - (pieces - 1) * unit) / unit : 0;
   return {unit, pieces, finalFraction};

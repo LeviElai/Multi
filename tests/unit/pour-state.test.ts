@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PourQueue,pourRepresentation} from '../../apps/web/lib/pour-state';
 
-test('every allowed count is represented exactly with at most 96 visible pieces',()=>{
+test('every allowed count is represented exactly with at most 128 visible pieces',()=>{
  for(let count=0;count<=10000;count++){
   const v=pourRepresentation(count);
-  assert.ok(v.pieces<=96);
+  assert.ok(v.pieces<=128);
   assert.ok(Math.abs((Math.max(0,v.pieces-1)+v.finalFraction)*v.unit-count)<1e-8);
  }
 });
