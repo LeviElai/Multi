@@ -38,14 +38,14 @@ export async function copyPostgresDatabase(environment:NodeJS.ProcessEnv){
   let from:pg.PoolClient|undefined,to:pg.PoolClient|undefined;
   try{
     from=await source.connect();to=await target.connect();
-    // Preserve PostgreSQL microseconds rather than rounding them through JavaScript Date.
-    for(const oid of [1082,1114,1184])from.setTypeParser(oid,value=>value);
+    // Preserve timestamp microseconds and JSON numeric precision as database text.
+    for(const oid of [1082,1114,1184,114,3802])from.setTypeParser(oid,value=>value);
     await from.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await to.query('BEGIN');
     await from.query("SET LOCAL timezone='UTC'");await to.query("SET LOCAL timezone='UTC'");
     const names=(await from.query<{name:string}>('SELECT tablename AS name FROM pg_tables WHERE schemaname=$1',[sourceSchema])).rows.map(r=>r.name);
     if(!names.includes('auth_accounts')||!names.includes('quizzes')||!names.includes('sessions'))throw new Error('Source is not a MULTIGAME database.');
-    const dependencies=(await from.query<{table:string;parent:string}>(`SELECT c.relname AS table,p.relname AS parent FROM pg_constraint f JOIN pg_class c ON c.oid=f.conrelid JOIN pg_class p ON p.oid=f.confrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE f.contype='f' AND n.nspname=$1`,[sourceSchema])).rows;
+    const dependencies=(await from.query<{table:string;parent:string}>(`SELECT c.relname AS "table",p.relname AS parent FROM pg_constraint f JOIN pg_class c ON c.oid=f.conrelid JOIN pg_class p ON p.oid=f.confrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE f.contype='f' AND n.nspname=$1`,[sourceSchema])).rows;
     const order=dependencyOrder(names,dependencies);
     for(const table of order){
       const existing=await to.query(`SELECT count(*)::int AS count FROM ${quoteIdentifier(targetSchema)}.${quoteIdentifier(table)}`);
@@ -61,7 +61,7 @@ export async function copyPostgresDatabase(environment:NodeJS.ProcessEnv){
       const fields=columns.map(c=>quoteIdentifier(c.name)).join(',');
       const params=columns.map((_,i)=>'$'+(i+1)).join(',');
       const conflict=table==='_schema_migrations'?' ON CONFLICT (migration_id) DO UPDATE SET checksum=EXCLUDED.checksum,applied_at=EXCLUDED.applied_at':'';
-      for(const row of rows)await to.query(`INSERT INTO ${quoteIdentifier(targetSchema)}.${quoteIdentifier(table)} (${fields}) VALUES (${params})${conflict}`,columns.map(c=>row[c.name]!==null&&['json','jsonb'].includes(c.type)?JSON.stringify(row[c.name]):row[c.name]));
+      for(const row of rows)await to.query(`INSERT INTO ${quoteIdentifier(targetSchema)}.${quoteIdentifier(table)} (${fields}) VALUES (${params})${conflict}`,columns.map(c=>row[c.name]));
       const expected=await signature(from,sourceSchema,table),actual=await signature(to,targetSchema,table);
       if(expected.rows!==actual.rows||expected.sha256!==actual.sha256)throw new Error('Destination verification failed for table '+table);
       report.push({table,...actual});
