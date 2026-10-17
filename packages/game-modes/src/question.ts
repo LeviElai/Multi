@@ -10,19 +10,21 @@ export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  if(q.kind==='size')return result(['size_it_up'],'A calibrated target and reference are needed.');
  if(!q.answer.trim())return result([],'Enter the answer to find a suitable game.','What is the correct answer?','low');
  if(q.type==='boolean'||q.kind==='boolean')return result(['drop'],'A statement with a True or False answer.');
+ if(q.type==='multiple'&&q.kind!=='list'&&q.answer.split('|').filter(s=>s.trim()).length+q.distractors.filter(s=>s.trim()).length>6)return result([],'Fish supports up to six choices.','Split this question into smaller questions. Your answers remain saved.','low');
  if(q.type==='multiple')return q.kind==='list'?result([],'Lists need to be rewritten as a choice question.','Enter the correct choices and at least one incorrect choice.','low'):q.distractors.some(s=>s.trim())?result(['fish'],'Catch every correct fish, then reel in your selection.'):result([],'Add an incorrect choice to make a playable fishing question.','Add at least one incorrect choice.','low');
 
  if(q.kind==='word')return /^[A-Za-z]{3,12}$/.test(q.answer)?result(['word_puzzle'],'A hidden word with letter feedback.'):result(['answer'],'Guess needs a single word of 3–12 letters.','Use a shorter word or keep text entry.','low');
  if(q.kind==='choice'){
+  if(q.distractors.filter(s=>s.trim()).length>5)return result([],'Use up to six total choices.','Split this question into smaller questions. Your choices remain saved.','low');
   if(q.distractors.filter(s=>s.trim()).length<1)return result([],'Add incorrect choices to unlock the arcade games.','Add at least one incorrect choice.','low');
-  const games:ModeId[]=q.distractors.filter(s=>s.trim()).length>3?['fish']:['fish','claw','sling'];games.sort((a,b)=>recent.slice(-3).filter(m=>m===a).length-recent.slice(-3).filter(m=>m===b).length);
+  const games:ModeId[]=q.distractors.filter(s=>s.trim()).length>3||[q.answer,...q.distractors].some(s=>s.length>40)?['fish']:['fish','claw','sling'];games.sort((a,b)=>recent.slice(-3).filter(m=>m===a).length-recent.slice(-3).filter(m=>m===b).length);
   return result(games,'One correct answer and distinct alternatives.');
  }
  if(q.kind==='text')return result([],'Add incorrect choices for Fish, Claw or Sling.','Or choose Hidden word for a word-guessing question.','low');
  const n=Number(q.answer),whole=Number.isSafeInteger(n);
  if(!Number.isFinite(n)||Math.abs(n)>1e15)return result([],'Enter a supported numerical answer.',undefined,'low');
  if(q.kind==='approximate'||!q.exact)return result(['fermi',...(whole&&n>=0&&n<=999999?['stack' as const,'draw' as const]:[])],'This answer is scored by proximity.');
- if(whole&&n>=0&&n<=99999999&&/\b(year|date|code|pin|digits?)\b/i.test(q.text))return result(['crack','draw','fermi'],'An exact year or code belongs on digit wheels.');
+ if(whole&&n>=0&&n<=99999999&&(/\b(code|pin|digits?)\b/i.test(q.text)||/\b(in what year|which year|what year|year did|year was|year were|year of|born in|founded in)\b/i.test(q.text)))return result(['crack','draw','fermi'],'An exact year or code belongs on digit wheels.');
  if(!whole||n<0)return result(['fermi'],'Use exact numeric entry for decimals and negative values.');
  if(n<=120&&!/\b(year|code|percent|temperature|degrees?)\b/i.test(q.text+' '+q.unit))return result(['amountle','stack','draw','fermi'],'A small whole quantity works well with pouring.');
  if(n<=999999)return result(['stack','draw','crack','fermi'],'A whole number can be built, drawn or entered exactly.');
@@ -63,5 +65,5 @@ export function roundFromAnswer(q:QuestionAnswer,mode:ModeId,old:Round):Round{
 }
 function hash(s:string){let h=2166136261;for(const x of s)h=Math.imul(h^x.charCodeAt(0),16777619);return h>>>0;}
 export function questionSeed(type:QuestionType):Round{const r=getDefaultRound(type==='boolean'?'drop':'answer');r.question='';r.explanation='';r.answerProvided=false;r.questionType=type;r.answerStructure=type==='boolean'?'boolean':type==='multiple'?'multiple':'text';if(isArcade(r)){r.secretConfig.answer='';r.secretConfig.correctOptionIds=[];r.publicConfig.options=[];r.publicConfig.kind=type==='boolean'?'boolean':type==='multiple'?'multiple':'text';}return r;}
-export const QUESTION_TYPES=[{id:'single',name:'Single Answer',detail:'A number, word or one correct choice.',sprite:'draw'},{id:'multiple',name:'Multiple Answers',detail:'Select every correct option or enter a list.',sprite:'stack'},{id:'boolean',name:'True or False',detail:'One statement. Two possibilities.',sprite:'drop'}] as const;
+export const QUESTION_TYPES=[{id:'single',name:'Single Answer',detail:'A number, word or one correct choice.',sprite:'draw'},{id:'multiple',name:'Multiple Answers',detail:'Catch every correct choice.',sprite:'stack'},{id:'boolean',name:'True or False',detail:'One statement. Two possibilities.',sprite:'drop'}] as const;
 export const interactionHelp=(mode:ModeId)=>MODE_META[mode].description;

@@ -4,7 +4,7 @@
 
 Question-first creation offers Single Answer, Multiple Answers and True or False, then asks for question and answer data. Local deterministic recommendations distinguish years/codes, exact numbers, estimates, calibrated size, words and choices. Overrides are restricted to compatible interactions. Distractors can be entered manually or explicitly suggested with one AI question credit; they still require review.
 
-Count, Estimate, Guess and Size retain their established controls and timing. Draw, Claw, Drop, Sling, Fish, Stack and Crack use original pixel-grid artwork, shared audio and independent server validation. The official catalogue contains exactly eleven games. Conventional text, multi-select and required-list inputs are not extra games. Lists can require all answers or any specified number from the accepted set.
+Count, Estimate, Guess and Size retain their established controls and timing. Draw, Claw, Drop, Sling, Fish, Stack and Crack use original pixel-grid artwork, shared audio and independent server validation. The official catalogue contains exactly eleven games. Multiple selections use Fish with exact-set scoring. Unsupported text/list questions remain incomplete drafts and cannot be previewed, published or newly hosted. No generic Answer game is offered.
 
 The removed rarity format is not automatically reinterpreted. The editor preserves its question/answer catalogue and asks the creator to choose the new relationship explicitly. Publication, sharing and new hosting block unconverted legacy rounds. Historical scoring code remains for stored results and existing recovery; it is not selectable in the creator or AI maker.
 
@@ -24,8 +24,8 @@ Choice correctness earns `round(1000 × (1 − 1/n))` for n options, zero otherw
 
 - No AI during typing, recommendation, handwriting or live scoring.
 - Distractor generation uses the existing durable job queue/quota and verifies that the model retained the supplied correct answer. Invalid output refunds through the existing failure path. No automatic paid retries.
-- No drawing upload or permanent image storage. The local recognizer is best-effort, with visible correction and typed fallback; connected digits and all handwriting styles are not guaranteed.
-- Fish uses separated lanes, bounded transforms and a stationary alternative. Other graphics use SVG/CSS/canvas and shared audio. New controls load dynamically.
+- Draw sends at most 32 strokes × 64 bounded points for the actual handwriting reveal. Both submissions and scored presentation remove ink after 24 hours in hourly maintenance, while numerical answers and points remain. Recognition is local and best-effort, with read-only confirmation, redraw and a separate accessibility input. Connected digits and all handwriting styles are not guaranteed.
+- Fish uses forward-only swim passes, separate lanes and a stationary equivalent under the system reduced-motion preference. Other graphics use SVG/CSS/canvas and shared audio. New controls load dynamically.
 - Count's bounded physics and mobile frame limit remain. Stack renders at most eighteen top blocks, with lower represented value compacted.
 - The Supabase private schema, RLS posture, pool size, ownership and existing retention remain. Ads and payment flags stay closed.
 

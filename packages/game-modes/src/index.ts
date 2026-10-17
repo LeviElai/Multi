@@ -92,7 +92,7 @@ export function sanitizeAndValidateSubmission(round: Round, payload: unknown): S
       || ![Object.prototype, null].includes(Object.getPrototypeOf(payload))) invalid('Submit a valid answer object.');
   const fields = payload as Record<string, unknown>;
   if(isArcade(round)){
-    const allowed=['locked',...(['draw','stack','crack'].includes(round.mode)?['value']:round.mode==='fish'&&round.publicConfig.kind==='multiple'?['choices']:round.mode==='drop'||['fish','sling','claw'].includes(round.mode)?['choiceId']:round.publicConfig.kind==='multiple'||round.publicConfig.kind==='list'?['choices']:['text'])];
+    const allowed=['locked',...(round.mode==='draw'?['value','ink']:['stack','crack'].includes(round.mode)?['value']:round.mode==='fish'&&round.publicConfig.kind==='multiple'?['choices']:round.mode==='drop'||['fish','sling','claw'].includes(round.mode)?['choiceId']:round.publicConfig.kind==='multiple'||round.publicConfig.kind==='list'?['choices']:['text'])];
     if(Object.keys(fields).some(k=>!allowed.includes(k))||(fields.locked!==undefined&&typeof fields.locked!=='boolean'))invalid('This answer contains unsupported fields.');
     return {...sanitizeArcade(round,fields),...(fields.locked===undefined?{}:{locked:fields.locked as boolean})};
   }
@@ -128,7 +128,7 @@ function revealFor(round: Round, skipped: boolean): Reveal {
     ...(round.explanation ? { explanation: round.explanation } : {}),
     ...(round.sourceUrl ? { sourceUrl: round.sourceUrl } : {}),
   };
-  if(isArcade(round))return {...base,answer:arcadeAnswer(round),unit:round.publicConfig.unit,...(['draw','stack','crack'].includes(round.mode)?{distribution:[]}: {})};
+  if(isArcade(round))return {...base,answer:arcadeAnswer(round),...(round.publicConfig.options.length?{correctOptionIds:round.secretConfig.correctOptionIds}:{}),unit:round.publicConfig.unit,...(['draw','stack','crack'].includes(round.mode)?{distribution:[]}: {})};
   switch (round.mode) {
     case 'fermi': return { ...base, answer: round.secretConfig.answer, unit: round.publicConfig.unit, distribution: [] };
     case 'rare_answers': return { ...base, answer: 'Valid answers from this room', groups: [] };
@@ -200,7 +200,7 @@ export function scoreRound(data: SessionData, round: Round): { awards: Award[]; 
     const payload = canonical.get(member.id);
     if (!payload) continue;
     if(isArcade(round)){
-      const result=scoreArcade(round,payload);award.points=result.points;award.reason=result.correct?'correct':'incorrect';award.detail={...award.detail,...result};
+      const result=scoreArcade(round,payload);award.points=result.points;award.reason=result.correct?'correct':'incorrect';award.detail={...award.detail,...result,...(round.mode==='draw'&&payload.ink?{ink:payload.ink}:{})};
       if(result.value!==undefined)reveal.distribution?.push({label:member.nickname,value:result.value,points:award.points});
       continue;
     }

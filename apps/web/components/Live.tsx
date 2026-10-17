@@ -10,6 +10,7 @@ import { PixelSprite } from './world/Sprites';
 import { Brand, SoundToggle } from './Brand';
 import { ModeArt } from './ModeArt';
 import ModePlayer from './ModePlayer';
+import {useRoundPresentation} from './game/physical-motion';
 import { RoundClock } from './RoundClock';
 import { RoundResults, Standings, PlayerScore } from './game/Competition';
 import { WorldScene } from './world/WorldScene';
@@ -21,7 +22,8 @@ export default function Live({ id, role = 'player', displayToken }: {
     role?: 'host' | 'player' | 'display';
     displayToken?: string;
 }) {
-    const [s, setS] = useState<Snapshot | null>(null);
+    const [rawSnapshot, setS] = useState<Snapshot | null>(null);
+    const s=useRoundPresentation(rawSnapshot);
     const [error, setError] = useState('');
     const [connected, setConnected] = useState(true);
     const [restored, setRestored] = useState(false);

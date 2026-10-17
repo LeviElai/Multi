@@ -45,7 +45,7 @@ async function action(action:string){
 }
 async function until(predicate:(s:Snapshot)=>boolean){for(let i=0;i<50;i++){const s=await snap();if(predicate(s))return s;await new Promise(r=>setTimeout(r,200));}throw new Error('Timed out waiting for a round phase');}
 function answer(r:Round,correct=true):Submission['payload']{
- if(isArcade(r)){if(['draw','stack','crack'].includes(r.mode))return {value:Number(r.secretConfig.answer)+(correct?0:r.publicConfig.step),locked:true};if(r.mode==='drop')return {choiceId:String(correct?r.secretConfig.answer:!r.secretConfig.answer),locked:true};return {choiceId:correct?r.secretConfig.correctOptionIds[0]:r.publicConfig.options.find(o=>!r.secretConfig.correctOptionIds.includes(o.id))!.id,locked:true};}
+ if(isArcade(r)){if(r.mode==='draw')return {value:Number(r.secretConfig.answer)+(correct?0:1),ink:[[{x:10,y:10},{x:20,y:200}]],locked:true};if(['stack','crack'].includes(r.mode))return {value:Number(r.secretConfig.answer)+(correct?0:r.publicConfig.step),locked:true};if(r.mode==='drop')return {choiceId:String(correct?r.secretConfig.answer:!r.secretConfig.answer),locked:true};return {choiceId:correct?r.secretConfig.correctOptionIds[0]:r.publicConfig.options.find(o=>!r.secretConfig.correctOptionIds.includes(o.id))!.id,locked:true};}
  if(r.mode==='fermi')return {value:r.secretConfig.answer*(correct?1:2),locked:true};if(r.mode==='size_it_up')return {ratio:r.secretConfig.targetSize/r.publicConfig.referenceSize*(correct?1:1.1),locked:true};if(r.mode==='amountle')return {count:r.secretConfig.answer+(correct?0:1),locked:true};return {};
 }
 const report:{mode:string;points:number;answer:unknown}[]=[];let total=0;
@@ -66,7 +66,7 @@ try{
   s=await until(s=>s.state==='ROUND_REVEAL'||s.state==='ROUND_SCORED');if(s.state==='ROUND_SCORED'){await action('REVEAL');s=await snap();}
   const expected=isArcade(r)?scoreArcade(r,answer(r)).points:1000;total+=expected;
   const own=s.leaderboard.find(p=>p.participantId===clients[0].id)!;assert.equal(own.roundPoints,expected,r.mode+' points');assert.equal(own.points,total,r.mode+' total');
-  assert.equal(s.leaderboard.find(p=>p.participantId===clients[1].id)!.rank,own.rank);assert.ok(s.reveal);
+  assert.equal(s.leaderboard.find(p=>p.participantId===clients[1].id)!.rank,own.rank);assert.ok(s.reveal);if(r.mode==='draw')assert.deepEqual(s.roundAwards?.find(a=>a.participantId===clients[0].id)?.detail.ink,[[{x:10,y:10},{x:20,y:200}]]);
   report.push({mode:r.mode,points:expected,answer:s.reveal!.answer});
   await action('ADVANCE');s=await snap();if(i<quizInput.rounds.length-1&&s.state==='INTERMISSION')await action('ADVANCE');
  }

@@ -54,7 +54,7 @@ With both local services running, `node --import tsx scripts/verify-arcade.mts` 
 - Count is irreversible. Only accepted pours count; physics is decorative.
 - Guess: 1,000 for first-try solve, minus 150 per extra attempt; finite repeated-letter allocation.
 - Single choice: correct earns `round(1000 × (1 − 1/number_of_choices))`, incorrect zero. Drop therefore awards 500. No speed or dexterity bonuses.
-- Draw: small on-device recognizer for separated non-negative whole-number digits. Recognition is best-effort and always visible, editable and confirmed. Typing is available; raw drawings are not uploaded.
+- Draw: small on-device recognizer for separated non-negative whole-number digits. Recognition is best-effort, read-only and explicitly confirmed. Redraw to correct it. A separate accessibility input uses the same scoring. Bounded strokes are sent for the round reveal and expire after 24 hours during hourly maintenance.
 - Stack scores represented units, with bounded rendering. Crack preserves declared digit width.
 - Fish offers stationary answers; Claw/Sling offer keyboard controls; Drop has explicit aiming. Reduced motion and mute are respected.
 

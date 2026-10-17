@@ -161,7 +161,12 @@ export class GameEngine {
       const scored = new Map(data.awards.filter(award => award.roundId === round.id).map(award => [award.participantId, award]));
       const frozen: SessionData = { ...data, members: data.members.filter(member => scored.has(member.id)).map(member => ({ ...member, status: scored.get(member.id)?.reason === 'participant_removed' ? 'kicked' as const : 'active' as const })) };
       result.reveal = scoreRound(frozen, round).reveal;
-      result.roundAwards = [...scored.values()];
+      result.roundAwards = [...scored.values()].map(award=>{
+        // Players render their own drawing; host/display present the room gallery.
+        // Avoid broadcasting every stroke to every player on each snapshot.
+        if(principal.role!=='player'||award.participantId===principal.id||!award.detail.ink)return award;
+        const {ink,...detail}=award.detail;return {...award,detail};
+      });
       const revealEvent = await this.store.db.query<{occurred_at:string}>("SELECT occurred_at FROM session_events WHERE session_id = ? AND type = 'round.revealed' ORDER BY seq DESC LIMIT 1", [id]);
       result.revealStartedAt = revealEvent.rows[0]?.occurred_at;
       const stageEvent = await this.store.db.query<{type:string;payload:string;occurred_at:string}>("SELECT type,payload,occurred_at FROM session_events WHERE session_id = ? AND type IN ('results.reveal','results.podium','results.standings','results.auto') ORDER BY seq DESC LIMIT 1", [id]);

@@ -1,3 +1,4 @@
+import {InkSchema} from '../../contracts/src/index';
 import type {ArcadeRound,Submission,ValidationIssue} from '../../contracts/src/index';
 import {invalid,issue,normalizeAnswer,points} from './shared';
 
@@ -28,7 +29,8 @@ export function sanitizeArcade(r:ArcadeRound,p:Record<string,unknown>):Submissio
  const c=r.publicConfig;
  if(['draw','stack','crack'].includes(r.mode)){
   const v=p.value;if(typeof v!=='number'||!Number.isSafeInteger(v)||v<c.min||v>c.max||(r.mode==='crack'&&v>=10**c.codeLength)||(r.mode==='stack'&&v%c.step!==0))invalid('Enter a whole number within the allowed range.');
-  return {value:v as number};
+  const ink=r.mode==='draw'&&p.ink!==undefined?InkSchema.safeParse(p.ink):undefined;if(ink&&!ink.success)invalid('Draw a bounded numerical answer.');
+  return {value:v as number,...(ink?.success?{ink:ink.data}:{})};
  }
  if(r.mode==='drop'){if(p.choiceId!=='true'&&p.choiceId!=='false')invalid('Choose True or False.');return {choiceId:p.choiceId as string};}
  if(['claw','sling','fish'].includes(r.mode)&&c.kind!=='multiple'){if(typeof p.choiceId!=='string'||!c.options.some(o=>o.id===p.choiceId))invalid('Choose an answer from this round.');return {choiceId:p.choiceId as string};}

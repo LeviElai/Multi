@@ -5,7 +5,7 @@
 .game-shell .round-question:before,.practice-question:before{content:'';position:absolute;left:7px;top:7px;width:5px;height:5px;background:var(--world-accent,#b9ddc4);box-shadow:calc(100% - 14px) 0 #fff}
 .mode-player{border:3px solid #172c42;box-shadow:inset 0 0 0 3px #d0bb8d,5px 6px #0d1e32;padding:25px}
 .mode-player .number-entry,.rare-answer-control input{box-shadow:inset 3px 3px #233a4b25,inset -2px -2px #fff9df;border-width:2px}
-.mode-locked:not(.player-amountle)>.mode-inputs{display:none}
+.mode-locked:is(.player-fermi,.player-word_puzzle,.player-size_it_up)>.mode-inputs{display:none}
 .mode-locked .game-rules,.mode-locked .sync-hint{display:none}
 .player-amountle.mode-locked .pour-trigger,.player-amountle.mode-locked .count-lock,.player-amountle.mode-locked .fill-game>p,.player-amountle.mode-locked .fill-game>small,.player-amountle.mode-locked .pour-sync{display:none}
 .submission-reaction{color:#263d4f;border:2px solid #a6ba9d;background:#e8edd1;padding:20px;min-height:240px;position:relative;overflow:hidden;box-shadow:inset 3px 3px #fff6d6,inset -3px -3px #a6b99b}

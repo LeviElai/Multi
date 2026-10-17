@@ -26,16 +26,20 @@ export default function PourScene({count,seed,finalFraction=1,paused=false}:{pau
     const x=Math.round(180+b.x),y=Math.round(310-b.y);
     const r=Math.max(2,Math.round((b.r-2)*(b===bodies[bodies.length-1]?Math.cbrt(fraction.current):1)));
     const [base,shade,shine]=palette[b.color%palette.length];
-    box(x-r,y-r+4,r*2,r*2-8,'#182a3b');
-    box(x-r+3,y-r,r*2-6,r*2,shade);box(x-r,y-r+4,r*2,r*2-8,shade);
-    box(x-r+3,y-r+2,r*2-6,r*2-4,base);box(x-r+1,y-r+4,r*2-4,r*2-8,base);
-    box(x-r+3,y-r+3,Math.max(2,r-3),3,shine);
-    if(b.shape===1)box(x-2,y-2,4,4,shine);
-    if(b.shape===2){box(x-r+2,y-1,r*2-5,3,shade);box(x-1,y-r+3,3,r*2-7,shine);}
+    ctx.save();ctx.translate(x,y);ctx.rotate(b.angle);
+    const facet=(points:number[][],color:string)=>{ctx.fillStyle=color;ctx.beginPath();points.forEach(([px,py],i)=>i?ctx.lineTo(px,py):ctx.moveTo(px,py));ctx.closePath();ctx.fill();};
+    facet([[0,-r],[-r,-r*.25],[-r*.65,r*.8],[r*.55,r],[r,r*.05],[r*.55,-r*.65]],base);
+    facet([[0,-r],[-r,-r*.25],[0,0]],shine);
+    facet([[0,0],[-r,-r*.25],[-r*.65,r*.8],[0,r*.35]],base);
+    facet([[0,0],[r*.55,-r*.65],[r,r*.05],[r*.55,r],[0,r*.35]],shade);
+    facet([[0,-r],[r*.55,-r*.65],[0,0]],base);
+    facet([[0,r*.35],[-r*.65,r*.8],[r*.55,r]],shine);
+    ctx.restore();
    }
    box(54,67,5,251,'#6b9d9d');box(301,67,5,251,'#628b91');
    box(59,73,3,237,'#a5c3b6');box(67,85,3,195,'#ffffff20');
    box(65,320,230,7,'#7ba5a2');box(74,327,212,4,'#b2c6ac');
+   ctx.strokeStyle='#a6c7be';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(180,64,123,14,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#a2d7cf0d';ctx.fillRect(64,78,232,237);
    box(58,61,244,5,'#a6c7be');box(58,67,244,3,'#638f92');
    box(159,8,42,10,'#ddb47c');box(166,18,28,14,'#a17e65');
    box(169,32,22,5,'#f4d497');

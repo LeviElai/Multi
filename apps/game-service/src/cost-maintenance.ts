@@ -2,7 +2,12 @@ import type {Store} from '../../../packages/db/src/types';
 /** Hourly, in the existing service. Never deletes quizzes, accounts, scores or game events. */
 export async function compactTemporaryData(store:Store,now=new Date()){
  const sevenDays=new Date(now.getTime()-7*86400000).toISOString(),thirtyTwoDays=new Date(now.getTime()-32*86400000).toISOString();
+ const inkExpiry=new Date(now.getTime()-24*3600000).toISOString();
+ const strip=(field:string)=>store.db.dialect==='postgres'?`(${field}::jsonb - 'ink')::text`:`json_remove(${field},'$.ink')`;
  return store.db.batch([
+  // Handwriting is temporary round presentation, never a permanent profile artifact.
+  {sql:`UPDATE submissions SET payload=${strip('payload')} WHERE accepted_at<? AND payload LIKE '%"ink"%'`,params:[inkExpiry]},
+  {sql:`UPDATE round_scores SET detail=${strip('detail')} WHERE detail LIKE '%"ink"%' AND session_id IN (SELECT id FROM sessions WHERE created_at<?)`,params:[inkExpiry]},
   // Keep IDs, hashes, quota counts and usage telemetry so retries remain idempotent.
   {sql:"UPDATE creator_generations SET request_json='{}',result_json=NULL WHERE status IN ('done','failed','rejected') AND updated_at<? AND (request_json<>'{}' OR result_json IS NOT NULL)",params:[sevenDays]},
   // A prior-month expired ticket can never award a current-month reward.
