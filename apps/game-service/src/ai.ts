@@ -1,3 +1,4 @@
+import {curatedWord} from './quiz-words';
 import {normalizeAnswer} from '../../../packages/game-modes/src/shared';
 import { z } from 'zod';
 import { DomainError, MODES, QuizInputSchema, type QuizInput, type Round } from '../../../packages/contracts/src/index';
@@ -58,7 +59,7 @@ export function generationPlan(input:GenerationRequest){
  const rules:Record<GenerationRequest['modes'][number],string>={
   fermi:'fermi answerData: {"answer":144,"unit":"tiles"}. Positive numeric answer (at most 3 decimals). Use a self-contained estimation puzzle with every needed number in the question, not outside trivia or current tournament formats.',
   amountle:'amountle answerData: {"groups":6,"perGroup":8,"unit":"sweets"}. Choose two integer factors 2..50, product <=1000, and a short counted noun relevant to the topic. Leave question and explanation empty: the server writes the multiplication puzzle and computes the answer.',
-  word_puzzle:'word_puzzle answerData: {"word":"ORBIT"}. English word 3..12 uppercase letters. Write a definition clue. NEVER include the word, an anagram, or a list of its letters in the question.',
+  word_puzzle:'word_puzzle: leave question and explanation empty; answerData is "{}". The server supplies a curated word and clue.',
   rare_answers:'rare_answers answerData: {"answers":[{"canonical":"Mercury","aliases":[]}]}. Include 4..12 valid entries, 0..3 genuine spelling/synonym aliases each (case is already ignored). Use a small, clearly bounded category with a COMPLETE accepted set (4..12 entries), never an incomplete sample of a broad category. Do not list answers in the question. Avoid time-dependent winner lists.',
   size_it_up:'size_it_up: leave question and explanation empty; answerData is "{}". The server supplies a calibrated silhouette puzzle. Do not invent artwork or measurements.'
  };
@@ -68,7 +69,7 @@ export function generationPlan(input:GenerationRequest){
 }
 export function decodeGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const wire=z.object({title:z.string(),questions:z.array(z.object({mode:z.enum(MODES),question:z.string(),explanation:z.string(),answerData:z.string().max(12000)})).max(20)}).parse(value);
- let sizeIndex=0;
+ let sizeIndex=0;const usedWords=new Set<string>();
  return validatedGeneration({title:wire.title,questions:wire.questions.map(({answerData,...question})=>{
   if(question.mode==='size_it_up'){
     // Only shipped artwork and explicit house calibrations can enter a Size draft.
@@ -82,20 +83,17 @@ export function decodeGeneration(value:unknown,input:GenerationRequest):QuizInpu
     const preset=presets[sizeIndex++%presets.length];
     return {...preset,mode:question.mode,unit:'m',explanation:`For this house silhouette, the ${preset.targetLabel.toLowerCase()} is ${preset.answer} m tall, or ${(preset.answer/preset.referenceSize).toFixed(2)} times the reference. Real objects vary.`};
   }
+  if(question.mode==='word_puzzle'){
+    let suggestion='';try{const data=JSON.parse(answerData.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));if(data&&typeof data.word==='string')suggestion=data.word;}catch{/* The local bank does not need model answer fields. */}
+    const [word,clue]=curatedWord(input.topic,suggestion,usedWords);
+    return {...question,question:clue,explanation:`${word}: ${clue}`,word};
+  }
   const data:unknown=JSON.parse(answerData.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Invalid answer fields');if(question.mode==='amountle'){
   const factors=z.object({groups:z.number().int().min(2).max(50),perGroup:z.number().int().min(2).max(50),unit:z.string().trim().min(1).max(30)}).parse(data);
   const answer=factors.groups*factors.perGroup;
   return {...question,question:`${factors.groups} groups have ${factors.perGroup} ${factors.unit} each. How many ${factors.unit} are there in total?`,explanation:`${factors.groups} x ${factors.perGroup} = ${answer} ${factors.unit}.`,answer,unit:factors.unit};
  }
   const fields={...data} as Record<string,unknown>;
-  if(question.mode==='word_puzzle'&&typeof fields.word==='string'){
-    fields.word=fields.word.trim().toUpperCase();
-    if(/^[A-Z]{3,12}$/.test(fields.word as string)){
-      const hidden=new RegExp('\\b'+fields.word+'\\b','gi');
-      question.question=question.question.replace(hidden,'_'.repeat((fields.word as string).length));
-      if(question.question.replace(/[^a-z]/gi,'').length<12)throw new Error('A meaningful clue is required');
-    }
-  }
   if(question.mode==='rare_answers'&&Array.isArray(fields.answers)){
     const entries=fields.answers as {canonical:unknown;aliases?:unknown}[];
     const keys=new Set(entries.filter(e=>typeof e?.canonical==='string').map(e=>normalizeAnswer(e.canonical as string)));

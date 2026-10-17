@@ -60,8 +60,15 @@ test('AI cannot invent Size artwork or leave Count facts implicit',()=>{
 });
 
 
-test('a meaningful clue containing its answer becomes a fill-in-the-blank clue locally',()=>{
+test('Guess uses a curated definition even when the model leaks or invents its clue',()=>{
  const input=GenerationInput.parse({topic:'football',count:1,modes:['word_puzzle']});
  const quiz=decodeGeneration({title:'Tactics',questions:[{mode:'word_puzzle',question:'Name the 5-letter tactic where teams press opponents after losing possession.',explanation:'The tactic is PRESS.',answerData:'{"word":"PRESS"}'}]},input);
- assert.match(quiz.rounds[0].question,/_____/);assert.doesNotMatch(quiz.rounds[0].question,/\bpress\b/i);assert.equal(quiz.rounds[0].provenance,'needs_review');
+ assert.match(quiz.rounds[0].question,/regain the ball/);assert.doesNotMatch(quiz.rounds[0].question,/\bpress\b/i);assert.equal(quiz.rounds[0].provenance,'needs_review');
+});
+
+
+test('a football Guess can never use an invented football definition of ORBIT',()=>{
+ const input=GenerationInput.parse({topic:'football',count:1,modes:['word_puzzle']});
+ const quiz=decodeGeneration({title:'Football',questions:[{mode:'word_puzzle',question:'A ball curving through the air.',explanation:'An invented definition.',answerData:'{"word":"ORBIT"}'}]},input);
+ const r=quiz.rounds[0];if(r.mode!=='word_puzzle')throw new Error('Guess missing');assert.notEqual(r.secretConfig.answer,'ORBIT');assert.doesNotMatch(r.explanation??'',/invented|orbit/i);
 });

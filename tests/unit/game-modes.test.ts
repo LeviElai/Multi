@@ -1,3 +1,4 @@
+import {WORD_BANKS,curatedWord} from '../../apps/game-service/src/quiz-words';
 import {rarePoints} from '../../packages/game-modes/src/rare-answers';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -376,4 +377,11 @@ test('Think formula scales with every valid player count through 200 and penaliz
    assert.equal(rarePoints(n,n),200);
  }
  assert.equal(rarePoints(3,4),0);assert.equal(rarePoints(3,0),0);
+});
+
+
+test('curated Guess banks have unique playable words, non-leaking clues and no repeats before exhaustion',()=>{
+ for(const bank of WORD_BANKS){assert.equal(new Set(bank.map(([word])=>word)).size,bank.length);for(const [word,clue]of bank){assert.match(word,/^[A-Z]{3,12}$/);assert.ok(clue.length>12&&clue.length<=250);assert.doesNotMatch(clue,new RegExp('\\b'+word+'\\b','i'));}}
+ const used=new Set<string>();for(let i=0;i<20;i++)curatedWord('football','',used);assert.equal(used.size,20);
+ assert.deepEqual(curatedWord('space','ORBIT',new Set()),['ORBIT','The path of one celestial body around another.']);
 });
