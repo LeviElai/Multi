@@ -2,7 +2,7 @@
 
 ## Implemented
 
-- Gemini runs on the persistent game service. Set `GEMINI_API_KEY` in Render's service environment; never use a `NEXT_PUBLIC_` key. Optional `GEMINI_MODEL` defaults to `gemini-2.5-flash-lite`.
+- Gemini runs on the persistent game service. Set `GEMINI_API_KEY` in Render's service environment; never use a `NEXT_PUBLIC_` key. Optional `GEMINI_MODEL` defaults to `gemini-3.5-flash-lite`.
 - Each signed-in creator account receives **20 questions per UTC calendar month**, not 20 generation requests. Atomic reservations prevent concurrent overspending. Request IDs survive refresh/retry. Successful output becomes an editable private draft. Provider failures or expired work return reserved questions. A crash after validated output is stored resumes draft creation without calling Gemini again.
 - Requests are limited to 20 questions, English and supported modes. Daily limits: 30 requests/account, 60/IP and 100/platform. No automatic provider retries. Monitor provider billing before increasing these safeguards. Account creation is not proof of a unique person; the current account system does not verify email ownership.
 - Every generated question starts as `needs_review`; hosting and public sharing reject unreviewed questions. No generated sources or automatic public publishing.
@@ -45,3 +45,21 @@ The additive CLI-generated migration is `supabase/migrations/20261017140837_crea
 - [Google rewarded web setup and its SSV limitation](https://support.google.com/admanager/answer/9116812)
 - [Google Publisher Tag rewarded example](https://developers.google.com/publisher-tag/samples/display-rewarded-ad)
 - [Reward policies](https://support.google.com/adsense/answer/9121589)
+
+## Cost controls and retention
+
+- Gemini uses the stateless Interactions API (`store=false`) with minimal thinking, a compact portable schema, selected-mode instructions only, short explanations and bounded output. No chat history, tools, search-grounding fees, automatic paid fallback or repeated provider retries. Actual input and output (including thought) tokens are recorded even if returned content fails validation.
+- Count arithmetic is computed on the server from two explicit factors. Size uses calibrated house measurements that match its available artwork; the creator can edit these afterward. AI may still get facts or wording wrong: review remains required.
+- The existing service compacts completed/failed/rejected generation bodies after 7 days. It keeps the draft, job ID/hash, quota accounting and token counters, so old actions cannot be replayed as new charges. Expired ad tickets older than 32 days and rate-limit buckets expired for 7 days are deleted. Active jobs are never compacted. Quizzes, accounts, game events, scores and privacy/moderation records are preserved.
+- Cleanup runs hourly inside the existing service, without a paid cron service. An idle AI queue is checked every 30 seconds instead of every 1.5 seconds; generation requests wake it promptly. Live gameplay keeps its authoritative timing. Client polling stops after the final state; hidden-tab polling remains slower.
+- Library browsing fetches question counts and mode metadata without loading answer keys. Only opening a practice quiz fetches its content. Heavy route components are loaded on demand.
+- Render and Vercel plans are unchanged. These controls reduce usage; they cannot guarantee zero bills or unlimited free capacity. Configure provider billing alerts/caps in the owner dashboards before enabling paid usage or broad public traffic. No paid upgrade is automatic.
+
+For private operator usage inspection:
+
+```sql
+SELECT period, model_id, COUNT(*) AS requests,
+       SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens
+FROM multigame.creator_generations
+GROUP BY period, model_id;
+```

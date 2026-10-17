@@ -1,4 +1,4 @@
-import { DomainError, QuizInputSchema, type Quiz, type QuizInput, type QuizVersion, type Round, type SessionData, type SessionRecord, type Principal, type SessionEvent, type Submission, type WordAttempt, type Adjudication, type Award } from '../../contracts/src/index';
+import { DomainError, QuizInputSchema, DraftQuizInputSchema, type Quiz, type QuizInput, type QuizVersion, type Round, type SessionData, type SessionRecord, type Principal, type SessionEvent, type Submission, type WordAttempt, type Adjudication, type Award } from '../../contracts/src/index';
 import type { Store, SqlDatabase, SqlStatement, SqlValue, MutationResult } from './types';
 import {avatarFor,AvatarSchema} from '../../contracts/src/avatar';
 
@@ -55,7 +55,7 @@ export class SqlStore implements Store {
   async createQuiz(ownerId:string,input:QuizInput,id:string=crypto.randomUUID(),idempotencyKey?:string):Promise<Quiz>{
     idempotencyKey=idempotencyKey?`store.quiz.create:${idempotencyKey}`:undefined;
     const prior=await this.apiReceipt<Quiz>(ownerId,idempotencyKey);if(prior.found)return prior.result!;
-    const validated=QuizInputSchema.parse(input);this.uniqueRounds(validated);
+    const validated=DraftQuizInputSchema.parse(input);this.uniqueRounds(validated);
     const now=this.now().toISOString(),nonce=crypto.randomUUID(),guard=this.quizGuard(id,nonce);
     const created:Quiz={...validated,id,ownerId,revision:1,status:'draft',createdAt:now,updatedAt:now};
     const statements=[insert('quizzes',['id','owner_id','title','description','language','audience_context','theme','revision','status','last_mutation_id','created_at','updated_at'],[id,ownerId,validated.title,validated.description,validated.language,validated.audienceContext,validated.theme,1,'draft',nonce,now,now],undefined,'ON CONFLICT(id) DO NOTHING'),...validated.rounds.map((round,i)=>insert('draft_rounds',['quiz_id',...roundColumns],[id,...roundValues(round,i)],guard))];
@@ -66,7 +66,7 @@ export class SqlStore implements Store {
   }
   private uniqueRounds(input:QuizInput){if(new Set(input.rounds.map(r=>r.id)).size!==input.rounds.length)throw new DomainError('DUPLICATE_ROUND','Round IDs must be unique.',422);}
   async saveQuiz(id:string,ownerId:string,expectedRevision:number,input:QuizInput):Promise<Quiz>{
-    const validated=QuizInputSchema.parse(input);this.uniqueRounds(validated);
+    const validated=DraftQuizInputSchema.parse(input);this.uniqueRounds(validated);
     const nonce=crypto.randomUUID(),now=this.now().toISOString(),guard=this.quizGuard(id,nonce);
     const statements:SqlStatement[]=[{sql:"UPDATE quizzes SET title=?,description=?,language=?,audience_context=?,theme=?,revision=revision+1,status='draft',last_mutation_id=?,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status<>'archived'",params:[validated.title,validated.description,validated.language,validated.audienceContext,validated.theme,nonce,now,id,ownerId,expectedRevision]},{sql:`DELETE FROM draft_rounds WHERE quiz_id=? AND ${guard.sql}`,params:[id,...guard.params]},...validated.rounds.map((round,i)=>insert('draft_rounds',['quiz_id',...roundColumns],[id,...roundValues(round,i)],guard))];
     const results=await this.db.batch(statements);if(!results[0].changes){await this.getQuiz(id,ownerId);throw conflict();}
@@ -80,6 +80,7 @@ export class SqlStore implements Store {
     idempotencyKey=idempotencyKey?`store.quiz.publish:${id}:${idempotencyKey}`:undefined;
     const receipt=await this.apiReceipt<QuizVersion>(ownerId,idempotencyKey);if(receipt.found)return receipt.result!;
     const quiz=await this.getQuiz(id,ownerId);if(quiz.revision!==expectedRevision){const prior=await this.apiReceipt<QuizVersion>(ownerId,idempotencyKey);if(prior.found)return prior.result!;throw conflict();}
+    QuizInputSchema.parse(quiz);
     if(!quiz.rounds.length)throw new DomainError('EMPTY_QUIZ','Add at least one round before publishing.',422);
     const number=Number((await this.db.query('SELECT COALESCE(MAX(version_num),0)+1 AS next FROM quiz_versions WHERE quiz_id=?',[id])).rows[0].next);
     const versionId=crypto.randomUUID(),nonce=crypto.randomUUID(),now=this.now().toISOString(),guard=this.quizGuard(id,nonce);

@@ -3,7 +3,7 @@ import { adsReady, rewardTicket, claimReward, type AdsConfig } from './ads';
 import { browseCommunity, communityQuiz, CommunityInput, shareCommunity, copyCommunity } from './community';
 import { z } from 'zod';
 import {AvatarSchema} from '../../../packages/contracts/src/avatar';
-import { DomainError, HostActionSchema, QuizInputSchema, RoundSchema, SubmitSchema, WordGuessSchema } from '../../../packages/contracts/src/index';
+import { DomainError, HostActionSchema, QuizInputSchema, DraftQuizInputSchema, RoundSchema, SubmitSchema, WordGuessSchema } from '../../../packages/contracts/src/index';
 import type { Features, Principal, Quiz, QuizInput, Profile } from '../../../packages/contracts/src/index';
 import type { Store } from '../../../packages/db/src/types';
 import { getDemoQuiz, validateQuiz } from '../../../packages/game-modes/src/index';
@@ -170,7 +170,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
     if (path === 'quizzes' && method === 'POST') {
       const owner = requireUser(user);
       const key = mutationKey(request);
-      const input = QuizInputSchema.parse({ rounds: [], ...body });
+      const input = DraftQuizInputSchema.parse({ rounds: [], ...body });
       await rateLimit(ctx.store.db, `quiz-create:${owner.id}`, 30, 60 * 60 * 1000);
       return ok(await durableAction(ctx.store, owner.id, `quiz.create:${key}`, input, async () => {
         const id = await idempotentId('quiz', owner.id, key);
@@ -188,7 +188,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       if (method === 'GET' && !suffix) return ok(quiz);
       if (method === 'PATCH' && !suffix) {
         const expectedRevision = revision.parse(body.expectedRevision);
-        const input = QuizInputSchema.parse({ ...draftInput(quiz), ...body });
+        const input = DraftQuizInputSchema.parse({ ...draftInput(quiz), ...body });
         const key = mutationKey(request);
         const result = await durableAction(ctx.store, owner.id, `quiz.save:${id}:${key}`, body, async () => {
           if (quiz.revision === expectedRevision + 1 && JSON.stringify(draftInput(quiz)) === JSON.stringify(input)) return quiz;

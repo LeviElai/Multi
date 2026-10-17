@@ -30,8 +30,8 @@ export const PixelCharacter=memo(function PixelCharacter({id,avatar,mood='still'
  const layers={hair:<path fill={hair} d={hairShape}/>,face:<> <path fill={skin} d="M7 9h10v10H7Z"/><path fill="#ffffff22" d="M7 10h3v6H7Z"/>
  <g className="character-face">
  {a.face===3?<path d="M8 13h2v1H8m6-1h2v1h-2" fill={eye}/>:a.face===4?<path d="M8 12h2v2H8m6-1h2v1h-2" fill={eye}/>:<path d="M8 12h2v2H8m6-2h2v2h-2" fill={eye}/>}
- {a.face===1?<path d="M10 16h4v2h-4" fill="#683d36"/>:a.face===2?<path d="M10 16h4v1h-4m1 1h2v1h-2" fill="#fff0c8"/>:a.face===5?<path d="M11 16h2v2h-2" fill="#683d36"/>:a.face===6?<path d="M10 17h4v1h-4" fill="#683d36"/>:<path d="M10 16h4v1h-4" fill="#683d36"/>}
- {a.face===6&&<path d="M8 10h2v1H8m4 0h4v1h-4" fill={eye}/>}
+ <g transform={a.accessory===3?'translate(0 2)':undefined}>{a.face===1?<path d="M10 16h4v2h-4" fill="#683d36"/>:a.face===2?<path d="M10 16h4v1h-4m1 1h2v1h-2" fill="#fff0c8"/>:a.face===5?<path d="M11 16h2v2h-2" fill="#683d36"/>:a.face===6?<path d="M10 17h4v1h-4" fill="#683d36"/>:<path d="M10 16h4v1h-4" fill="#683d36"/>}
+ </g>{a.face===6&&<path d="M8 10h2v1H8m4 0h4v1h-4" fill={eye}/>}
  {a.face===3&&<path d="M8 11h2v1H8m6-1h2v1h-2" fill={eye}/>}{a.face===7&&<path d="M8 15h2v1H8m6-1h2v1h-2" fill="#db8a80"/>}
  </g>
 </>,shirt:<> <path fill={shirt} d="M5 20h14v7H5ZM3 22h3v4H3Zm15 0h3v4h-3Z"/>

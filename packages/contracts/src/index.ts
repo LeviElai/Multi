@@ -22,6 +22,14 @@ export const RoundSchema=z.discriminatedUnion('mode',[FermiSchema,RareSchema,Wor
 export type Round=z.infer<typeof RoundSchema>;
 export type PublicRound={id:string;mode:ModeId;schemaVersion:1;question:string;timerSeconds:number;maxPoints:1000;allowRevision:boolean;publicConfig:Round['publicConfig'];fillTarget?:number};
 export const QuizInputSchema=z.object({title:z.string().trim().min(1).max(100),description:z.string().max(500).default(''),language:z.literal('en').default('en'),audienceContext:z.enum(['adult_private','general']).default('adult_private'),theme:z.enum(['studio','midnight']).default('studio'),rounds:z.array(RoundSchema).max(40)});
+// Drafts may contain unfinished text. Published versions still require the strict schema above.
+const draftQuestion={question:z.string().max(500)};
+export const DraftRoundSchema=z.discriminatedUnion('mode',[
+ FermiSchema.extend(draftQuestion),RareSchema.extend(draftQuestion),
+ WordSchema.extend({...draftQuestion,secretConfig:WordSchema.shape.secretConfig.extend({answer:z.string().max(100)})}),
+ SizeSchema.extend({...draftQuestion,publicConfig:SizeSchema.shape.publicConfig.extend({referenceLabel:z.string().max(60),targetLabel:z.string().max(60)})}),AmountSchema.extend(draftQuestion)
+]);
+export const DraftQuizInputSchema=QuizInputSchema.extend({title:z.string().max(100),rounds:z.array(DraftRoundSchema).max(40)});
 export type QuizInput=z.infer<typeof QuizInputSchema>;
 export type Quiz=QuizInput & {id:string;ownerId:string;revision:number;status:'draft'|'published'|'archived';publishedVersionId?:string;createdAt:string;updatedAt:string};
 export type QuizVersion={id:string;quizId:string;version:number;title:string;theme:string;rounds:Round[];createdAt:string};

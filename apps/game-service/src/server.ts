@@ -1,3 +1,4 @@
+import {compactTemporaryData} from './cost-maintenance';
 import { geminiGenerate, runGenerationWorker } from './ai';
 import { adsReady } from './ads';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
@@ -96,6 +97,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
   const adsConfig={unitPath:environment.GOOGLE_REWARDED_AD_UNIT??'',approved:environment.ADS_APPROVED==='1',consentReady:environment.ADS_CONSENT_READY==='1'};
   const aiEnabled=!!environment.GEMINI_API_KEY;
   const features:Features={ai:aiEnabled,billing:false,ads:adsReady(adsConfig),stage:'private_alpha',transport:'socket',auth:'credentials'};
+  let nextAiCheck=0,aiWake=0,nextCompaction=0;
   const limiter=new RateLimiter();let draining=false;let ticking=false;
   let broadcastTimer:NodeJS.Timeout|undefined;let broadcasting=false;let broadcastAgain=false;
   const connections=new Map<string,Connected>();
@@ -129,7 +131,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
       const authResponse=await auth.handle(request);
       const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0',aiEnabled,adsConfig});
       await sendResponse(res,response,secure,allowedOrigin);
-      if(req.method!=='GET'&&response.ok)scheduleBroadcast();
+      if(req.method!=='GET'&&response.ok){scheduleBroadcast();if(path==='/api/v1/ai/generate'){aiWake++;nextAiCheck=0;}}
       log('http_request',{method:req.method,path:safeLogPath,status:response.status,durationMs:Date.now()-started});
     } catch(error) {
       if(!(error instanceof DomainError))log('http_error',{path:safeLogPath,errorType:error instanceof Error?error.name:'unknown'});
@@ -213,7 +215,14 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
     try {await engine.reconcile();await broadcastSnapshots();}catch(error){log('reconcile_failed',{errorType:error instanceof Error?error.name:'unknown'});}finally{ticking=false;}
   },500);timer.unref();
   let aiTicking=false;
-  const aiTimer=setInterval(async()=>{if(aiTicking||draining||maintenance||!aiEnabled)return;aiTicking=true;try{await runGenerationWorker(store,input=>geminiGenerate(input,environment.GEMINI_API_KEY!,environment.GEMINI_MODEL));}catch(error){log('generation_worker_failed',{errorType:error instanceof Error?error.name:'unknown'});}finally{aiTicking=false;}},1500);aiTimer.unref();
+  const aiTimer=setInterval(async()=>{
+    if(aiTicking||draining||maintenance)return;
+    const now=Date.now();if(now<nextAiCheck&&now<nextCompaction)return;aiTicking=true;const wake=aiWake;
+    try{
+      if(now>=nextCompaction){nextCompaction=now+3600000;await compactTemporaryData(store);}
+      if(aiEnabled&&now>=nextAiCheck){const worked=await runGenerationWorker(store,(input,onUsage)=>geminiGenerate(input,environment.GEMINI_API_KEY!,environment.GEMINI_MODEL,onUsage));nextAiCheck=aiWake!==wake?0:Date.now()+(worked?1000:30000);}else if(!aiEnabled)nextAiCheck=now+30000;
+    }catch(error){nextAiCheck=Date.now()+30000;log('generation_worker_failed',{errorType:error instanceof Error?error.name:'unknown'});}finally{aiTicking=false;}
+  },1500);aiTimer.unref();
   if(!maintenance)await engine.reconcile();
   const port=Number(environment.PORT??4001);const host=environment.HOST??'0.0.0.0';
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});

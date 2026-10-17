@@ -28,6 +28,7 @@ export default function Live({ id, role = 'player', displayToken }: {
     const [busy, setBusy] = useState(false);
     const offset = useRef(0);
     const failed = useRef(false);
+    const terminalSnapshot=useRef(false);
     const socketOnline=useRef(false),fetching=useRef(false);
     const [showLeaders, setShowLeaders] = useState(role !== 'player');
     const [pair, setPair] = useState('');
@@ -69,7 +70,7 @@ export default function Live({ id, role = 'player', displayToken }: {
         return () => { document.removeEventListener('keydown', handler); previous?.focus(); };
     }, [pair, confirm]);
     const accept = useCallback((snapshot: Snapshot) => { const old = accepted.current; if (old && (snapshot.stateVersion < old.version || (snapshot.stateVersion === old.version && snapshot.latestSeq < old.seq)))
-        return; accepted.current = { version: snapshot.stateVersion, seq: snapshot.latestSeq }; offset.current = Date.parse(snapshot.serverTime) - Date.now(); if(!old||snapshot.stateVersion!==old.version||snapshot.latestSeq!==old.seq)setS(snapshot); if (failed.current) {
+        return; terminalSnapshot.current=['SESSION_COMPLETED','SESSION_ABORTED'].includes(snapshot.state);accepted.current = { version: snapshot.stateVersion, seq: snapshot.latestSeq }; offset.current = Date.parse(snapshot.serverTime) - Date.now(); if(!old||snapshot.stateVersion!==old.version||snapshot.latestSeq!==old.seq)setS(snapshot); if (failed.current) {
         setRestored(true);
         setTimeout(() => setRestored(false), 3500);
     } failed.current = false; setConnected(true); setError(''); }, []);
@@ -85,7 +86,7 @@ export default function Live({ id, role = 'player', displayToken }: {
         setConnected(false);
         setError(e instanceof Error ? e.message : 'Connection interrupted.');
     } finally{fetching.current=false;} }, [endpoint, accept]);
-    useEffect(() => { void refresh(); let timer: ReturnType<typeof setTimeout>; let stopped = false; async function poll() { await refresh(); if (!stopped)
+    useEffect(() => { void refresh(); let timer: ReturnType<typeof setTimeout>; let stopped = false; async function poll() { await refresh(); if (!stopped&&!terminalSnapshot.current)
         timer = setTimeout(poll, document.hidden?15000:failed.current?3500:socketOnline.current?8000:1800); } timer = setTimeout(poll, 1800); const focus = () => void refresh(); window.addEventListener('online', focus); window.addEventListener('focus', focus); return () => { stopped = true; clearTimeout(timer); window.removeEventListener('online', focus); window.removeEventListener('focus', focus); }; }, [refresh]);
     useEffect(() => { let close: (() => void) | undefined; let canceled = false; void api<Profile['features']>('/features').then(async (p) => { if (p?.transport !== 'socket' || displayToken)
         return; const { io } = await import('socket.io-client'); if (canceled)

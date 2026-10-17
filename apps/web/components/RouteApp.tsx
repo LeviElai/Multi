@@ -2,13 +2,14 @@
 import Link from 'next/link';
 import {Header,Footer} from './Brand';
 import Join from './Join';
-import Live from './Live';
 import Utility,{Login} from './Utility';
-import Creator from './Creator';
-import Demo from './Demo';
-import RandomGame from './RandomGame';
 import CreatorGate from './CreatorGate';
 import dynamic from 'next/dynamic';
+function OpeningGame(){return <main className="page" role="status">Opening the workshop…</main>;}
+const Live=dynamic(()=>import('./Live'),{loading:OpeningGame});
+const Creator=dynamic(()=>import('./Creator'),{loading:OpeningGame});
+const Demo=dynamic(()=>import('./Demo'),{loading:OpeningGame});
+const RandomGame=dynamic(()=>import('./RandomGame'),{loading:OpeningGame});
 const AiQuizMaker=dynamic(()=>import('./AiQuizMaker'));
 const Community=dynamic(()=>import('./Community'));
 
