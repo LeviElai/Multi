@@ -1,5 +1,5 @@
 import {newId} from '../../contracts/src/id';
-import type { ModeId, QuizInput, Round } from '../../contracts/src/index';
+import { MODES, type ModeId, type QuizInput, type Round } from '../../contracts/src/index';
 
 /** Author-defined examples: all numeric answers follow directly from the prompt. */
 export function getDefaultRound(mode: ModeId): Round {
@@ -7,6 +7,12 @@ export function getDefaultRound(mode: ModeId): Round {
     id: newId(), schemaVersion: 1 as const, timerSeconds: 40,
     maxPoints: 1000 as const, provenance: 'creator_confirmed' as const, allowRevision: true,
   };
+  if(['draw','claw','drop','sling','fish','stack','crack','answer'].includes(mode))return {
+    ...common,mode:mode as 'draw',allowRevision:false,question:mode==='drop'?'An octopus has three hearts.': ['fish','claw','sling'].includes(mode)?'What is the capital of France?':'How many sides does a hexagon have?',
+    scoringPolicy:'exact',questionType:mode==='drop'?'boolean':'single',
+    publicConfig:{unit:'',min:0,max:99999999,step:1,tolerance:100,codeLength:4,blockValues:[1,5,10,25],kind:mode==='drop'?'boolean':['fish','claw','sling'].includes(mode)?'choice':mode==='answer'?'text':'number',options:['fish','claw','sling'].includes(mode)?[{id:'a',label:'Rome'},{id:'b',label:'Paris'},{id:'c',label:'Berlin'}]:[]},
+    secretConfig:{answer:mode==='drop'?true:['fish','claw','sling','answer'].includes(mode)?'Paris':6,acceptedAlternatives:[],correctOptionIds:['fish','claw','sling'].includes(mode)?['b']:[]}
+  } as Round;
   switch (mode) {
     case 'fermi': return {
       ...common, mode, question: 'A square mosaic has 12 rows of 12 tiles. How many tiles are there?',
@@ -40,20 +46,23 @@ export function getDefaultRound(mode: ModeId): Round {
       secretConfig: { answer: 56 },
     };
   }
+  throw new Error("Unknown interaction");
 }
 
 export function getDemoQuiz(): QuizInput {
   return {
-    title: 'Five-game starter',
-    description: 'Five rounds: numbers, rare answers, a hidden word, sizing and sweets.',
+    title: 'Arcade sampler',
+    description: 'Eleven ways to play. Try each interaction before hosting.',
     language: 'en', audienceContext: 'adult_private', theme: 'studio',
-    rounds: (['fermi', 'rare_answers', 'word_puzzle', 'size_it_up', 'amountle'] as const).map(getDefaultRound),
+    rounds: (['fermi','fish','word_puzzle','size_it_up','amountle'] as const).map(getDefaultRound),
   };
 }
 
+export function getArcadeQuiz():QuizInput{return {...getDemoQuiz(),title:'The eleven-game arcade',rounds:MODES.map(getDefaultRound)};}
+
 /** New opt-in starter content. Previously saved quizzes retain their exact rounds. */
 export function getWorkshopQuiz(): QuizInput {
- const quiz=getDemoQuiz();quiz.title='The five-game warm-up';quiz.description='A little space, a hidden word, and some unexpected discoveries.';
+ const quiz=getArcadeQuiz();quiz.title='The arcade warm-up';quiz.description='A little space, a hidden word, and some unexpected discoveries.';
  for(const r of quiz.rounds){
   if(r.mode==='fermi'){r.question='Light travels about 300,000 km each second. Roughly how far does it travel in eight minutes?';r.secretConfig.answer=144000000;r.publicConfig={...r.publicConfig,unit:'km',max:1e9,tolerance:144000000};r.explanation='Eight minutes is 480 seconds. 480 × 300,000 = 144 million km.';}
   if(r.mode==='rare_answers'){r.question='Name a living flightless bird. Try to choose one nobody else will.';r.secretConfig.answers=[{canonical:'Penguin',aliases:['penguins','emperor penguin','king penguin']},{canonical:'Ostrich',aliases:['ostriches']},{canonical:'Emu',aliases:['emus']},{canonical:'Kiwi',aliases:['kiwis','kiwi bird']},{canonical:'Cassowary',aliases:['cassowaries']},{canonical:'Rhea',aliases:['rheas']},{canonical:'Kakapo',aliases:['kākāpō','owl parrot']},{canonical:'Takahe',aliases:['takahē','south island takahe']}];r.explanation='This round groups penguin species as Penguin. Ostrich, emu, kiwi, cassowary, rhea, kākāpō and takahē are also in the accepted set. Matching answers share the same score.';r.publicConfig.adjudication='host_review';}

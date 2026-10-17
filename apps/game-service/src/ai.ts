@@ -1,3 +1,4 @@
+import {roundFromAnswer,type QuestionAnswer} from '../../../packages/game-modes/src/question';
 import {curatedWord} from './quiz-words';
 import {normalizeAnswer} from '../../../packages/game-modes/src/shared';
 import { z } from 'zod';
@@ -6,7 +7,7 @@ import type { Store } from '../../../packages/db/src/types';
 import { getDefaultRound, validateQuiz } from '../../../packages/game-modes/src/index';
 import { digestToken, idempotentId } from './security';
 
-export const GenerationInput = z.object({topic:z.string().trim().min(3).max(300),count:z.number().int().min(1).max(20),language:z.literal('en').default('en'),difficulty:z.enum(['easy','mixed','challenging']).default('mixed'),instructions:z.string().trim().max(600).default(''),modes:z.array(z.enum(MODES)).min(1).max(5).default(['fermi','rare_answers','word_puzzle'])}).strict();
+export const GenerationInput = z.object({topic:z.string().trim().min(3).max(300),count:z.number().int().min(1).max(20),language:z.literal('en').default('en'),difficulty:z.enum(['easy','mixed','challenging']).default('mixed'),instructions:z.string().trim().max(600).default(''),modes:z.array(z.enum(MODES)).min(1).max(11).default(['fermi','fish','drop','stack','word_puzzle'])}).strict();
 export type GenerationRequest=z.infer<typeof GenerationInput>;
 type Job={id:string;owner_id:string;request_json:string;request_hash:string;status:string;requested:number;period:string;result_json:string|null;quiz_id:string|null;lease_token:string|null;error_code?:string|null;updated_at:string};
 export const quotaPeriod=(now=new Date())=>now.toISOString().slice(0,7);
@@ -35,7 +36,7 @@ function failureCode(error:unknown){const message=error instanceof Error?error.m
 export async function generationStatus(store:Store,owner:string,id:string){const job=(await store.db.query<Job>('SELECT * FROM creator_generations WHERE id=? AND owner_id=?',[id,owner])).rows[0];if(!job)throw new DomainError('NOT_FOUND','This generation is unavailable.',404);return jobView(job);}
 
 // Structured, bounded output; the model cannot select IDs, provenance, URLs or execute tools.
-const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),answer:z.number().finite().optional(),unit:z.string().max(30).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(8)})).min(2).max(32).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
+const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),answer:z.union([z.number().finite(),z.string().max(100),z.boolean()]).optional(),options:z.array(z.string().trim().min(1).max(80)).min(2).max(6).optional(),unit:z.string().max(30).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(8)})).min(2).max(32).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
 export function validatedGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const parsed=generatedSchema.parse(value);
  if(input.count>=input.modes.length&&input.modes.some(mode=>!parsed.questions.some(q=>q.mode===mode)))throw new Error('Missing requested mode');
@@ -43,11 +44,18 @@ export function validatedGeneration(value:unknown,input:GenerationRequest):QuizI
  const rounds:Round[]=parsed.questions.map(q=>{
   if(!input.modes.includes(q.mode))throw new Error('Unrequested mode');
   const r=getDefaultRound(q.mode);r.id=crypto.randomUUID();r.question=q.mode==='word_puzzle'?q.question.replace(/^Unscramble\b/i,'Find'):q.question;r.explanation=q.explanation;r.provenance='needs_review';
-  if(r.mode==='fermi'){if(q.answer===undefined||q.answer<=0)throw new Error('Numeric answer required');r.secretConfig.answer=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'',max:Math.min(1e15,Math.max(100,q.answer*8)),tolerance:q.answer,step:Number.isInteger(q.answer)?1:0.001};}
-  if(r.mode==='amountle'){if(q.answer===undefined||!Number.isInteger(q.answer)||q.answer<1||q.answer>1000)throw new Error('Count must be 1–1000');r.secretConfig.answer=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'items',maxCount:Math.min(10000,Math.max(30,q.answer*2)),tolerance:Math.max(10,q.answer/2)};}
+  if(r.mode==='fermi'){if(typeof q.answer!=='number'||q.answer<=0)throw new Error('Numeric answer required');r.secretConfig.answer=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'',max:Math.min(1e15,Math.max(100,q.answer*8)),tolerance:q.answer,step:Number.isInteger(q.answer)?1:0.001};}
+  if(r.mode==='amountle'){if(typeof q.answer!=='number'||!Number.isInteger(q.answer)||q.answer<1||q.answer>1000)throw new Error('Count must be 1–1000');r.secretConfig.answer=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'items',maxCount:Math.min(10000,Math.max(30,q.answer*2)),tolerance:Math.max(10,q.answer/2)};}
   if(r.mode==='word_puzzle'){if(!q.word)throw new Error('Word required');if(new RegExp('\\b'+q.word+'\\b','i').test(q.question))throw new Error('Clue gives away the word');r.secretConfig.answer=q.word;r.publicConfig.length=q.word.length;}
-  if(r.mode==='rare_answers'){if(!q.answers)throw new Error('Scoped answer set required');r.secretConfig.answers=q.answers;r.publicConfig.adjudication='host_review';}
-  if(r.mode==='size_it_up'){if(!q.referenceSize||!q.answer||q.answer<=0||!q.referenceLabel||!q.targetLabel||!q.asset||!q.referenceAsset)throw new Error('Size fields required');const ratio=q.answer/q.referenceSize;if(ratio<0.4||ratio>3.5)throw new Error('Unplayable size ratio');r.secretConfig.targetSize=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'m',referenceSize:q.referenceSize,referenceLabel:q.referenceLabel,targetLabel:q.targetLabel,asset:q.asset,referenceAsset:q.referenceAsset,minRatio:Math.max(0.1,ratio/3),maxRatio:Math.min(6,Math.max(3,ratio*2))};}
+  if(r.mode==='size_it_up'){if(!q.referenceSize||typeof q.answer!=='number'||q.answer<=0||!q.referenceLabel||!q.targetLabel||!q.asset||!q.referenceAsset)throw new Error('Size fields required');const ratio=q.answer/q.referenceSize;if(ratio<0.4||ratio>3.5)throw new Error('Unplayable size ratio');r.secretConfig.targetSize=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'m',referenceSize:q.referenceSize,referenceLabel:q.referenceLabel,targetLabel:q.targetLabel,asset:q.asset,referenceAsset:q.referenceAsset,minRatio:Math.max(0.1,ratio/3),maxRatio:Math.min(6,Math.max(3,ratio*2))};}
+  if(['draw','stack','crack','claw','fish','sling','drop'].includes(q.mode)){
+    const choice=['claw','fish','sling'].includes(q.mode),boolean=q.mode==='drop';
+    if(choice&&(!q.options||!q.options.includes(String(q.answer))))throw new Error('Choices must include the correct answer');
+    if(boolean&&typeof q.answer!=='boolean')throw new Error('Boolean required');
+    if(!choice&&!boolean&&(typeof q.answer!=='number'||!Number.isSafeInteger(q.answer)||q.answer<0||q.answer>99999999))throw new Error('Whole number required');
+    const qa:QuestionAnswer={type:boolean?'boolean':'single',kind:boolean?'boolean':choice?'choice':'integer',text:q.question,answer:String(q.answer),distractors:choice?q.options!.filter(o=>o!==String(q.answer)):[],alternatives:[],unit:q.unit??'',exact:true};
+    return {...roundFromAnswer(qa,q.mode,r),mode:q.mode,provenance:'needs_review'} as Round;
+  }
   return r;
  });
  const quiz=QuizInputSchema.parse({title:parsed.title,description:`Questions about ${input.topic}. Review answers before hosting.`,language:'en',audienceContext:'general',theme:'studio',rounds});
@@ -60,12 +68,18 @@ export function generationPlan(input:GenerationRequest){
   fermi:'fermi answerData: {"answer":144,"unit":"tiles"}. Positive numeric answer (at most 3 decimals). Use a self-contained estimation puzzle with every needed number in the question, not outside trivia or current tournament formats.',
   amountle:'amountle answerData: {"groups":6,"perGroup":8,"unit":"sweets"}. Choose two integer factors 2..50, product <=1000, and a short counted noun relevant to the topic. Leave question and explanation empty: the server writes the multiplication puzzle and computes the answer.',
   word_puzzle:'word_puzzle: leave question and explanation empty; answerData is "{}". The server supplies a curated word and clue.',
-  rare_answers:'rare_answers answerData: {"answers":[{"canonical":"Mercury","aliases":[]}]}. Include 4..12 valid entries, 0..3 genuine spelling/synonym aliases each (case is already ignored). Use a small, clearly bounded category with a COMPLETE accepted set (4..12 entries), never an incomplete sample of a broad category. Do not list answers in the question. Avoid time-dependent winner lists.',
+  draw:'draw answerData: {"answer":206,"unit":"bones"}. An exact non-negative integer up to 99999999. Use a stable fact or self-contained arithmetic puzzle.',
+  stack:'stack answerData: {"answer":46,"unit":"blocks"}. An exact non-negative integer up to 999999. Use a self-contained arithmetic puzzle.',
+  crack:'crack answerData: {"answer":1945,"unit":"year"}. An exact year or code, non-negative integer up to 99999999.',
+  drop:'drop answerData: {"answer":true}. A factual True/False statement, boolean answer, concise explanation. Avoid ambiguous wording.',
+  fish:'fish answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once. Verify every distractor is incorrect.',
+  claw:'claw answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once.',
+  sling:'sling answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once.', 
   size_it_up:'size_it_up: leave question and explanation empty; answerData is "{}". The server supplies a calibrated silhouette puzzle. Do not invent artwork or measurements.'
  };
  const schema={type:'object',properties:{title:{type:'string'},questions:{type:'array',items:{type:'object',properties:{mode:{type:'string',enum:input.modes},question:{type:'string'},explanation:{type:'string'},answerData:{type:'string'}},required:['mode','question','explanation','answerData']}}},required:['title','questions']};
  const prompt=`Write exactly ${input.count} accurate, fun English quiz questions. Only the selected modes; use each at least once if count permits. Keep every non-Size question relevant to the requested topic. Each answerData is a JSON-encoded object string with the EXACT keys below, using varied new values suitable for the topic; examples demonstrate format only, do not copy them. Questions <=250 characters, explanations <=320 characters with concise reasoning. ${input.modes.map(m=>rules[m]).join(' ')} Use precise nouns and units; do not conflate arms and tentacles or other distinct quantities. Use stable facts or fully specified puzzles, not advice, personal data, offensive or disputed claims or current events. Do not invent sources. Check arithmetic, scope and hidden-word privacy. No extra commentary.`;
- return {schema,prompt,maxOutputTokens:Math.min(8000,500+input.count*(input.modes.includes('rare_answers')?380:280))};
+ return {schema,prompt,maxOutputTokens:Math.min(8000,500+input.count*280)};
 }
 export function decodeGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const wire=z.object({title:z.string(),questions:z.array(z.object({mode:z.enum(MODES),question:z.string(),explanation:z.string(),answerData:z.string().max(12000)})).max(20)}).parse(value);
@@ -94,12 +108,6 @@ export function decodeGeneration(value:unknown,input:GenerationRequest):QuizInpu
   return {...question,question:`${factors.groups} groups have ${factors.perGroup} ${factors.unit} each. How many ${factors.unit} are there in total?`,explanation:`${factors.groups} x ${factors.perGroup} = ${answer} ${factors.unit}.`,answer,unit:factors.unit};
  }
   const fields={...data} as Record<string,unknown>;
-  if(question.mode==='rare_answers'&&Array.isArray(fields.answers)){
-    const entries=fields.answers as {canonical:unknown;aliases?:unknown}[];
-    const keys=new Set(entries.filter(e=>typeof e?.canonical==='string').map(e=>normalizeAnswer(e.canonical as string)));
-    const seen=new Set<string>(),aliasKeys=new Set<string>();
-    fields.answers=entries.filter(e=>{if(typeof e?.canonical!=='string')return true;const key=normalizeAnswer(e.canonical);if(seen.has(key))return false;seen.add(key);return true;}).map(e=>({...e,aliases:Array.isArray(e.aliases)?e.aliases.filter(a=>{if(typeof a!=='string')return true;const key=normalizeAnswer(a);if(keys.has(key)||aliasKeys.has(key))return false;aliasKeys.add(key);return true;}):[]}));
-  }
   return {...fields,...question};})},input);
 }
 export async function geminiGenerate(input:GenerationRequest,key:string,model='gemini-3.5-flash-lite',onUsage?:RecordUsage,fetcher:typeof fetch=fetch):Promise<QuizInput>{

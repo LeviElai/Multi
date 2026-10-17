@@ -18,6 +18,7 @@ export function sanitizeAmount(round: AmountRound, count: unknown): number {
 }
 
 export function scoreAmount(round: AmountRound, count: number): number {
+  if(round.scoringPolicy==='exact')return count===round.secretConfig.answer?1000:0;
   return round.secretConfig.answer <= 100
     ? absolutePoints(count, round.secretConfig.answer, round.publicConfig.tolerance)
     : ratioPoints(count, round.secretConfig.answer);

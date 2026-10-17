@@ -12,9 +12,10 @@ import "./clarity.css";
 import "./dressing-room.css";
 import "./workshop.css";
 import "./creator-cleanup.css";
+import "./pixel-arcade.css";
 export const metadata: Metadata = {
-    title: "MULTIGAME — One quiz. Five different games.",
-    description: "Five wildly different games. One room. Create your own multiplayer game show.",
+    title: "MULTIGAME — One quiz. Eleven ways to play.",
+    description: "Eleven interactive games. One room. Create your own multiplayer game show.",
     robots: { index: false, follow: false },
     icons: {
         icon: "/favicon.svg",

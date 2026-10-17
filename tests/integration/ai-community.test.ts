@@ -73,6 +73,6 @@ test('community publishing is explicit, immutable, removable and owner-scoped; c
  await shareCommunity(store,owner.id,draft.id,crypto.randomUUID(),{reviewed:true,category:'Science',expectedRevision:1});const shared=await communityQuiz(store,draft.id);assert.equal(shared.title,draft.title);
  const current=await store.getQuiz(draft.id,owner.id);await store.saveQuiz(draft.id,owner.id,current.revision,{...draft,title:'Private next revision'});assert.equal((await communityQuiz(store,draft.id)).title,draft.title);
  const other=await store.ensureUser(crypto.randomUUID(),'Another host');const copy=await copyCommunity(store,other.id,draft.id,crypto.randomUUID());assert.notEqual(copy.id,draft.id);assert.equal(copy.ownerId,other.id);assert.notEqual(copy.rounds[0].id,draft.rounds[0].id);
- const cards=await browseCommunity(store,'five','Science',0);assert.ok(cards.items.some(q=>q.id===draft.id));assert.ok(cards.items.every(q=>!('rounds'in q)));
+ const cards=await browseCommunity(store,'arcade','Science',0);assert.ok(cards.items.some(q=>q.id===draft.id));assert.ok(cards.items.every(q=>!('rounds'in q)));
  await db.query('UPDATE community_quizzes SET visible=0 WHERE quiz_id=?',[draft.id]);await assert.rejects(communityQuiz(store,draft.id));assert.equal((await store.getQuiz(copy.id,other.id)).title,draft.title);
 });

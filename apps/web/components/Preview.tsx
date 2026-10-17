@@ -1,4 +1,5 @@
 'use client';
+import {isArcade} from '../../../packages/game-modes/src/arcade';
 import { newId } from '../../../packages/contracts/src/id';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ArrowLeft, ArrowRight, Check, Eye, Monitor, Play, RotateCcw, Smartphone, Trophy, X } from 'lucide-react';
@@ -35,6 +36,7 @@ const previewPeople = [{ id: 'preview-you', nickname: 'You' }, { id: 'preview-ri
 function previewData(quiz: QuizInput, round: Round, payload: Submission['payload'], attempts: WordAttempt[], people = previewPeople): SessionData {
     const now = new Date().toISOString();
     const otherPayload = (index: number): Submission['payload'] => {
+        if(isArcade(round)){if(['draw','stack','crack'].includes(round.mode))return {value:Number(round.secretConfig.answer)+(index?1:0)};if(round.mode==='drop')return {choiceId:index?'false':'true'};if(['fish','claw','sling'].includes(round.mode))return {choiceId:round.publicConfig.options[index]?.id};if(round.publicConfig.kind==='multiple')return {choices:round.secretConfig.correctOptionIds};if(round.publicConfig.kind==='list')return {choices:String(round.secretConfig.answer).split('|')};return {text:String(round.secretConfig.answer)};}
         switch (round.mode) {
             case 'fermi': return { value: Math.max(round.publicConfig.min, Math.min(round.publicConfig.max, round.publicConfig.min + Math.round((round.secretConfig.answer * (index ? 1.3 : 0.8) - round.publicConfig.min) / round.publicConfig.step) * round.publicConfig.step)) };
             case 'rare_answers': return { text: round.secretConfig.answers[Math.min(index, round.secretConfig.answers.length - 1)]?.canonical ?? 'sample answer' };
@@ -42,6 +44,7 @@ function previewData(quiz: QuizInput, round: Round, payload: Submission['payload
             case 'size_it_up': return { ratio: Math.max(round.publicConfig.minRatio, Math.min(round.publicConfig.maxRatio, round.secretConfig.targetSize / round.publicConfig.referenceSize * (index ? 1.3 : 0.8))) };
             case 'amountle': return { count: Math.min(round.publicConfig.maxCount, Math.max(0, Math.round(round.secretConfig.answer * (index ? 1.3 : 0.8)))) };
         }
+        return {};
     };
     const submissions: Submission[] = people.map((person, index) => ({ id: `preview-submission-${index}`, roundId: round.id, participantId: person.id, clientMutationId: `preview-mutation-${index}`, revision: 1, payload: index === 0 ? payload : otherPayload(index - 1), acceptedAt: now }));
     const simulatedAttempts: WordAttempt[] = round.mode === 'word_puzzle' ? people.slice(1).map((person, index) => ({ id: `preview-attempt-${index}`, roundId: round.id, participantId: person.id, clientMutationId: `preview-word-${index}`, attempt: index + 2, guess: round.secretConfig.answer, feedback: wordFeedback(round.secretConfig.answer, round.secretConfig.answer), solved: true, acceptedAt: now })) : [];
@@ -67,6 +70,7 @@ export function Preview({ quiz, initialRound = 0, compact = false, solo = false,
     const people=solo?previewPeople.slice(0,1):previewPeople;
     const round = quiz.rounds[index];
     const leaders = practiceLeaderboard(people, quiz.rounds.map(r => r.id), scores, round?.id ?? '');
+    if(round?.mode==='rare_answers')return <div className="notice">This legacy question needs the creator’s review before it can be played. Its saved answers have been preserved.</div>;
     if (!round)
         return <p>Add a round to preview it.</p>;
     try {
@@ -88,7 +92,7 @@ function PracticeRound({ quiz, round, base, onScore, onNext }: {
     onScore: (a: Award[]) => void;
     onNext: () => void;
 }) {
-    const [state, setState] = useState<'intro' | 'play' | 'locked' | 'reveal' | 'placements'>(base.automatic&&base.roundIndex>0?'play':'intro'), [deadline, setDeadline] = useState<string | null>(base.automatic&&base.roundIndex>0?new Date(Date.now()+round.timerSeconds*1000).toISOString():null), [submission, setSubmission] = useState<Submission | undefined>(), [attempts, setAttempts] = useState<WordAttempt[]>([]), [result, setResult] = useState<Result | null>(null), [revealedAt, setRevealedAt] = useState<string>(), [perspective, setPerspective] = useState<'player' | 'host' | 'display'>('player');
+    const [state, setState] = useState<'intro' | 'play' | 'locked' | 'reveal' | 'placements'>('intro'), [deadline, setDeadline] = useState<string | null>(null), [submission, setSubmission] = useState<Submission | undefined>(), [attempts, setAttempts] = useState<WordAttempt[]>([]), [result, setResult] = useState<Result | null>(null), [revealedAt, setRevealedAt] = useState<string>(), [perspective, setPerspective] = useState<'player' | 'host' | 'display'>('player');
     const people = base.members;
     const payload = useRef<Submission['payload']>({}), attemptRef = useRef<WordAttempt[]>([]), completed = useRef(false);
     const [resultDeadline,setResultDeadline]=useState<string|null>(null);

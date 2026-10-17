@@ -83,7 +83,7 @@ test('ten players finish five modes with immutable scores, private projections, 
     assert.equal(publicState.pin, undefined);
     assert.equal(publicState.reveal, undefined);
     assert.equal(JSON.stringify(publicState).includes('secretConfig'), false);
-    const payload = round.mode === 'fermi' ? { value: 144 } : round.mode === 'rare_answers' ? { text: ['Coral', 'Mint', 'Lilac', 'Lemon', 'Sky'][0] } : round.mode === 'size_it_up' ? { ratio: 2.4 } : { count: 56, locked: true };
+    const payload = round.mode === 'fermi' ? { value: 144 } : round.mode === 'fish' ? {choiceId:'b'} : round.mode === 'size_it_up' ? { ratio: 2.4 } : { count: 56, locked: true };
     for (let i = 0; i < f.members.length; i++) {
       if (round.mode === 'word_puzzle') {
         await f.engine.wordGuess(f.members[i].principal, f.room.sessionId, { roundId: round.id, clientMutationId: key(), guess: 'ORBIT' });
@@ -110,7 +110,7 @@ test('ten players finish five modes with immutable scores, private projections, 
     await f.action('REVEAL');
     const revealed = await f.engine.snapshot(f.members[0].principal, f.room.sessionId);
     assert.ok(revealed.reveal);
-    assert.equal(revealed.leaderboard[0].roundPoints, round.mode === 'rare_answers' ? 200 : 1000);
+    assert.equal(revealed.leaderboard[0].roundPoints, round.mode === 'fish' ? 667 : 1000);
     const events = await f.store.events(f.room.sessionId, 0);
     assert.equal(JSON.stringify(events).includes('secretConfig'), false);
     assert.equal(JSON.stringify(events).includes('ORBIT'), false);
@@ -122,7 +122,7 @@ test('ten players finish five modes with immutable scores, private projections, 
   const final = await f.engine.snapshot(f.hostPrincipal, f.room.sessionId);
   assert.equal(final.state, 'SESSION_COMPLETED');
   assert.equal(final.leaderboard.length, 10);
-  assert.ok(final.leaderboard.every(row => row.points === 4200 && row.rank === 1));
+  assert.ok(final.leaderboard.every(row => row.points === 4667 && row.rank === 1));
   assert.deepEqual(final.leaderboard.map(row => row.participantId), f.members.map(member => member.principal.id));
   assert.equal(Number((await f.db.query<{ n: number }>('SELECT COUNT(*) AS n FROM scoring_runs')).rows[0].n), 5);
   assert.equal(Number((await f.db.query<{ n: number }>('SELECT COUNT(*) AS n FROM round_scores')).rows[0].n), 50);
@@ -424,7 +424,7 @@ for(const playerCount of [2,3,5,10])test(`${playerCount} players: five-mode roun
   for(let j=0;j<playerCount;j++){
    const p=f.members[j].principal;
    if(round.mode==='word_puzzle')await f.engine.wordGuess(p,f.room.sessionId,{roundId:round.id,clientMutationId:key(),guess:round.secretConfig.answer});
-   else {const payload=round.mode==='fermi'?{value:round.secretConfig.answer}:round.mode==='rare_answers'?{text:round.secretConfig.answers[j%5].canonical}:round.mode==='size_it_up'?{ratio:round.secretConfig.targetSize/round.publicConfig.referenceSize}:{count:round.secretConfig.answer};await f.engine.submit(p,f.room.sessionId,{roundId:round.id,clientMutationId:key(),revision:1,payload});}
+   else {const payload=round.mode==='fermi'?{value:round.secretConfig.answer}:round.mode==='rare_answers'?{text:round.secretConfig.answers[0].canonical}:round.mode==='fish'?{choiceId:'b'}:round.mode==='size_it_up'?{ratio:round.secretConfig.targetSize/round.publicConfig.referenceSize}:{count:round.secretConfig.answer};await f.engine.submit(p,f.room.sessionId,{roundId:round.id,clientMutationId:key(),revision:1,payload});}
   }
   if(round.mode==='amountle'){f.advance(round.timerSeconds*1000+1);await f.engine.reconcile(f.room.sessionId)}else await f.action('LOCK');
   await f.engine.reconcile(f.room.sessionId);assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).roundAwards,undefined);
@@ -486,7 +486,7 @@ test('autopilot: five modes, 5.5s reveal, 10s placements, pause every phase and 
   await f.action('RESUME');
   for(const member of f.members){
    if(round.mode==='word_puzzle')await f.engine.wordGuess(member.principal,f.room.sessionId,{roundId:round.id,clientMutationId:key(),guess:round.secretConfig.answer});
-   else await f.engine.submit(member.principal,f.room.sessionId,{roundId:round.id,clientMutationId:key(),revision:1,payload:round.mode==='fermi'?{value:round.secretConfig.answer,locked:true}:round.mode==='rare_answers'?{text:round.secretConfig.answers[0].canonical,locked:true}:round.mode==='size_it_up'?{ratio:round.secretConfig.targetSize/round.publicConfig.referenceSize,locked:true}:{count:round.secretConfig.answer,locked:true}});
+   else await f.engine.submit(member.principal,f.room.sessionId,{roundId:round.id,clientMutationId:key(),revision:1,payload:round.mode==='fermi'?{value:round.secretConfig.answer,locked:true}:round.mode==='rare_answers'?{text:round.secretConfig.answers[0].canonical,locked:true}:round.mode==='fish'?{choiceId:'b',locked:true}:round.mode==='size_it_up'?{ratio:round.secretConfig.targetSize/round.publicConfig.referenceSize,locked:true}:{count:round.secretConfig.answer,locked:true}});
   }
   s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(s.finishedCount,2);assert.ok(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime)<=900);
   f.advance(901);await f.engine.reconcile();s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
@@ -551,8 +551,8 @@ test('reveal exposes immutable previous totals separately from awarded new total
  f.advance(901);await f.engine.reconcile();const first=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
  assert.ok(first.previousLeaderboard?.every(p=>p.points===0));
  await f.action('ADVANCE');await f.action('ADVANCE');await f.active();
- const rare=f.version.rounds[1];assert.equal(rare.mode,'rare_answers');
- for(const m of f.members)await f.engine.submit(m.principal,f.room.sessionId,{roundId:rare.id,clientMutationId:key(),revision:1,payload:{text:'Coral',locked:true}});
+ const rare=f.version.rounds[1];assert.equal(rare.mode,'fish');
+ for(const m of f.members)await f.engine.submit(m.principal,f.room.sessionId,{roundId:rare.id,clientMutationId:key(),revision:1,payload:{choiceId:'b',locked:true}});
  f.advance(901);await f.engine.reconcile();const next=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
  for(const p of next.leaderboard){const before=next.previousLeaderboard!.find(b=>b.participantId===p.participantId)!;assert.equal(before.points,first.leaderboard.find(b=>b.participantId===p.participantId)!.points);assert.equal(p.points,before.points+p.roundPoints);}
  await f.restart();assert.deepEqual((await f.engine.snapshot(f.members[1].principal,f.room.sessionId)).previousLeaderboard,next.previousLeaderboard);

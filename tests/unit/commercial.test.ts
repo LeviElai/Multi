@@ -24,7 +24,7 @@ const aiConfig = (allowance = 2): AiConfig => ({
   prices: { inputUsdPerMillion: 2, cachedInputUsdPerMillion: 0.5, outputUsdPerMillion: 8 },
 });
 const stripeConfig = (): StripeConfig => ({ enabled: true, webhookSecret: SECRET, apiKey: 'sk_test_fixture_only', apiVersion: 'fixture-pinned-version', liveMode: false, approvedPriceIds: ['price_premium'] });
-const request = (): AiRequest => ({ requestKey: crypto.randomUUID(), prompt: 'Create five self-contained party puzzle rounds.', modes: [...MODES], roundCount: 5, audienceContext: 'adult_private', processingConsent: true });
+const request = (): AiRequest => ({ requestKey: crypto.randomUUID(), prompt: 'Create five self-contained party puzzle rounds.', modes: ['fermi','fish','word_puzzle','size_it_up','amountle'], roundCount: 5, audienceContext: 'adult_private', processingConsent: true });
 const signed = (body: string, time = NOW, secret = SECRET) => {
   const timestamp = Math.floor(time / 1000);
   return `t=${timestamp},v1=${createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex')}`;

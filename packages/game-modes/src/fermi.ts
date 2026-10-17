@@ -38,6 +38,7 @@ export function sanitizeFermi(round: FermiRound, value: unknown): number {
 }
 
 export function scoreFermi(round: FermiRound, value: number): number {
+  if(round.scoringPolicy==='exact')return value===round.secretConfig.answer?1000:0;
   return round.publicConfig.errorMode === 'proportional'
     ? ratioPoints(value, round.secretConfig.answer)
     : absolutePoints(value, round.secretConfig.answer, round.publicConfig.tolerance);

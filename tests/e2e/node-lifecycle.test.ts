@@ -107,7 +107,7 @@ test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash
         await call(`${sessionPath}/word-guesses`,'POST',{...guess,clientMutationId:randomUUID()},second.cookie);
         for(const participant of participants.slice(2))await call(`${sessionPath}/word-guesses`,'POST',{...guess,clientMutationId:randomUUID()},participant.cookie);
       }else {
-        const answer=(r:Round,participantIndex=0)=>r.mode==='fermi'?{value:r.secretConfig.answer}:r.mode==='rare_answers'?{text:['Coral','Mint','Lilac','Lemon','Sky'][participantIndex%5]}:r.mode==='size_it_up'?{ratio:r.secretConfig.targetSize/r.publicConfig.referenceSize}:r.mode==='amountle'?{count:r.secretConfig.answer}:{};
+        const answer=(r:Round,participantIndex=0)=>r.mode==='fermi'?{value:r.secretConfig.answer}:r.mode==='fish'?{choiceId:'b'}:r.mode==='size_it_up'?{ratio:r.secretConfig.targetSize/r.publicConfig.referenceSize}:r.mode==='amountle'?{count:r.secretConfig.answer}:{};
         const submission={roundId:round.id,clientMutationId:randomUUID(),revision:round.mode==='amountle'?8:1,payload:answer(round)};
         const result=await command<{accepted:boolean}>(player.socket,'answer.submit',submission);assert.equal(result.data.accepted,true);
         const repeat=await command(player.socket,'answer.submit',submission);assert.deepEqual(repeat.data,result.data);
@@ -120,12 +120,12 @@ test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash
         }
       }
       await act('LOCK');await waitState('ROUND_SCORED');await act('REVEAL');
-      const revealed=await snapshot(first.cookie);assert.ok(revealed.reveal);assert.equal(revealed.ownPoints,(index+1)*1000-(index>=1?267:0));
+      const revealed=await snapshot(first.cookie);assert.ok(revealed.reveal);assert.equal(revealed.ownPoints,(index+1)*1000-(index>=1?333:0));
       await act('NEXT');
     }
     const complete=await waitState('SESSION_COMPLETED');
     assert.equal(complete.leaderboard.length,10);assert.ok(complete.leaderboard.every(row=>row.rank===1));
-    assert.equal(complete.leaderboard[0].nickname,'Ada');assert.equal(complete.leaderboard[0].points,4733);
+    assert.equal(complete.leaderboard[0].nickname,'Ada');assert.equal(complete.leaderboard[0].points,4667);
     sockets.forEach(socket=>socket.disconnect());await runtime.stop('SIGKILL');runtime=await launch(environment);
     assert.deepEqual((await snapshot()).leaderboard,complete.leaderboard);
     await call('/api/auth/logout','POST',{},hostCookie);

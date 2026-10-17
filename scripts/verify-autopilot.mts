@@ -60,7 +60,7 @@ for(const round of demo.rounds){
   if(round.mode==='fermi'){await action('PAUSE');const paused=await snapshot(players[0]);assert.equal(paused.state,'PAUSED');await action('RESUME');}
   for(const [i,client] of players.entries()){
     if(round.mode==='word_puzzle') await call(client,path+'/word-guesses','POST',{roundId:round.id,clientMutationId:randomUUID(),guess:round.secretConfig.answer});
-    else {const payload=round.mode==='fermi'?{value:Math.round(round.secretConfig.answer*(1+i*.1))}:round.mode==='rare_answers'?{text:round.secretConfig.answers[i].canonical}:round.mode==='size_it_up'?{ratio:round.secretConfig.targetSize/round.publicConfig.referenceSize*(1+i*.1)}:{count:round.secretConfig.answer+i};
+    else {const payload=round.mode==='fermi'?{value:Math.round(round.secretConfig.answer*(1+i*.1))}:round.mode==='rare_answers'?{text:round.secretConfig.answers[i].canonical}:round.mode==='size_it_up'?{ratio:round.secretConfig.targetSize/round.publicConfig.referenceSize*(1+i*.1)}:{count:Number(round.secretConfig.answer)+i};
       await call(client,path+'/submissions','POST',{roundId:round.id,clientMutationId:randomUUID(),revision:1,payload:{...payload,locked:true}});}
   }
 

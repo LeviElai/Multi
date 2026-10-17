@@ -34,11 +34,11 @@ test('new manual rounds keep empty questions and reveals through durable saves',
  assert.ok(saved.rounds.every(r=>r.question===''&&r.explanation===''));
  const think=saved.rounds.find(r=>r.mode==='rare_answers');if(think?.mode==='rare_answers')assert.deepEqual(think.secretConfig.answers,[]);
 });
-test('AI formatting cleanup accepts case, fenced answer JSON and redundant aliases without extra calls',()=>{
- const input=GenerationInput.parse({topic:'football',count:2,modes:['word_puzzle','rare_answers']});
- const quiz=decodeGeneration({title:'Football',questions:[{mode:'word_puzzle',question:'A player who protects the net.',explanation:'The keeper defends the goal.',answerData:'```json\n{"word":" keeper "}\n```'},{mode:'rare_answers',question:'Name one of the four main football positions.',explanation:'Pick a position.',answerData:JSON.stringify({answers:[{canonical:'Goalkeeper',aliases:['goalkeeper','Keeper']},{canonical:'Defender',aliases:[]},{canonical:'Midfielder',aliases:[]},{canonical:'Forward',aliases:['Striker']},{canonical:'forward',aliases:[]}]})}]},input);
+test('AI formatting cleanup accepts fenced Word data and rejects the removed mode',()=>{
+ const input=GenerationInput.parse({topic:'football',count:1,modes:['word_puzzle']});
+ const quiz=decodeGeneration({title:'Football',questions:[{mode:'word_puzzle',question:'A player who protects the net.',explanation:'The keeper defends the goal.',answerData:'```json\n{"word":" keeper "}\n```'}]},input);
  const word=quiz.rounds[0];if(word.mode==='word_puzzle')assert.equal(word.secretConfig.answer,'KEEPER');
- const rare=quiz.rounds[1];if(rare.mode==='rare_answers'){assert.equal(rare.secretConfig.answers.length,4);assert.deepEqual(rare.secretConfig.answers[0].aliases,['Keeper']);}
+ assert.throws(()=>GenerationInput.parse({topic:'football',count:1,modes:['rare_answers']}));
  assert.ok(quiz.rounds.every(r=>r.provenance==='needs_review'));
 });
 test('failed generation keeps a safe diagnostic and returns credits once',async t=>{

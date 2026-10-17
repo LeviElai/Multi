@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DomainError, MODES, QuizInputSchema } from '../../contracts/src/index';
+import { DomainError, MODES, STORED_MODES, QuizInputSchema } from '../../contracts/src/index';
 import type { ModeId, QuizInput, ValidationIssue } from '../../contracts/src/index';
 import { validateQuiz } from '../../game-modes/src/index';
 import type { EntitlementPolicy } from './policy';
@@ -19,7 +19,7 @@ export type AiConfig = {
 };
 export const AiRequestSchema = z.object({
   requestKey: z.string().uuid(), quizId: z.string().uuid().optional(), quizRevision: z.number().int().positive().optional(),
-  prompt: z.string().trim().min(5).max(6000), modes: z.array(z.enum(MODES)).min(1).max(5),
+  prompt: z.string().trim().min(5).max(6000), modes: z.array(z.enum(MODES)).min(1).max(11),
   roundCount: z.number().int().min(1).max(20), audienceContext: z.enum(['adult_private', 'general']),
   processingConsent: z.literal(true),
 }).strict().refine(value => new Set(value.modes).size === value.modes.length && value.roundCount >= value.modes.length,
@@ -51,7 +51,7 @@ const common = {
   question: string(500), timerSeconds: { type: 'integer', minimum: 10, maximum: 300 },
   explanation: string(1500), sourceUrl: { type: ['string', 'null'], maxLength: 2048 }, allowRevision: boolean,
 };
-const modes: Record<ModeId, Schema> = {
+const modes: Partial<Record<ModeId, Schema>> = {
   fermi: object({ ...common, mode: enumeration(['fermi']), publicConfig: object({ unit: string(30), errorMode: enumeration(['proportional', 'absolute']), min: number, max: number, tolerance: number, step: number }), secretConfig: object({ answer: number }) }),
   rare_answers: object({ ...common, mode: enumeration(['rare_answers']), publicConfig: object({ rarityMethod: enumeration(['live_room']), adjudication: enumeration(['allowlist', 'host_review']), locale: enumeration(['en']), normalizationVersion: enumeration(['nfkc-en-v1']) }), secretConfig: object({ answers: array(object({ canonical: string(100), aliases: array(string(100), 30) }), 500) }) }),
   word_puzzle: object({ ...common, mode: enumeration(['word_puzzle']), publicConfig: object({ length: integer, maxAttempts: integer, locale: enumeration(['en']), dictionaryPolicy: enumeration(['custom', 'unrestricted_valid_chars']) }), secretConfig: object({ answer: string(100), allowedGuesses: array(string(100), 5000) }) }),
@@ -59,6 +59,7 @@ const modes: Record<ModeId, Schema> = {
   amountle: object({ ...common, mode: enumeration(['amountle']), publicConfig: object({ unit: string(30), maxCount: integer, allowRemove: boolean, steps: array(enumeration([1, 10, 100]), 3), showCount: { type: 'boolean', enum: [true] }, tolerance: number }), secretConfig: object({ answer: integer }) }),
 };
 
+for(const mode of ['draw','claw','drop','sling','fish','stack','crack','answer'])modes[mode as ModeId]=object({...common,mode:enumeration([mode]),publicConfig:object({unit:string(30),min:number,max:number,step:number,tolerance:number,codeLength:integer,blockValues:array(integer,5),options:array(object({id:string(40),label:string(80)}),6),kind:enumeration(['number','choice','boolean','text','multiple','list'])}),secretConfig:object({answer:{anyOf:[number,string(100),boolean]},acceptedAlternatives:array(string(100),30),correctOptionIds:array(string(40),6)})});
 export function aiDraftJsonSchema(selectedModes: ModeId[] = [...MODES]): Schema {
   return object({ title: string(100), description: string(500), rounds: { type: 'array', minItems: 1, maxItems: 20, items: { anyOf: selectedModes.map(mode => modes[mode]) } } });
 }
@@ -103,7 +104,7 @@ export function prepareAiDraft(value: unknown, request: AiRequest): AiDraft {
   const parsed = QuizInputSchema.safeParse({ title: raw.title, description: raw.description, rounds, language: 'en', audienceContext: request.audienceContext, theme: 'studio' });
   if (!parsed.success) throw new AiProviderError('AI_INVALID_OUTPUT', 'The generated draft is missing required answers or has invalid configuration.', 'failed');
   const quiz = parsed.data;
-  if (quiz.rounds.length !== request.roundCount || quiz.rounds.some(round => !request.modes.includes(round.mode)) || request.modes.some(mode => !quiz.rounds.some(round => round.mode === mode))) {
+  if (quiz.rounds.length !== request.roundCount || quiz.rounds.some(round => !(request.modes as readonly string[]).includes(round.mode)) || request.modes.some(mode => !quiz.rounds.some(round => round.mode === mode))) {
     throw new AiProviderError('AI_INVALID_OUTPUT', 'The generated draft does not match the requested round count and modes.', 'failed');
   }
   const validation = validateQuiz(quiz);

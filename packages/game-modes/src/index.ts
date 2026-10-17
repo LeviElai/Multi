@@ -8,6 +8,7 @@ import { scoreWordAttempt, validateWord, validateWordGuess } from './word-puzzle
 import { sanitizeSize, scoreSize, validateSize } from './size-it-up';
 import { sanitizeAmount, scoreAmount, validateAmount } from './amountle';
 import { compareText, invalid, issue, normalizeWord, SCORING_VERSION } from './shared';
+import {isArcade,validateArcade,sanitizeArcade,scoreArcade,arcadeAnswer} from './arcade';
 
 export { getDefaultRound, getDemoQuiz } from './fixtures';
 export { parseFermiNumber, scoreFermi } from './fermi';
@@ -25,6 +26,8 @@ export function validateAuthorConfig(round: Round): ValidationIssue[] {
   }));
   const value = parsed.data;
   const issues: ValidationIssue[] = [];
+  if(value.answerProvided===false)issues.push(issue(value,'secretConfig.answer','Enter and confirm the correct answer.'));
+  if(isArcade(value))issues.push(...validateArcade(value));
   if (value.provenance === 'needs_review') issues.push(issue(value, 'provenance', 'Review and confirm this question before publishing.'));
   if (value.provenance === 'verified_factual' && !value.sourceUrl?.trim()) issues.push(issue(value, 'sourceUrl', 'Verified factual questions require a source URL.'));
   if (value.sourceUrl?.trim()) {
@@ -59,6 +62,7 @@ export function validateQuiz(input: QuizInput): ValidationIssue[] {
     if (seen.has(round.id)) issues.push(issue(round, 'id', 'Every round must have a unique ID.'));
     seen.add(round.id);
     issues.push(...validateAuthorConfig(round));
+    if(round.mode==='rare_answers')issues.push(issue(round,'mode','This legacy question needs a supported answer format before publishing.'));
   });
   return issues;
 }
@@ -77,7 +81,7 @@ export function publicQuestionProjection(round: Round): PublicRound {
   return deepFreeze({
     id: clean.id, mode: clean.mode, schemaVersion: clean.schemaVersion,
     question: clean.question, timerSeconds: clean.timerSeconds, maxPoints: clean.maxPoints,
-    allowRevision: clean.allowRevision, publicConfig: clean.publicConfig,
+    allowRevision: clean.allowRevision, publicConfig: clean.publicConfig, ...(clean.scoringPolicy?{scoringPolicy:clean.scoringPolicy}:{}),
     
   });
 }
@@ -86,6 +90,11 @@ export function sanitizeAndValidateSubmission(round: Round, payload: unknown): S
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)
       || ![Object.prototype, null].includes(Object.getPrototypeOf(payload))) invalid('Submit a valid answer object.');
   const fields = payload as Record<string, unknown>;
+  if(isArcade(round)){
+    const allowed=['locked',...(['draw','stack','crack'].includes(round.mode)?['value']:round.mode==='drop'||['fish','sling','claw'].includes(round.mode)?['choiceId']:round.publicConfig.kind==='multiple'||round.publicConfig.kind==='list'?['choices']:['text'])];
+    if(Object.keys(fields).some(k=>!allowed.includes(k))||(fields.locked!==undefined&&typeof fields.locked!=='boolean'))invalid('This answer contains unsupported fields.');
+    return {...sanitizeArcade(round,fields),...(fields.locked===undefined?{}:{locked:fields.locked as boolean})};
+  }
   const allowed: string[] = {
     fermi: ['value', 'text', 'locked'], rare_answers: ['text', 'locked'],
     size_it_up: ['ratio', 'locked'], amountle: ['count', 'locked'], word_puzzle: [],
@@ -118,6 +127,7 @@ function revealFor(round: Round, skipped: boolean): Reveal {
     ...(round.explanation ? { explanation: round.explanation } : {}),
     ...(round.sourceUrl ? { sourceUrl: round.sourceUrl } : {}),
   };
+  if(isArcade(round))return {...base,answer:arcadeAnswer(round),unit:round.publicConfig.unit,...(['draw','stack','crack'].includes(round.mode)?{distribution:[]}: {})};
   switch (round.mode) {
     case 'fermi': return { ...base, answer: round.secretConfig.answer, unit: round.publicConfig.unit, distribution: [] };
     case 'rare_answers': return { ...base, answer: 'Valid answers from this room', groups: [] };
@@ -188,6 +198,11 @@ export function scoreRound(data: SessionData, round: Round): { awards: Award[]; 
     }
     const payload = canonical.get(member.id);
     if (!payload) continue;
+    if(isArcade(round)){
+      const result=scoreArcade(round,payload);award.points=result.points;award.reason=result.correct?'correct':'incorrect';award.detail={...award.detail,...result};
+      if(result.value!==undefined)reveal.distribution?.push({label:member.nickname,value:result.value,points:award.points});
+      continue;
+    }
     let value: number;
     switch (round.mode) {
       case 'fermi': value = payload.value!; award.points = scoreFermi(round, value); break;

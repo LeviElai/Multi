@@ -3,19 +3,19 @@ import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import {Header,Footer} from './Brand';
 import {Preview} from './Preview';
-import {getDemoQuiz} from '../../../packages/game-modes/src/fixtures';
+import {getArcadeQuiz} from '../../../packages/game-modes/src/fixtures';
 import type {QuizInput} from '../../../packages/contracts/src/index';
 const starters=[
- {id:'all-five',title:'The five-game sampler',modes:['fermi','rare_answers','word_puzzle','size_it_up','amountle']},
+ {id:'arcade',title:'The arcade sampler',modes:['fish','stack','drop','claw','crack']},
  {id:'eye-test',title:'Trust your eyes',modes:['size_it_up','amountle']},
- {id:'brainwave',title:'A little brainwave',modes:['word_puzzle','rare_answers','fermi']}
+ {id:'brainwave',title:'A little brainwave',modes:['word_puzzle','draw','sling']}
 ];
 export default function RandomGame(){
  const [game,setGame]=useState<QuizInput|null>(null),[epoch,setEpoch]=useState(0);
  const choose=()=>{
   let previous='';try{previous=sessionStorage.getItem('multigame-last-starter')??'';}catch{}
   const pool=starters.filter(q=>q.id!==previous),choice=pool[Math.floor(Math.random()*pool.length)];
-  const source=getDemoQuiz();
+  const source=getArcadeQuiz();
   const quiz={...source,title:choice.title,rounds:choice.modes.map(mode=>source.rounds.find(r=>r.mode===mode)!)};
   try{sessionStorage.setItem('multigame-last-starter',choice.id);}catch{}
   setGame(quiz);setEpoch(v=>v+1);
