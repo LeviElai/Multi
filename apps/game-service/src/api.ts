@@ -1,3 +1,6 @@
+import { GenerationInput, queueGeneration, generationStatus, quota } from './ai';
+import { adsReady, rewardTicket, claimReward, type AdsConfig } from './ads';
+import { browseCommunity, communityQuiz, CommunityInput, shareCommunity, copyCommunity } from './community';
 import { z } from 'zod';
 import {AvatarSchema} from '../../../packages/contracts/src/avatar';
 import { DomainError, HostActionSchema, QuizInputSchema, RoundSchema, SubmitSchema, WordGuessSchema } from '../../../packages/contracts/src/index';
@@ -8,7 +11,7 @@ import { GameEngine } from './engine';
 import { assertRateBudget, assertSameOrigin, cookieValue, digestToken, idempotentId, mutationKey, participantCookie, rateLimit } from './security';
 
 export type ApiUser = { id: string; displayName: string };
-export type ApiContext = { store: Store; user: ApiUser | null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; automatic?:boolean; clientIp?: string };
+export type ApiContext = { store: Store; user: ApiUser | null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; automatic?:boolean; aiEnabled?:boolean; adsConfig?:AdsConfig; clientIp?: string };
 const DEFAULT_FEATURES: Features = { ai: false, billing: false, ads: false, stage: 'private_alpha', transport: 'polling' };
 const uuid = z.string().uuid();
 const revision = z.number().int().positive();
@@ -115,7 +118,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
     if (!url.pathname.startsWith('/api/v1/')) throw new DomainError('NOT_FOUND', 'This endpoint does not exist.', 404);
     assertSameOrigin(request);
     const engine = new GameEngine(ctx.store, undefined, { pinSecret: ctx.pinSecret, maxPlayers: ctx.maxPlayers, automatic:ctx.automatic });
-    const features: Features = { ...DEFAULT_FEATURES, ...ctx.features, ai: false, billing: false, ads: false };
+    const features: Features = { ...DEFAULT_FEATURES, ...ctx.features, ai: !!ctx.aiEnabled, billing: false, ads: adsReady(ctx.adsConfig) };
     const body = !['GET', 'HEAD', 'DELETE'].includes(method) ? await readJson(request) : {};
     const user = ctx.user;
     // Trusted adapter supplies clientIp. Never trust arbitrary forwarded headers.
@@ -123,7 +126,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
 
     if (method === 'GET' && path === 'me') {
       if (!user) return ok(null);
-      const profile: Profile = { ...user, features, plan: 'free', quotaRemaining: 0 };
+      const profile: Profile = { ...user, features, plan: 'free', quotaRemaining: ctx.aiEnabled ? (await quota(ctx.store,user.id)).remaining : 0 };
       return ok(profile);
     }
     if (method === 'GET' && path === 'features') return ok(features);
@@ -132,6 +135,31 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       return ok({ status: 'ok', persistence: 'available', stage: features.stage });
     }
     if (method === 'GET' && path === 'demo') return ok({ ...getDemoQuiz(), isDemo: true });
+
+    if(path==='ai/quota'&&method==='GET'){const owner=requireUser(user);return ok({...await quota(ctx.store,owner.id),enabled:!!ctx.aiEnabled,adsEnabled:adsReady(ctx.adsConfig)});}
+    if(path==='ai/generate'&&method==='POST'){
+      const owner=requireUser(user);if(!ctx.aiEnabled)throw new DomainError('AI_UNAVAILABLE','The quiz maker is not configured yet. You can still create questions yourself.',503);
+      const input=GenerationInput.parse(body);await rateLimit(ctx.store.db,`ai-platform`,100,86400000);await rateLimit(ctx.store.db,`ai:${owner.id}`,30,86400000);await rateLimit(ctx.store.db,`ai-ip:${ipDigest}`,60,86400000);
+      return ok(await queueGeneration(ctx.store,owner.id,mutationKey(request),input),202);
+    }
+    const generationPath=path.match(/^ai\/jobs\/([^/]+)$/);
+    if(generationPath&&method==='GET')return ok(await generationStatus(ctx.store,requireUser(user).id,uuid.parse(generationPath[1])));
+    if(path==='ads/reward-ticket'&&method==='POST'){const owner=requireUser(user);await rateLimit(ctx.store.db,`ad:${owner.id}`,12,86400000);return ok(await rewardTicket(ctx.store,owner.id,mutationKey(request),ctx.adsConfig),201);}
+    if(path==='ads/claim'&&method==='POST')return ok(await claimReward(ctx.store,requireUser(user).id,uuid.parse(body.ticketId),ctx.adsConfig));
+    if(path==='community'&&method==='GET')return ok(await browseCommunity(ctx.store,url.searchParams.get('q')??'',z.enum(['All','General','Science','Nature','History','Games','Puzzles']).parse(url.searchParams.get('category')??'All'),z.coerce.number().int().min(0).max(10000).parse(url.searchParams.get('offset')??0)));
+    const communityPath=path.match(/^community\/([^/]+)(?:\/(copy|report))?$/);
+    if(communityPath){
+      const id=communityPath[1],action=communityPath[2];
+      if(method==='GET'&&!action)return ok({...await communityQuiz(ctx.store,id),publicPractice:true});
+      if(method==='POST'&&action==='copy'){const owner=requireUser(user);await rateLimit(ctx.store.db,`community-copy:${owner.id}`,30,3600000);return ok(await copyCommunity(ctx.store,owner.id,id,mutationKey(request)),201);}
+      if(method==='POST'&&action==='report'){await communityQuiz(ctx.store,id);await rateLimit(ctx.store.db,`community-report:${ipDigest}`,6,3600000);const context=z.string().trim().min(5).max(2000).parse(body.context);const receiptId=crypto.randomUUID();await ctx.store.db.query("INSERT INTO abuse_reports (id,reporter_id,category,target_type,target_id,context,status,created_at) VALUES (?,?, 'content','community',?,?,'open',?)",[receiptId,user?.id??null,id,context,new Date().toISOString()]);return ok({receiptId});}
+    }
+    const sharePath=path.match(/^quizzes\/([^/]+)\/community$/);
+    if(sharePath){const owner=requireUser(user),id=uuid.parse(sharePath[1]);await ctx.store.getQuiz(id,owner.id);
+      if(method==='GET'){const row=(await ctx.store.db.query<{visible:number}>('SELECT visible FROM community_quizzes WHERE quiz_id=? AND owner_id=?',[id,owner.id])).rows[0];return ok({shared:row?.visible===1});}
+      if(method==='POST'){await rateLimit(ctx.store.db,`share:${owner.id}`,20,86400000);const input=CommunityInput.parse(body);return ok(await durableAction(ctx.store,owner.id,`community.share:${id}:${mutationKey(request)}`,input,()=>shareCommunity(ctx.store,owner.id,id,mutationKey(request),input)),201);}
+      if(method==='DELETE'){await ctx.store.db.query('UPDATE community_quizzes SET visible=0 WHERE quiz_id=? AND owner_id=?',[id,owner.id]);return ok({shared:false});}
+    }
 
     if (path === 'quizzes' && method === 'GET') {
       const owner = requireUser(user);

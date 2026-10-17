@@ -23,8 +23,8 @@ test('isolated previews render canonical layers without a dressed body or shadow
   assert.match(isolated,/character-item/);assert.doesNotMatch(isolated,/character-body|character-item mood|M6 37h20/);
   if(detail!=='face')assert.doesNotMatch(isolated,/character-face/);
  }
- assert.match(renderToStaticMarkup(createElement(CharacterItem,{detail:'hat',value:0,avatar})),/>None</);
- assert.match(renderToStaticMarkup(createElement(CharacterItem,{detail:'hair',value:9,avatar})),/>Bald</);
+ assert.match(renderToStaticMarkup(createElement(CharacterItem,{detail:'hat',value:0,avatar})),/item-none/);
+ assert.match(renderToStaticMarkup(createElement(CharacterItem,{detail:'hair',value:9,avatar})),/item-none/);
 });
 
 test('closed editor does not mount any character or option previews',()=>{

@@ -1,3 +1,5 @@
+import { geminiGenerate, runGenerationWorker } from './ai';
+import { adsReady } from './ads';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
@@ -91,7 +93,9 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
   const auth=new CreatorAuth(store,db,secure);
   try {await auth.initialize(environment);}catch(error){await db.close();throw error;}
   const engine=new GameEngine(store,()=>Date.now(),{pinSecret,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0'});
-  const features:Features={ai:false,billing:false,ads:false,stage:'private_alpha',transport:'socket',auth:'credentials'};
+  const adsConfig={unitPath:environment.GOOGLE_REWARDED_AD_UNIT??'',approved:environment.ADS_APPROVED==='1',consentReady:environment.ADS_CONSENT_READY==='1'};
+  const aiEnabled=!!environment.GEMINI_API_KEY;
+  const features:Features={ai:aiEnabled,billing:false,ads:adsReady(adsConfig),stage:'private_alpha',transport:'socket',auth:'credentials'};
   const limiter=new RateLimiter();let draining=false;let ticking=false;
   let broadcastTimer:NodeJS.Timeout|undefined;let broadcasting=false;let broadcastAgain=false;
   const connections=new Map<string,Connected>();
@@ -123,7 +127,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
       if(path==='/api/v1/sessions/join'&&!limiter.allow(`join:${address}`,90,60000))throw new DomainError('RATE_LIMITED','Too many join attempts. Try again in a minute.',429);
       const request=await webRequest(req,allowedOrigin??publicOrigin);
       const authResponse=await auth.handle(request);
-      const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0'});
+      const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0',aiEnabled,adsConfig});
       await sendResponse(res,response,secure,allowedOrigin);
       if(req.method!=='GET'&&response.ok)scheduleBroadcast();
       log('http_request',{method:req.method,path:safeLogPath,status:response.status,durationMs:Date.now()-started});
@@ -208,15 +212,17 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
     if(ticking||draining||maintenance)return;ticking=true;
     try {await engine.reconcile();await broadcastSnapshots();}catch(error){log('reconcile_failed',{errorType:error instanceof Error?error.name:'unknown'});}finally{ticking=false;}
   },500);timer.unref();
+  let aiTicking=false;
+  const aiTimer=setInterval(async()=>{if(aiTicking||draining||maintenance||!aiEnabled)return;aiTicking=true;try{await runGenerationWorker(store,input=>geminiGenerate(input,environment.GEMINI_API_KEY!,environment.GEMINI_MODEL));}catch(error){log('generation_worker_failed',{errorType:error instanceof Error?error.name:'unknown'});}finally{aiTicking=false;}},1500);aiTimer.unref();
   if(!maintenance)await engine.reconcile();
   const port=Number(environment.PORT??4001);const host=environment.HOST??'0.0.0.0';
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);});
   log('service_started',{port:(server.address()as{port:number}).port,stage:features.stage,storage:db.dialect});
   async function close() {
-    if(draining)return;draining=true;clearInterval(timer);if(broadcastTimer)clearTimeout(broadcastTimer);io.emit('server.draining',{retryAfterMs:1500});
+    if(draining)return;draining=true;clearInterval(timer);clearInterval(aiTimer);if(broadcastTimer)clearTimeout(broadcastTimer);io.emit('server.draining',{retryAfterMs:1500});
     await new Promise<void>((resolve)=>io.close(()=>resolve()));
     if(server.listening)await new Promise<void>((resolve)=>server.close(()=>resolve()));
-    while(ticking||broadcasting)await new Promise(resolve=>setTimeout(resolve,20));
+    while(ticking||broadcasting||aiTicking)await new Promise(resolve=>setTimeout(resolve,20));
     await db.close();log('service_stopped');
   }
   return {server,io,store,db,close,port:(server.address()as{port:number}).port};

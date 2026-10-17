@@ -1,11 +1,11 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { SqlStore } from '../../../packages/db/src/store';
 import { PostgresDatabase } from '../../../packages/db/src/postgres';
 import { NodeSqliteDatabase } from '../../../packages/db/src/sqlite';
 import type { SqlDatabase } from '../../../packages/db/src/types';
 
-export type RuntimeDatabase=SqlDatabase & {migrate(sql:string):Promise<void>|void;close():Promise<void>|void};
+export type RuntimeDatabase=SqlDatabase & {migrate(sql:string,migrationId?:string):Promise<void>|void;close():Promise<void>|void};
 export async function createRuntimeDatabase(environment:NodeJS.ProcessEnv=process.env):Promise<RuntimeDatabase> {
   if(environment.DATABASE_URL) return PostgresDatabase.connect(environment.DATABASE_URL,{schema:environment.DATABASE_SCHEMA,sslCa:environment.DATABASE_SSL_CA});
   if(environment.NODE_ENV==='production')throw new Error('DATABASE_URL is required in production. SQLite is development/test only.');
@@ -14,6 +14,8 @@ export async function createRuntimeDatabase(environment:NodeJS.ProcessEnv=proces
 export async function migrateRuntimeDatabase(db:RuntimeDatabase) {
   const migration=db.dialect==='postgres'?'packages/db/migrations/postgres/0001_initial.sql':'packages/db/migrations/sqlite/0001_initial.sql';
   await db.migrate(await readFile(resolve(process.cwd(),migration),'utf8'));
+  const directory=db.dialect==='postgres'?'supabase/migrations':'packages/db/migrations/sqlite';
+  for(const file of (await readdir(resolve(process.cwd(),directory))).filter(f=>/^\d{14}_.*\.sql$/.test(f)).sort())await db.migrate(await readFile(resolve(process.cwd(),directory,file),'utf8'),file.replace(/\.sql$/,''));
 }
 export async function createRuntime(environment:NodeJS.ProcessEnv=process.env) {
   const db=await createRuntimeDatabase(environment);

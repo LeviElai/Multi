@@ -27,7 +27,7 @@ export const PixelCharacter=memo(function PixelCharacter({id,avatar,mood='still'
  ][a.hair];
  const hats=['','M5 6h13v4h4v3h-7v-3H5Z','M6 5h12v2h2v4H4V7h2m5-4h3v2h-3Z','M10 1h4v3h2v3h2v3h4v2H2v-2h4V7h2V4h2Z','M4 7h3V5h10v2h3v5H4m6-5h4v3h-4Z','M6 4h3v2h6V4h3v4h4v3H2V8h4Z','M6 5h12v3h2v4H4V8h2Z','M6 4h12v3h2v10h-3v-6H7v6H4V7h2Z','M5 7h14v3h3v2H2v-2h3m5-7h3v2h-3Z'][a.hat%9];
  const hatColors=['', '#bb7666','#7caaa1','#9b87bc','#35465c','#b68e5f','#87a8bd','#9aabb4','#d8aa86'];
- const layers={hair:<path fill={hair} stroke={a.hairColor===3||a.hairColor===4?'#77654e':'#b7c5a6'} strokeWidth="1" paintOrder="stroke" d={hairShape}/>,face:<> <path fill={skin} d="M7 9h10v10H7Z"/><path fill="#ffffff22" d="M7 10h3v6H7Z"/>
+ const layers={hair:<path fill={hair} d={hairShape}/>,face:<> <path fill={skin} d="M7 9h10v10H7Z"/><path fill="#ffffff22" d="M7 10h3v6H7Z"/>
  <g className="character-face">
  {a.face===3?<path d="M8 13h2v1H8m6-1h2v1h-2" fill={eye}/>:a.face===4?<path d="M8 12h2v2H8m6-1h2v1h-2" fill={eye}/>:<path d="M8 12h2v2H8m6-2h2v2h-2" fill={eye}/>}
  {a.face===1?<path d="M10 16h4v2h-4" fill="#683d36"/>:a.face===2?<path d="M10 16h4v1h-4m1 1h2v1h-2" fill="#fff0c8"/>:a.face===5?<path d="M11 16h2v2h-2" fill="#683d36"/>:a.face===6?<path d="M10 17h4v1h-4" fill="#683d36"/>:<path d="M10 16h4v1h-4" fill="#683d36"/>}
@@ -52,7 +52,7 @@ export const PixelCharacter=memo(function PixelCharacter({id,avatar,mood='still'
  {a.hat%9===3&&<path d="M10 6h2v2h-2" fill="#ffdd94"/>}{a.hat%9===4&&<path d="M10 8h4v2h-4" fill="#fff0c8"/>}{a.hat%9===8&&<path d="M10 3h3v2h-3m-1-1h5v1H9" fill="#f2afbd"/>}
 </>,accessory:<> {a.accessory===1&&<path d="M7 12h4v3H7m6-3h4v3h-4m-2-2h2" fill="none" stroke={ink} strokeWidth="1"/>}
  {a.accessory===2&&<path d="M7 12h4v3H7m6-3h4v3h-4m-2-2h2" fill={ink}/>}
- {a.accessory===3&&<path d="M8 16h3v1H8m2-2h4v1h-4m-1 1h3v1H9" fill={hair}/>}
+ {a.accessory===3&&<path d="M8 15h3v-1h2v1h3v2h-3v-1h-2v1H8Z" fill={hair}/>}
 </>,shoes:<> <path d="M7 31h4v1H7m6-1h4v1h-4" fill={SHOE[a.shoes]}/>
 </>};
  const frames:Partial<Record<LookKey,string>>={hair:'5 5 23 27',face:'9 12 15 13',shirt:'6 22 21 12',pants:'9 29 15 8',hat:'4 3 25 15',accessory:'9 14 14 11',shoes:'10 33 13 5'};
@@ -66,11 +66,11 @@ export function PlayerIdentity({id,name,avatar,mood='still'}:{id:string;name:str
 export const LOOK_LABELS:Record<LookKey,string>={skin:'Skin tone',hair:'Hair',hairColor:'Hair color',shirt:'Shirt',shirtColor:'Shirt color',pants:'Pants',pantsColor:'Pants color',accessory:'Accessories',face:'Face',hat:'Hat',shoes:'Shoes'};
 const ORDER:LookKey[]=['hair','hairColor','face','skin','shirt','shirtColor','pants','pantsColor','hat','accessory','shoes'];
 const PALETTES:Partial<Record<LookKey,string[]>>={skin:SKINS,hairColor:HAIR,shirtColor:CLOTH,pantsColor:LOWER,shoes:SHOE};
-export const ITEM_NAMES:Partial<Record<LookKey,string[]>>={hair:['Crop','Curls','Afro','Bob','Long','Ponytail','Spikes','Side part','Mohawk','Bald'],face:['Calm','Smile','Grin','Happy','Wink','Surprised','Determined','Rosy'],shirt:['Tee','Stripes','Hoodie','Jacket','Vest','Overalls','Jersey','Tunic'],pants:['Straight','Shorts','Cargo','Wide','Cuffed'],hat:['None','Cap','Beanie','Wizard','Pirate','Cowboy','Bucket','Helmet','Flower'],accessory:['None','Glasses','Shades','Moustache']};
+export const ITEM_NAMES:Partial<Record<LookKey,string[]>>={skin:['Porcelain','Sand','Honey','Caramel','Warm brown','Chestnut','Deep brown','Ebony'],hairColor:['Black','Espresso','Chestnut','Blonde','Silver','Rosewood','Auburn','Slate'],shirtColor:['Mint','Coral','Sky','Gold','Plum','Peach','Sage','Cloud'],pantsColor:['Navy','Plum','Walnut','Teal','Berry','Slate','Sand','Charcoal'],shoes:['Midnight','Walnut','Clay','Cream','Plum'],hair:['Crop','Curls','Afro','Bob','Long','Ponytail','Spikes','Side part','Mohawk','No hair'],face:['Calm','Smile','Grin','Happy','Wink','Surprised','Determined','Rosy'],shirt:['Tee','Stripes','Hoodie','Jacket','Vest','Overalls','Jersey','Tunic'],pants:['Straight','Shorts','Cargo','Wide','Cuffed'],hat:['No hat','Cap','Beanie','Wizard','Pirate','Cowboy','Bucket','Helmet','Flower'],accessory:['No accessory','Glasses','Shades','Moustache']};
 export function CharacterItem({detail,value,avatar}:{detail:LookKey;value:number;avatar:Avatar}){
  const palette=PALETTES[detail];
  if(palette)return <i className="item-swatch" style={{background:palette[value]}}/>;
- if((detail==='hat'||detail==='accessory')&&value===0||detail==='hair'&&value===9)return <span className="item-none">{detail==='hair'?'Bald':'None'}</span>;
+ if((detail==='hat'||detail==='accessory')&&value===0||detail==='hair'&&value===9)return <svg className="item-none" viewBox="0 0 16 16" aria-hidden="true" shapeRendering="crispEdges"><path fill="currentColor" d="M3 2h2v2h2v2h2V4h2V2h2v3h-2v2H9v2h2v2h2v3h-2v-2H9v-2H7v2H5v2H3v-3h2V9h2V7H5V5H3Z"/></svg>;
  return <PixelCharacter id="item-preview" avatar={{...avatar,[detail]:value}} part={detail}/>;
 }
 export function CharacterEditor({member,sessionId,onSaved}:{member:Member;sessionId:string;onSaved:()=>void}){

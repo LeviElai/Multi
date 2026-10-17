@@ -35,8 +35,7 @@ export function PourControl({ count, onAdd, disabled, target, seed, flow = 1, un
         const amount=total-hold.current.emitted;
         if(amount>0){hold.current.emitted=total;drop(amount);}
     };
-    useEffect(() => { if (disabled)
-        stop(); }, [disabled, stop]);
+    useEffect(() => { stop(); }, [disabled, flow, stop]);
     useEffect(() => { const visibility = () => { if (document.hidden)
         stop(); }; window.addEventListener('blur', stop); document.addEventListener('visibilitychange', visibility); return () => { if (timer.current)
         clearTimeout(timer.current); window.removeEventListener('blur', stop); document.removeEventListener('visibilitychange', visibility); }; }, [stop]);
