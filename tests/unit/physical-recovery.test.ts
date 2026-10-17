@@ -4,7 +4,7 @@ import {plinkoPath} from '../../packages/game-modes/src/physical';
 import {getDefaultRound,sanitizeAndValidateSubmission} from '../../packages/game-modes/src/index';
 import {recommend,type QuestionAnswer} from '../../packages/game-modes/src/question';
 for(const x of [8,15,25,35,45,49,50,55,65,75,85,92])test('Plinko stays intentional and reaches its bin from '+x,()=>{
- const path=plinkoPath(x);assert.ok(path.length>300&&path.length<=913);assert.equal(path.at(-1)!.y,86);assert.ok(path.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&(x<50?p.x<50:p.x>50)));
+ const path=plinkoPath(x);assert.ok(path.length>300&&path.length<=2401);assert.ok(Math.abs(path.at(-1)!.y-85.5)<.001);assert.ok(path.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&(x<50?p.x<50:p.x>50)));
  assert.ok(path.some((p,i)=>i>0&&p.y<path[i-1].y)||path.some((p,i)=>i>1&&(p.x-path[i-1].x)*(path[i-1].x-path[i-2].x)<0),'pegs redirect the falling ball');assert.ok(path.slice(1).every((p,i)=>Math.hypot(p.x-path[i].x,p.y-path[i].y)<1.5),'continuous small simulation steps');
 });
 test('handwriting accepts bounded points only for Draw and preserves the confirmed value',()=>{

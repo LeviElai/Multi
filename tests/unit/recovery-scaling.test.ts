@@ -12,7 +12,7 @@ for(const n of [5,12,40,400,4000,100000])test('Stack is practical and exact for 
 });
 test('impractical Stack tails prefer another game; unsupported words never expose Answer',()=>{
  assert.equal(stackScale(100099).practical,false);
- const q:QuestionAnswer={type:'single',kind:'integer',text:'How many?',answer:'100099',alternatives:[],distractors:[],unit:'',exact:true};assert.ok(!recommend(q).games.includes('stack'));assert.equal(recommend(q).games[0],'draw');assert.deepEqual(recommend({...q,kind:'word',answer:'two words'}).games,[]);
+ const q:QuestionAnswer={type:'single',kind:'integer',text:'How many?',answer:'100099',alternatives:[],distractors:[],unit:'',exact:true};assert.ok(!recommend(q).games.includes('stack'));assert.equal(recommend(q).games[0],'fermi');assert.deepEqual(recommend({...q,kind:'word',answer:'two words'}).games,[]);
 });
 
 test('older published Stack rounds get usable blocks without rewriting saved answers or scoring',async()=>{

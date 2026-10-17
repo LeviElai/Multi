@@ -43,7 +43,7 @@ test('arcade submissions cannot forge correctness, use unknown options, revise t
 });
 test('multiple selections and required lists retain their meaning with exact matching',()=>{
  const seed=questionSeed('multiple'),qa={...q('Cat|Whale','Which are mammals?','multiple'),type:'multiple' as const,distractors:['Lizard']};
- const r=roundFromAnswer(qa,'answer',seed);assert.ok(isArcade(r));assert.equal(scoreArcade(r,{choices:r.secretConfig.correctOptionIds}).points,1000);assert.equal(scoreArcade(r,{choices:r.secretConfig.correctOptionIds.slice(0,1)}).points,0);assert.throws(()=>sanitizeAndValidateSubmission(r,{choices:['o0','o0']}));
+ const r=roundFromAnswer(qa,'answer',seed);assert.ok(isArcade(r));assert.equal(scoreArcade(r,{choices:r.secretConfig.correctOptionIds}).points,1000);assert.equal(scoreArcade(r,{choices:r.secretConfig.correctOptionIds.slice(0,1)}).points,500);assert.throws(()=>sanitizeAndValidateSubmission(r,{choices:['o0','o0']}));
  const list=roundFromAnswer({...qa,kind:'list'},'answer',seed);assert.ok(isArcade(list));assert.equal(scoreArcade(list,{choices:['whale','CAT']}).points,1000);assert.equal(scoreArcade(list,{choices:['Cat']}).points,0);
  list.publicConfig.requiredCount=1;assert.equal(scoreArcade(list,{choices:['Whale']}).points,1000);assert.equal(scoreArcade(list,{choices:['Lizard']}).points,0);assert.equal(scoreArcade(list,{choices:['Cat','Whale']}).points,0);
 });

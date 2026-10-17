@@ -13,6 +13,7 @@ import "./dressing-room.css";
 import "./workshop.css";
 import "./creator-cleanup.css";
 import "./pixel-arcade.css";
+import "./polish.css";
 export const metadata: Metadata = {
     title: "MULTIGAME — One quiz. Eleven ways to play.",
     description: "Eleven interactive games. One room. Create your own multiplayer game show.",

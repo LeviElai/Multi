@@ -4,6 +4,7 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {io,type Socket} from 'socket.io-client';
 import {getArcadeQuiz} from '../packages/game-modes/src/fixtures';
+import {roundFromAnswer,questionSeed,type QuestionAnswer} from '../packages/game-modes/src/question';
 import {isArcade,scoreArcade} from '../packages/game-modes/src/arcade';
 import type {Snapshot,Round,Submission,Quiz} from '../packages/contracts/src/index';
 const origin=process.env.QA_ORIGIN??'http://localhost:3005',service=process.env.QA_SERVICE??'http://127.0.0.1:4001',keep=process.argv.includes('--keep');
@@ -22,7 +23,8 @@ const login=await fetch(origin+authPath+'login',{method:'POST',headers:{Origin:o
 if(login.ok)hostCookie=login.headers.getSetCookie().map(s=>s.split(';')[0]).join('; ');
 else hostCookie=(await call(authPath+'register','POST',{...account,displayName:'Arcade QA'},'',201)).cookie;
 assert.ok(hostCookie);
-const quizInput=getArcadeQuiz();const exact=quizInput.rounds.find(r=>r.mode==='fermi')!;exact.scoringPolicy='exact';exact.questionType='single';exact.answerStructure='integer';quizInput.title='Private eleven-game verification';
+const quizInput=getArcadeQuiz();const exact=quizInput.rounds.find(r=>r.mode==='fermi')!;exact.scoringPolicy='exact';exact.questionType='single';exact.answerStructure='integer';quizInput.title='Private pixel polish verification';
+const qa:QuestionAnswer={type:'boolean',kind:'boolean',text:'An octopus has three hearts.',answer:'true',exact:true,unit:'',alternatives:[],distractors:[]};quizInput.rounds.push(roundFromAnswer(qa,'sling',questionSeed('boolean')));quizInput.rounds.push(roundFromAnswer({...qa,type:'multiple',kind:'multiple',text:'Which of these are mammals?',answer:'Cat|Whale',distractors:['Lizard','Trout']},'fish',questionSeed('multiple')));
 const quiz=(await call<Quiz>('/api/v1/quizzes','POST',quizInput,hostCookie,201)).data;
 const reopened=(await call<Quiz>('/api/v1/quizzes/'+quiz.id,'GET',undefined,hostCookie)).data;assert.equal(reopened.rounds.find(r=>r.mode==='fermi')!.scoringPolicy,'exact');assert.equal(reopened.rounds.find(r=>r.mode==='fermi')!.questionType,'single');
 const version=(await call<{id:string}>(`/api/v1/quizzes/${quiz.id}/publish`,'POST',{expectedRevision:quiz.revision},hostCookie,201)).data;
@@ -45,7 +47,7 @@ async function action(action:string){
 }
 async function until(predicate:(s:Snapshot)=>boolean){for(let i=0;i<50;i++){const s=await snap();if(predicate(s))return s;await new Promise(r=>setTimeout(r,200));}throw new Error('Timed out waiting for a round phase');}
 function answer(r:Round,correct=true):Submission['payload']{
- if(isArcade(r)){if(r.mode==='draw')return {value:Number(r.secretConfig.answer)+(correct?0:1),ink:[[{x:10,y:10},{x:20,y:200}]],locked:true};if(['stack','crack'].includes(r.mode))return {value:Number(r.secretConfig.answer)+(correct?0:r.publicConfig.step),locked:true};if(r.mode==='drop')return {choiceId:String(correct?r.secretConfig.answer:!r.secretConfig.answer),locked:true};return {choiceId:correct?r.secretConfig.correctOptionIds[0]:r.publicConfig.options.find(o=>!r.secretConfig.correctOptionIds.includes(o.id))!.id,locked:true};}
+ if(isArcade(r)){if(r.mode==='fish'&&r.publicConfig.kind==='multiple')return {choices:correct?r.secretConfig.correctOptionIds:r.secretConfig.correctOptionIds.slice(0,1),locked:true};if(r.mode==='draw')return {value:Number(r.secretConfig.answer)+(correct?0:1),ink:[[{x:10,y:10},{x:20,y:200}]],locked:true};if(['stack','crack'].includes(r.mode))return {value:Number(r.secretConfig.answer)+(correct?0:r.publicConfig.step),locked:true};if(r.mode==='drop')return {choiceId:String(correct?r.secretConfig.answer:!r.secretConfig.answer),locked:true};return {choiceId:correct?r.secretConfig.correctOptionIds[0]:r.publicConfig.options.find(o=>!r.secretConfig.correctOptionIds.includes(o.id))!.id,locked:true};}
  if(r.mode==='fermi')return {value:r.secretConfig.answer*(correct?1:2),locked:true};if(r.mode==='size_it_up')return {ratio:r.secretConfig.targetSize/r.publicConfig.referenceSize*(correct?1:1.1),locked:true};if(r.mode==='amountle')return {count:r.secretConfig.answer+(correct?0:1),locked:true};return {};
 }
 const report:{mode:string;points:number;answer:unknown}[]=[];let total=0;
@@ -70,7 +72,7 @@ try{
   report.push({mode:r.mode,points:expected,answer:s.reveal!.answer});
   await action('ADVANCE');s=await snap();if(i<quizInput.rounds.length-1&&s.state==='INTERMISSION')await action('ADVANCE');
  }
- const complete=await until(s=>s.state==='SESSION_COMPLETED');assert.equal(complete.leaderboard[0].points,9501);assert.equal(complete.leaderboard[0].rank,1);assert.equal(complete.leaderboard[1].rank,1);assert.ok(socketEvents>1);
+ const complete=await until(s=>s.state==='SESSION_COMPLETED');assert.equal(complete.leaderboard[0].points,11001);assert.equal(complete.leaderboard[0].rank,1);assert.equal(complete.leaderboard[1].rank,1);assert.ok(socketEvents>1);
  await writeFile('.sites-runtime/arcade-room.json',JSON.stringify({origin,quizId:quiz.id,sessionId:room.sessionId,clients,hostCookie}));
  await writeFile('../arcade-verification.json',JSON.stringify({origin,quizId:quiz.id,sessionId:room.sessionId,games:report,total,socketEvents,completed:true},null,2));
  console.log(JSON.stringify({games:report.length,total,socketEvents,completed:true,quizId:quiz.id}));

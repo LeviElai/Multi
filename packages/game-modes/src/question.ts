@@ -11,7 +11,7 @@ export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  const result=(games:ModeId[],reason:string,missing?:string,confidence:Recommendation['confidence']='high')=>({games,reason,missing,confidence});
  if(q.kind==='size')return result(['size_it_up'],'A calibrated target and reference are needed.');
  if(!q.answer.trim())return result([],'Enter the answer to find a suitable game.','What is the correct answer?','low');
- if(q.type==='boolean'||q.kind==='boolean')return result(['drop'],'A statement with a True or False answer.');
+ if(q.type==='boolean'||q.kind==='boolean'){const games:ModeId[]=['drop','sling'];games.sort((a,b)=>recent.slice(-3).filter(m=>m===a).length-recent.slice(-3).filter(m=>m===b).length);return result(games,'Two clear answers: True or False.');}
  if(q.type==='multiple'&&q.kind!=='list'&&q.answer.split('|').filter(s=>s.trim()).length+q.distractors.filter(s=>s.trim()).length>6)return result([],'Fish supports up to six choices.','Split this question into smaller questions. Your answers remain saved.','low');
  if(q.type==='multiple')return q.kind==='list'?result([],'Lists need to be rewritten as a choice question.','Enter the correct choices and at least one incorrect choice.','low'):q.distractors.some(s=>s.trim())?result(['fish'],'Catch every correct fish, then reel in your selection.'):result([],'Add an incorrect choice to make a playable fishing question.','Add at least one incorrect choice.','low');
 
@@ -28,8 +28,10 @@ export function recommend(q:QuestionAnswer,recent:ModeId[]=[]):Recommendation{
  if(q.kind==='approximate'||!q.exact)return result(['fermi',...(whole&&n>=0&&n<=999999?[...stack,'draw' as const]:[])],'This answer is scored by proximity.');
  if(whole&&n>=0&&n<=99999999&&(/\b(code|pin|digits?)\b/i.test(q.text)||/\b(in what year|which year|what year|year did|year was|year were|year of|born in|founded in)\b/i.test(q.text)))return result(['crack','draw','fermi'],'An exact year or code belongs on digit wheels.');
  if(!whole||n<0)return result(['fermi'],'Use exact numeric entry for decimals and negative values.');
- if(n<=120&&!/\b(year|code|percent|temperature|degrees?)\b/i.test(q.text+' '+q.unit))return result(['amountle',...stack,'draw','fermi'],'A small whole quantity works well with pouring.');
- if(n<=999999)return result([...stack,'draw','crack','fermi'],'A whole number can be built, drawn or entered exactly.');
+ if(/\b(percent|temperature|degrees?|distance|length|height|width|weight|mass|speed|metres?|meters?|kilometres?|kilometers?|km|kg|celsius|fahrenheit)\b/i.test(q.text+' '+q.unit))return result(['fermi',...(n<=999?['draw' as const]:[])],'A measurement is clearest as a numerical estimate.');
+ if(n<=120){const games:ModeId[]=['amountle',...stack];games.sort((a,b)=>recent.slice(-3).filter(m=>m===a).length-recent.slice(-3).filter(m=>m===b).length);return result([...games,'draw','fermi'],'A small whole quantity works well with pouring or building.');}
+ if(n<=999)return result(['draw','fermi',...stack],'Draw this short whole number, then check it before submitting.');
+ if(n<=99999999)return result(['fermi',...stack,...(n<=999999?['draw' as const]:[])],'Numerical entry keeps this larger quantity practical.');
  return result(['fermi'],'Exact numeric entry keeps a large answer practical.');
 }
 export function answerFromRound(r:Round):QuestionAnswer{
@@ -55,8 +57,9 @@ export function roundFromAnswer(q:QuestionAnswer,mode:ModeId,old:Round):Round{
   const c=r.publicConfig,s=r.secretConfig;c.unit=q.unit;c.requiredCount=q.requiredCount;c.kind=q.type==='boolean'?'boolean':q.type==='multiple'?(q.kind==='list'?'list':'multiple'):q.kind==='choice'?'choice':q.kind==='text'||mode==='answer'?'text':'number';
   s.answer=q.type==='boolean'?q.answer==='true':c.kind==='number'?safe:q.answer;s.acceptedAlternatives=q.alternatives;
   const labels=q.kind==='multiple'?q.answer.split('|').map(s=>s.trim()).filter(Boolean):[q.answer];
-  c.options=q.kind==='choice'||q.kind==='multiple'?[...labels,...q.distractors.filter(s=>s.trim())].map((label,i)=>({id:`opt_${hash(old.id+label).toString(36)}`,label})):[];
-  s.correctOptionIds=c.options.filter((_,i)=>i<labels.length).map(o=>o.id);
+  c.options=q.type==='boolean'?[{id:'true',label:'TRUE'},{id:'false',label:'FALSE'}]:q.kind==='choice'||q.kind==='multiple'?[...labels,...q.distractors.filter(s=>s.trim())].map((label,i)=>({id:`opt_${hash(old.id+label).toString(36)}`,label})):[];
+  s.correctOptionIds=q.type==='boolean'?[String(s.answer)]:c.options.filter((_,i)=>i<labels.length).map(o=>o.id);
+  if(r.mode==='fish'&&c.kind==='multiple')c.selectionScoring='balanced-v1';
   // Deterministic shuffle hides answer position without using the answer's value as a cue.
   c.options.sort((a,b)=>hash(old.id+a.id)-hash(old.id+b.id));
   c.codeLength=Math.max(1,Math.min(8,q.answer.length));c.max=r.mode==='crack'?10**c.codeLength-1:99999999;c.min=0;
