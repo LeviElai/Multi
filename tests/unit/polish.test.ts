@@ -29,3 +29,9 @@ test('balanced Fish rewards knowledge, penalizes wrong catches, and preserves ol
 test('Plinko circle collision traces remain continuous and intentional across board aspect ratios',()=>{
  for(const aspect of [.6,.85,1,1.5])for(const x of [8,25,45,55,75,92]){const path=plinkoPath(x,aspect);assert.ok(path.some(p=>p.impact!==undefined),'visible peg impacts');assert.ok(Math.abs(path.at(-1)!.y-85.5)<.01,'ball settles');assert.ok(path.every(p=>(x<50?p.x<50:p.x>50)&&Number.isFinite(p.y)));assert.ok(path.slice(1).every((p,i)=>Math.hypot(p.x-path[i].x,p.y-path[i].y)<2),'no teleports');assert.deepEqual(plinkoPath(x,aspect),path);}
 });
+
+test('handwritten loop-and-stem 9 is distinguished from 1, including multi-stroke 96',async()=>{
+ const {recognizeNumber}=await import('../../packages/game-modes/src/handwriting');
+ const strokes=[[[0,0],[40,0]],[[40,0],[40,80]],[[40,40],[0,40]],[[0,40],[0,0]],[[125,0],[100,40]],[[100,40],[100,80]],[[100,80],[140,80]],[[140,80],[140,40]],[[140,40],[100,40]]].map(s=>s.map(([x,y])=>({x:x+30,y:y+20})));
+ assert.equal(recognizeNumber(strokes).value,'96');assert.equal(recognizeNumber(strokes.map(s=>s.map(p=>({x:p.x*.9+10,y:p.y*1.4})))).value,'96');
+});
