@@ -1,0 +1,41 @@
+MULTIGAME — Pixel dressing room
+
+Scope: shared character artwork/editor and homepage palette. Appearance schema,
+IDs, authorization, score/timing logic, game environments and final-stage scenery
+are unchanged. No new packages, generated bitmap assets, agents or database changes.
+
+Removed the large dark character backing, ground shadow and SVG drop-shadow filter.
+Preserved selected hair and added crisp contrast edging to the canonical hair layer.
+Item previews use those exact canonical SVG layers, with framing for each category.
+The same sprite renderer remains in lobbies, standings, results and podium.
+
+One reusable selector provides a central selected slot, neighboring items, wraparound,
+direct selection, keyboard arrows/Home/End and horizontal pointer swipes. Native
+vertical scrolling is retained with touch-action:pan-y and no preventDefault on
+vertical pointer gestures. Each new 140ms slide cancels the previous animation.
+The preview stays on the right on desktop and above the scrolling rows on mobile.
+Save, Cancel, Randomize, muted selection sound, greeting, short reactions and blink
+are retained; reduced-motion guards suppress animation.
+
+Performance: removed SVG filters across every character context. Closed dialogs mount
+no sprite/options. Open selectors render only three/five isolated nearby items rather
+than a full character for every option. This lowers DOM/painting work on PC and mobile.
+No claim of measured physical-phone FPS is made.
+
+Homepage: same composition, blue/turquoise sky, cream surfaces, green/teal landscape,
+golden light. Original pixel harbor recolored locally; game-mode art is untouched.
+
+Checks: 120 unit/integration tests passed, including selector wrap windows, canonical
+isolated layers, absent backing/shadow, no closed-dialog previews and existing saved
+appearance authorization/persistence. TypeScript and local optimized Next build passed.
+Final production build is checked through Vercel before delivery.
+Browser: direct selection, forward/reverse wrapping, 20 rapid clicks, keyboard Home /
+ArrowLeft, horizontal drag, vertical scrolling, Randomize, Cancel, Save and refresh.
+An unsaved draft closed cleanly on host START. Tested 390x844 layout with no horizontal
+overflow; fixed preview and footer stayed visible while all categories scrolled.
+Reviewed 16 bald/crop/long/bob and hat combinations at 32px and 64px.
+
+Limits: mobile testing used a browser viewport and pointer input, not a physical
+handset. Native touch feel, subjective audio mix and every OS reduced-motion setting
+were not separately measured. No backend deployment/restart is needed for this web-only
+update. Git recovery checkpoints were created before production changes.

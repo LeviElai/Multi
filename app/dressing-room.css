@@ -38,3 +38,5 @@
 
 .belt-item{opacity:1}.dressing-mirror{align-items:flex-end;padding-bottom:14px}
 @media(max-width:600px){.dressing-mirror{padding-bottom:0}}
+
+.dressing-room footer .dressing-error{flex-basis:100%;text-align:left;margin-bottom:6px}
