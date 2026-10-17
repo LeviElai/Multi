@@ -67,7 +67,9 @@ export function postgresConnectionConfig(connectionString:string,settings:{schem
   if(settings.schema&&!/^[a-z][a-z0-9_]{0,62}$/.test(settings.schema))throw new Error('Invalid DATABASE_SCHEMA.');
   const url=new URL(connectionString);
   if(settings.sslCa)for(const key of ['sslmode','sslcert','sslkey','sslrootcert'])url.searchParams.delete(key);
-  return {connectionString:url.toString(),max:10,connectionTimeoutMillis:10000,idleTimeoutMillis:30000,
+  // Supabase's session pool has 15 slots. Leave room for the old process during
+  // rolling deployment, plus operational connections; do not reserve ten per process.
+  return {connectionString:url.toString(),max:4,connectionTimeoutMillis:10000,idleTimeoutMillis:30000,
     ...(settings.schema?{options:`-c search_path=${settings.schema}`} : {}),
     ...(settings.sslCa?{ssl:{ca:settings.sslCa,rejectUnauthorized:true}}:{})};
 }

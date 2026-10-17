@@ -44,9 +44,11 @@ decorative activity, reduced motion is respected, and low-core/save-data devices
 receive fewer particles. See art-and-audio.txt for asset provenance.
 
 Verification before release
-109 unit/integration tests passed, including identity bounds/diversity, all 576
+110 unit/integration tests passed, including identity bounds/diversity, all 576
 hair/face/hat combinations, pixel rectangle bounds, winner-crown exclusion,
 appearance persistence through database reopen, synchronization and authorization.
+The server uses four PostgreSQL connections per process, allowing old/new process
+overlap within the observed 15-slot Supabase session-pool limit during deployment.
 Three HTTP/WebSocket lifecycle tests passed, including ten-player play and recovery.
 TypeScript and optimized Next.js production build passed.
 The extended automatic-session script passed locally with three isolated player

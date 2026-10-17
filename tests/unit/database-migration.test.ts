@@ -8,7 +8,13 @@ test('private schema connection rejects SQL/startup-option injection',()=>{
   if(schema)assert.throws(()=>postgresConnectionConfig('postgres://app:password@localhost/db',{schema}));
  }
  const config=postgresConnectionConfig('postgres://app:password@localhost/db',{schema:'multigame'});
- assert.equal(config.options,'-c search_path=multigame');assert.equal(config.max,10);
+ assert.equal(config.options,'-c search_path=multigame');assert.equal(config.max,4);
+});
+
+test('rolling deployments fit the observed 15-slot Supabase session budget',()=>{
+ const pool=postgresConnectionConfig('postgres://app:password@localhost/db').max!;
+ assert.ok(pool+10<15,'the new process fits alongside the previous ten-slot process');
+ assert.ok(pool*2<15,'two current processes leave operational connection headroom');
 });
 test('custom CA enforces certificate verification even when URL asks for weaker TLS',()=>{
  const config=postgresConnectionConfig('postgres://app:password@localhost/db?sslmode=no-verify',{sslCa:'certificate'});
