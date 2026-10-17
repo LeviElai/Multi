@@ -1,9 +1,9 @@
 MULTIGAME PostgreSQL migration to Supabase
 
-Status: destination prepared; production copy and cutover pending.
+Status: completed and deployed on 17 October 2026.
 Destination: MULTIGAME, project wceqphhlgnqhlcxijtsg, Frankfurt.
 Organization: wkubrryumjwpcqtoubck (alternate account, free plan).
-Private multigame schema and dedicated server role created; 37 tables initialized.
+Private multigame schema and dedicated server role created; 37 tables migrated.
 Session pooler connection tested with TLS 1.3 and verified hostname/CA.
 The dashboard Data API remains disabled. Unrelated projects were not modified.
 
@@ -55,13 +55,44 @@ Cutover procedure
    writes and synchronizing new destination data back; merely switching URLs would
    lose post-cutover changes.
 
-Validation already performed on preparation
-104 unit/integration tests passed, including private-schema injection rejection,
+Validation
+106 unit/integration tests passed, including private-schema injection rejection,
 custom CA verification, FK ordering/cycle detection and identifier escaping.
 3 HTTP/WebSocket tests passed, including ten-player gameplay/crash recovery,
 origin rejection and maintenance blocking with deployment health retained.
-TypeScript passes. Actual PostgreSQL copy, Supabase advisors, production cutover
-and post-migration live gameplay have not yet been performed.
+TypeScript passes. Vercel production build/deployment is READY.
+All 37 tables and 4,657 source rows matched by count and canonical SHA-256 signature.
+A separate connection independently checked all committed destination signatures
+before live traffic reopened. Canonical signatures use C collation to avoid provider
+locale ordering differences. Git forces PostgreSQL migration files to LF so that
+Windows and Linux use identical migration checksums.
+
+Production backend cutover is live: dep-db9cva2jnfac73bqsjog, code eccdeea.
+Maintenance mode and migration-copy variables are cleared/disabled.
+The original Render database remains intact and externally inaccessible.
+
+Production verification through https://multigame-levi-6fe6.vercel.app passed with
+three isolated HTTP player sessions across Estimate, Think, Guess, Size and Count.
+Verified registration, quiz saving/publishing, PIN joining, read-only display,
+host authorization, hidden answers, submissions, pause/resume, authoritative scores,
+automatic placements, reconnection, final results and logout. New persistent data
+was independently observed in Supabase: 18 games and 188 round-score rows after QA.
+The verification quiz was archived and the verification host logged out.
+Browser checks confirmed the public homepage and creator sign-in redirect. These
+checks do not constitute separate physical-device or three-browser visual testing.
+
+All 37 tables retain RLS; anon/authenticated have no schema access. The server uses
+its dedicated owning role with verified TLS 1.3 through the Frankfurt session pooler.
+Supabase Data API remains disabled. Existing credential authentication is preserved.
+Advisor Center's error/warning view returned no findings. Informational notices
+remain for default-deny RLS with no browser policies, existing unindexed foreign
+keys, and indexes with no usage history. No browser access policies were added to
+silence those notices, and existing indexes were retained.
+
+Public CA reference: https://supabase.com/docs/guides/platform/ssl-enforcement
+Evidence files are in the task outputs folder: supabase-copy-verification.json,
+supabase-database-audit.json, supabase-post-deploy-audit.json,
+supabase-live-verification.json and supabase-migration-verified.png.
 
 Backup tag: backup-before-supabase-20261017
 Current source Render database expiry: 15 November 2026.
