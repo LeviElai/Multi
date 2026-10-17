@@ -96,3 +96,35 @@ supabase-live-verification.json and supabase-migration-verified.png.
 
 Backup tag: backup-before-supabase-20261017
 Current source Render database expiry: 15 November 2026.
+
+18 October 2026: disabled Data API log repair
+
+Symptom: PostgREST 14.18 emitted SQLSTATE 3F000 every approximately 32 seconds,
+looking for the platform sentinel pg_pgrst_no_exposed_schemas. This is the known
+Supabase disabled-Data-API issue, not a missing MULTIGAME application schema.
+Official workaround:
+https://supabase.com/docs/guides/troubleshooting/schema-pg_pgrst_no_exposed_schemas-does-not-exist
+
+Applied once to project wceqphhlgnqhlcxijtsg at 2026-10-17 23:05:07 UTC:
+  begin;
+  create schema pgrst_no_exposed_schemas;
+  revoke all on schema pgrst_no_exposed_schemas from public, anon, authenticated;
+  alter role authenticator set pgrst.db_schemas = 'pgrst_no_exposed_schemas';
+  notify pgrst;
+  commit;
+
+This is hosted platform configuration, not an application table migration. Do not
+put it in the server's automatic application migrations: the owning application
+role must not gain permission to alter Supabase's authenticator role.
+
+Verified the configured schema exists and contains zero relations; anon and
+ authenticated still have no multigame schema access; multigame_server retains
+access; all application tables retain RLS. Production /health/ready returned ready.
+The security advisor has no ERROR/WARN findings, only the expected INFO notices
+for default-deny RLS on the private server-owned tables.
+
+If deliberately re-enabling the Data API in the future, first remove this override
+as documented by Supabase, then reload configuration:
+  alter role authenticator reset pgrst.db_schemas;
+  notify pgrst;
+Review exposed schemas and privileges before re-enabling. Keep multigame private.
