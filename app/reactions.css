@@ -40,7 +40,7 @@
 .continuous-standings .standings-board li{padding:19px 8px;border-bottom:2px solid #c0cbae}.continuous-standings .standing-name{font-weight:800}.continuous-standings .standing-score strong{font-size:26px}
 .result-details{margin:22px 0;padding:16px;color:#dde7d1;border:2px solid #577c79;background:#17374a}.result-details summary{font-weight:800;cursor:pointer;min-height:26px}.result-details[open] .reveal-panel{margin-top:20px}
 .auto-host-controls{gap:15px}.auto-host-controls>.round-timer{font-size:18px}.auto-host-controls>span{font-size:13px;color:#cfdfcf}
-.phase-heading:has(.round-timer[aria-label="Paused"]){border-color:#efc58a}
+.phase-heading:has(.round-timer.is-paused){border-color:#efc58a}
 .member-tile{box-shadow:inset 0 2px #ffffff20,3px 4px #102037;border:2px solid #65867f}
 .member-tile .player-avatar{box-shadow:inset 2px 2px #ffffff40,2px 3px #0d2635}
 .library-quiz,.entry-mode-grid>button,.mode-picker-item{box-shadow:inset 0 0 0 3px #b5a17c44,4px 6px #101f34}

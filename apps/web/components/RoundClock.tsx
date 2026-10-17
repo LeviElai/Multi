@@ -19,5 +19,5 @@ export const RoundClock = memo(function RoundClock({ deadline, pausedMs, offset,
         return <div className="timer-track"><span style={{ transform: `scaleX(${Math.min(1, remaining / duration)})` }}/></div>;
     if (variant === 'countdown')
         return <strong className="countdown-number">{Math.max(1, remaining)}</strong>;
-    return <div className={`round-timer ${remaining < 10 ? 'urgent' : ''}`} role="timer" aria-label={paused ? 'Paused' : `${remaining} seconds remaining`}>{paused ? 'Ⅱ' : remaining}<small>{paused ? 'paused' : 'sec'}</small></div>;
+    return <div className={`round-timer ${!paused && remaining < 10 ? 'urgent' : ''} ${paused?'is-paused':''}`} role="timer" aria-label={paused ? `Paused, ${remaining} seconds remaining` : `${remaining} seconds remaining`}>{remaining}<small>{paused ? 'paused' : 'sec'}</small></div>;
 });
