@@ -49,3 +49,11 @@ test('standings show previous totals first, then authoritative totals and ID-sta
  assert.ok(after.indexOf('data-player="b"')<after.indexOf('data-player="c"'));assert.ok(after.indexOf('data-player="c"')<after.indexOf('data-player="a"'));assert.match(after,/1,900 total points/);assert.match(after,/\+1,000/);
  const zero=renderToStaticMarkup(createElement(Standings,{leaders:previous,previousLeaders:previous,sequence:'settled'}));assert.doesNotMatch(zero,/Round best/);
 });
+
+
+test('shared Size comparison uses an answer label without claiming a personal submission',async()=>{
+ const {ScaleStage}=await import('../../apps/web/components/game/ScaleStage');
+ const round=getDemoQuiz().rounds.find(r=>r.mode==='size_it_up')!;
+ const html=renderToStaticMarkup(createElement(ScaleStage,{round,ratio:2.4,truth:2.4,personalComparison:false}));
+ assert.match(html,/Answer: 2.40 times reference/);assert.doesNotMatch(html,/Your size/);
+});

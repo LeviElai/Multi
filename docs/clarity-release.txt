@@ -40,7 +40,8 @@ Local single-run benchmark, same 128 bodies/60 physics steps: 249.8ms before,
 62.6ms after. This measures CPU work on this PC, not physical-phone FPS.
 
 Validation
-116 unit/integration tests passed. Includes paused reading, full answer timer,
+116 unit/integration tests passed before final presentation-label corrections;
+focused results tests were rerun after those corrections. Includes paused reading, full answer timer,
 early-answer rejection, restart recovery, persistent custom timing, simultaneous
 advance/stale command protection, automatic skip, immutable previous totals,
 position exchanges, round-best ties, zero-point rounds and eight-theme contrast.
@@ -56,10 +57,13 @@ The local five-mode automatic run was interrupted after two modes by a transient
 Next development-manifest rebuild error while code was being edited; it is not
 reported as a successful complete run. Local production-preview startup was blocked
 by automatic command approval, with no additional reason supplied. Production
-verification is recorded separately in the delivery report.
-The browser viewport override did not resize the review tabs: screenshots are
-actual desktop captures, despite attempts at 390x844. Responsive CSS was reviewed,
-but a successful phone-sized browser/physical-device check is not claimed.
+verification is recorded separately in the delivery report. The live five-mode
+run uses the authoritative timing and score changes from commit 4ef3031; the
+follow-up only corrects presentation labels, quantity visibility and this report.
+Initial viewport changes did not affect hidden review tabs. A visible public tab
+then resized successfully: the deployed sunset and real three-player shared
+standings were reviewed at 375px content width, without horizontal overflow.
+The reading phase was also checked at phone width. No physical phone was tested.
 No subjective audio mix or real-player comprehension study was performed.
 The deployed version is ready for another real-player test. Free hosting may still
 cold-start; no paid infrastructure was added. No image generation, agents, new

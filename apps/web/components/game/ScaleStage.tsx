@@ -3,10 +3,11 @@ import { useRef } from 'react';
 import type { PublicRound, Round } from '../../../../packages/contracts/src/index';
 import { Shape } from '../ModeArt';
 import { playCue } from '../../lib/audio';
-export function ScaleStage({ round, ratio, truth, onRatio }: {
+export function ScaleStage({ round, ratio, truth, onRatio, personalComparison=true }: {
     round: PublicRound;
     ratio: number;
     truth?: number;
+    personalComparison?: boolean;
     onRatio?: (v: number) => void;
 }) {
     const c = round.publicConfig as Extract<Round, {
@@ -52,5 +53,5 @@ export function ScaleStage({ round, ratio, truth, onRatio }: {
  <svg viewBox="0 0 420 320" role="img" aria-label={`${c.referenceLabel}: ${c.referenceSize} ${c.unit}. ${c.targetLabel}: ${ratio.toFixed(2)} times reference${truth !== undefined ? `; correct ${truth.toFixed(2)}` : ''}. Fixed ${c.axis} scale.`}><defs><pattern id={'grid-' + round.id} width="21" height="21" patternUnits="userSpaceOnUse"><path d="M21 0H0V21" fill="none" stroke="#b7d7d525"/></pattern></defs><rect width="420" height="290" fill={'url(#grid-' + round.id + ')'}/><line x1="20" x2="400" y1="265" y2="265" stroke="#87aaa5"/>
  <g transform={`translate(${95 - unit / 2},${265 - unit}) scale(${unit / 100})`}><Shape asset={c.referenceAsset ?? "block"} fill="#8db5b2"/></g><path d={`M${85 - unit / 2},${265 - unit}h-6v${unit}h6`} stroke="#badad2" fill="none"/>
  {target(ratio)}{truth !== undefined && target(truth, true)}<text x="95" y="303" textAnchor="middle" fill="#d8e5dc" fontSize="14">{c.referenceLabel.slice(0, 23)}</text><text x="300" y="303" textAnchor="middle" fill="#f2d8bd" fontSize="14">{c.targetLabel.slice(0, 23)}</text></svg>
- <p>{truth !== undefined ? `Your size ${ratio.toFixed(2)}× · correct ${truth.toFixed(2)}× · difference ${Math.abs(ratio - truth).toFixed(2)}×` : onRatio ? `Drag ${c.axis === 'height' ? 'up or down' : 'left or right'} to resize. Pinch with two fingers.` : `Compare the marked ${c.axis}.`}</p></div>;
+ <p>{truth !== undefined ? !personalComparison?`Answer: ${truth.toFixed(2)} times reference`:`Your size ${ratio.toFixed(2)}× · correct ${truth.toFixed(2)}× · difference ${Math.abs(ratio - truth).toFixed(2)}×` : onRatio ? `Drag ${c.axis === 'height' ? 'up or down' : 'left or right'} to resize. Pinch with two fingers.` : `Compare the marked ${c.axis}.`}</p></div>;
 }

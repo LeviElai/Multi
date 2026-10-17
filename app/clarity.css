@@ -34,7 +34,7 @@ html[data-hidden=true] .pixel-character *,html[data-hidden=true] .world-scene *,
 
 .sequence-results.step-answer .estimate-orbit,.sequence-results.step-answer .axis-ends{display:none}
 .sequence-results .observatory-results .personal-comparison,.sequence-results .workshop-results .personal-comparison{display:none}
-.sequence-results .quantity-jars article>strong{display:none}
+.sequence-results .personal-count .quantity-jars article>strong{display:none}
 .sequence-results.phase-placements .round-visual{display:none}
 
 .sequence-results .estimate-orbit{height:125px;margin-top:14px}.sequence-results .orbit-truth>i{height:110px}
