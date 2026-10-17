@@ -15,7 +15,9 @@ export function dependencyOrder(tables:string[],dependencies:{table:string;paren
   return result;
 }
 async function signature(client:pg.PoolClient,schema:string,table:string){
-  const result=await client.query<{row:string}>(`SELECT to_jsonb(t)::text AS row FROM ${quoteIdentifier(schema)}.${quoteIdentifier(table)} t ORDER BY to_jsonb(t)::text`);
+  // Provider locale defaults can order identical JSON rows differently. The C
+  // collation compares bytes consistently across the source and destination.
+  const result=await client.query<{row:string}>(`SELECT to_jsonb(t)::text AS row FROM ${quoteIdentifier(schema)}.${quoteIdentifier(table)} t ORDER BY to_jsonb(t)::text COLLATE "C"`);
   const hash=createHash('sha256');for(const item of result.rows)hash.update(item.row+'\n');
   return {rows:result.rowCount??0,sha256:hash.digest('hex')};
 }
@@ -63,7 +65,7 @@ export async function copyPostgresDatabase(environment:NodeJS.ProcessEnv){
       const conflict=table==='_schema_migrations'?' ON CONFLICT (migration_id) DO UPDATE SET checksum=EXCLUDED.checksum,applied_at=EXCLUDED.applied_at':'';
       for(const row of rows)await to.query(`INSERT INTO ${quoteIdentifier(targetSchema)}.${quoteIdentifier(table)} (${fields}) VALUES (${params})${conflict}`,columns.map(c=>row[c.name]));
       const expected=await signature(from,sourceSchema,table),actual=await signature(to,targetSchema,table);
-      if(expected.rows!==actual.rows||expected.sha256!==actual.sha256)throw new Error('Destination verification failed for table '+table);
+      if(expected.rows!==actual.rows||expected.sha256!==actual.sha256)throw new Error('Destination verification failed: '+JSON.stringify({table,expected,actual}));
       report.push({table,...actual});
     }
     for(const table of order)await to.query(`ALTER TABLE ${quoteIdentifier(targetSchema)}.${quoteIdentifier(table)} ENABLE TRIGGER USER`);
