@@ -6,13 +6,14 @@ import { useState, useEffect } from 'react';
 import { playCue } from '../lib/audio';
 import Link from 'next/link';
 import FinalStage from './game/FinalStage';
+import {PlayerIdentity} from './game/PlayerIdentity';
 import { ScaleStage } from './ModePlayer';
 import { RareDepthReveal } from './world/RareExperience';
 export function Leaderboard({ leaders, ownId, compact = false }: {
     leaders: Leader[];
     ownId?: string;
     compact?: boolean;
-}) { return <section className={'leaderboard ' + (compact ? 'compact' : '')} aria-label="Leaderboard"><div className="leaderboard-heading"><span className="eyebrow">THE STANDINGS</span><span>POINTS</span></div>{leaders.length ? leaders.map(p => <div className={'leader-row ' + (p.participantId === ownId ? 'is-you' : '')} key={p.participantId}><span className={'rank rank-' + p.rank}>{p.rank}</span><span className="player-avatar" style={{ '--avatar-color': ['#e7ed59', '#a9bdf6', '#eca7d0', '#a8c5ac'][p.nickname.length % 4] } as React.CSSProperties}>{p.nickname.slice(0, 1).toUpperCase()}</span><strong>{p.nickname}{p.participantId === ownId && <small>YOU</small>}</strong><span className="score"><b>{p.points.toLocaleString('en')}</b>{p.roundPoints > 0 && <small>+{p.roundPoints}</small>}</span></div>) : <div className="empty-small">The leaderboard starts with your first player.</div>}</section>; }
+}) { return <section className={'leaderboard ' + (compact ? 'compact' : '')} aria-label="Leaderboard"><div className="leaderboard-heading"><span className="eyebrow">THE STANDINGS</span><span>POINTS</span></div>{leaders.length ? leaders.map(p => <div className={'leader-row ' + (p.participantId === ownId ? 'is-you' : '')} key={p.participantId}><span className={'rank rank-' + p.rank}>{p.rank}</span><strong><PlayerIdentity id={p.participantId} name={p.nickname} avatar={p.avatar}/>{p.participantId === ownId && <small>YOU</small>}</strong><span className="score"><b>{p.points.toLocaleString('en')}</b>{p.roundPoints > 0 && <small>+{p.roundPoints}</small>}</span></div>) : <div className="empty-small">The leaderboard starts with your first player.</div>}</section>; }
 export default function Reveal({ snapshot: s }: {
     snapshot: Snapshot;
 }) { const [selectedGuess, setSelectedGuess] = useState<{
@@ -25,7 +26,7 @@ export function Podium({ snapshot: s }: {
     snapshot: Snapshot;
 }) {
     useEffect(() => { if (s.state === 'SESSION_COMPLETED')
-        playCue('final'); }, [s.state]);
+        playCue('final',undefined,s.id+':final'); }, [s.state]);
     const [copied, setCopied] = useState(false);
     const own = s.leaderboard.find(p => p.participantId === s.participantId);
     const winners = s.leaderboard.filter(p => p.rank <= 3);

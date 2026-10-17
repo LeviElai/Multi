@@ -10,10 +10,12 @@ export function silenceAudio() {
   voices.clear();
 }
 /** Original short chip sounds. No media files, network, autoplay or score side effects. */
-export function playCue(cue:Cue='submit') {
+export function playCue(cue:Cue='submit',mode?:string,eventKey?:string) {
   if(typeof window==='undefined'||!unlocked||document.hidden) return;
   try {
     if(localStorage.getItem('multigame-sound')==='off') return;
+    if(eventKey){const key='multigame-cue:'+eventKey;if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,'1');}
+    if(voices.size>12)return;
     const now=Date.now();
     if(now-(last.get(cue)??0)<(cue==='pour'?75:cue==='adjust'?70:90)) return;
     last.set(cue,now);
@@ -23,7 +25,9 @@ export function playCue(cue:Cue='submit') {
       submit:[392,587,784],reveal:[262,330,392,523],win:[523,659,784],
       join:[330,440,659],final:[262,330,392,523,392,523,659,784,1047],
       standings:[392,523],error:[196,147],tick:[880]};
-    tunes[cue].forEach((frequency,i)=>{
+    const pitch=mode==='rare_answers'?.75:mode==='size_it_up'?.9:mode==='amountle'?1.15:mode==='word_puzzle'?1.25:1;
+    tunes[cue].forEach((note,i)=>{
+      const frequency=note*pitch;
       const oscillator=context!.createOscillator(),gain=context!.createGain();
       const short=['click','letter','adjust','pour','tick'].includes(cue);
       const duration=short?.055:cue==='final'?.18:.12;

@@ -10,8 +10,26 @@ import { DomainError, type HostAction, type Principal, type QuizInput } from '..
 import { GameEngine } from '../../apps/game-service/src/engine';
 import { handleApi } from '../../apps/game-service/src/api';
 import { digestToken } from '../../apps/game-service/src/security';
+import {avatarFor} from '../../packages/contracts/src/avatar';
 
 const PIN_SECRET = 'integration-test-only-pin-key-32-bytes';
+
+test('characters persist through restart and synchronize without granting editing rights to other roles',async t=>{
+ const f=await fixture(t,getDemoQuiz(),3,true),id=f.room.sessionId,player=f.members[0].principal;
+ const before=await f.engine.snapshot(player,id);
+ assert.equal(new Set(before.members.map(m=>JSON.stringify(m.avatar))).size,3);
+ assert.ok(before.members.every(m=>m.avatar));
+ const custom={...avatarFor('custom-outfit'),skin:7,hat:2};
+ await f.engine.updateAppearance(player,id,custom,crypto.randomUUID());
+ for(const who of [player,f.members[1].principal,f.hostPrincipal])assert.deepEqual((await f.engine.snapshot(who,id)).members.find(m=>m.id===player.id)?.avatar,custom);
+ await f.restart();assert.deepEqual((await f.engine.snapshot(player,id)).members.find(m=>m.id===player.id)?.avatar,custom);
+ assert.deepEqual((await f.engine.snapshot(player,id)).leaderboard.find(p=>p.participantId===player.id)?.avatar,custom);
+ await assert.rejects(f.engine.updateAppearance(f.hostPrincipal,id,custom,crypto.randomUUID()),isCode('FORBIDDEN'));
+ const request=new Request(`https://test.example/api/v1/sessions/${id}/appearance?role=player`,{method:'POST',headers:{Origin:'https://test.example',Cookie:`mg_player_${id}=${f.members[0].token}`,'Content-Type':'application/json','Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({avatar:custom,participantId:f.members[1].principal.id})});
+ const invalid=await handleApi(request,{store:f.store,user:null,pinSecret:PIN_SECRET});assert.equal(invalid.status,422);
+ await f.action('START');await assert.rejects(f.engine.updateAppearance(player,id,avatarFor('discard-unsaved'),crypto.randomUUID()),isCode('GAME_STARTED'));
+ assert.deepEqual((await f.engine.snapshot(player,id)).members.find(m=>m.id===player.id)?.avatar,custom);
+});
 const key = () => crypto.randomUUID();
 const isCode = (code: string) => (error: unknown) => error instanceof DomainError && error.code === code;
 async function fixture(t: { after: (fn: () => Promise<void>) => void }, input: QuizInput = getDemoQuiz(), players = 2, automatic = false) {

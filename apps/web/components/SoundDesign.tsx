@@ -9,7 +9,9 @@ export default function SoundDesign(){
    if(button&&!button.hasAttribute('disabled')&&!button.closest('.word-keyboard,.fill-game,.step-controls')) playCue('click');
   };
   const mute=()=>silenceAudio();
-  const hide=()=>{if(document.hidden)silenceAudio();};
+  const hide=()=>{document.documentElement.dataset.hidden=String(document.hidden);if(document.hidden)silenceAudio();};
+  hide();
+  if(navigator.hardwareConcurrency<=4||(navigator as Navigator & {connection?:{saveData?:boolean}}).connection?.saveData)document.documentElement.dataset.effects="low";
   window.addEventListener('pointerdown',unlock,{capture:true});
   window.addEventListener('keydown',unlock,{capture:true});
   document.addEventListener('click',click);

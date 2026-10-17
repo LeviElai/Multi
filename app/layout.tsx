@@ -7,6 +7,7 @@ import "./world.css";
 import "./product.css";
 import "./arcade.css";
 import "./reactions.css";
+import "./characters.css";
 export const metadata: Metadata = {
     title: "MULTIGAME — One quiz. Five different games.",
     description: "Five wildly different games. One room. Create your own multiplayer game show.",

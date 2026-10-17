@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {AvatarSchema} from '../../../packages/contracts/src/avatar';
 import { DomainError, HostActionSchema, QuizInputSchema, RoundSchema, SubmitSchema, WordGuessSchema } from '../../../packages/contracts/src/index';
 import type { Features, Principal, Quiz, QuizInput, Profile } from '../../../packages/contracts/src/index';
 import type { Store } from '../../../packages/db/src/types';
@@ -269,11 +270,17 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       if (!principal || principal.role !== 'display') throw new DomainError('DISPLAY_EXPIRED', 'This display link has expired or been revoked.', 401);
       return ok(await engine.snapshot(principal, principal.sessionId));
     }
-    const sessionPath = path.match(/^sessions\/([^/]+)\/(snapshot|host-actions|submissions|answers|word-guesses|rare-review|display-pairing|events|results)$/);
+    const sessionPath = path.match(/^sessions\/([^/]+)\/(snapshot|host-actions|submissions|answers|word-guesses|rare-review|display-pairing|events|results|appearance)$/);
     if (sessionPath) {
       const id = uuid.parse(sessionPath[1]); const suffix = sessionPath[2];
       const principalRequest = ['submissions', 'answers', 'word-guesses'].includes(suffix) ? new Request((() => { const playerUrl = new URL(request.url); playerUrl.searchParams.set('role', 'player'); return playerUrl; })(), { headers: request.headers }) : request;
       const principal = await resolvePrincipal(principalRequest, ctx.store, user, id);
+      if(method==='POST'&&suffix==='appearance'){
+        if(principal.role!=='player')throw new DomainError('FORBIDDEN','Only players can edit their own look.',403);
+        const avatar=AvatarSchema.parse(z.object({avatar:AvatarSchema}).strict().parse(body).avatar);
+        await rateLimit(ctx.store.db,`appearance:${id}:${principal.id}`,30,60000);
+        return ok(await engine.updateAppearance(principal,id,avatar,mutationKey(request)));
+      }
       if (method === 'GET' && ['snapshot', 'results'].includes(suffix)) return ok(await engine.snapshot(principal, id));
       if (method === 'GET' && suffix === 'events') {
         const after = z.coerce.number().int().nonnegative().parse(url.searchParams.get('after') ?? 0);

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {avatarFor} from '../packages/contracts/src/avatar';
 import { randomBytes, randomUUID } from 'node:crypto';
 import type { Snapshot, QuizInput } from '../packages/contracts/src/index';
 
@@ -31,6 +32,17 @@ const room=await call<{sessionId:string;pin:string}>(host,'/api/v1/sessions','PO
 const path=`/api/v1/sessions/${room.sessionId}`;
 for(const [i,player]of players.entries()) await call(player,'/api/v1/sessions/join','POST',{pin:room.pin,nickname:['Luna','Moss','Pip'][i]},201);
 const snapshot=(client=host)=>call<Snapshot>(client,path+'/snapshot');
+const initial=(await snapshot()).members;
+assert.ok(initial.every(m=>m.avatar),'new joins have stored appearance');
+assert.equal(new Set(initial.map(m=>JSON.stringify(m.avatar))).size,initial.length);
+const playerId=(await snapshot(players[0])).participantId!;
+const look={...avatarFor('production-cast-check'),hat:2,skin:7};
+await call(players[0],path+'/appearance?role=player','POST',{avatar:look});
+for(const viewer of [host,...players])assert.deepEqual((await snapshot(viewer)).members.find(m=>m.id===playerId)?.avatar,look,'appearance synchronized');
+await call(players[1],path+'/appearance?role=player','POST',{avatar:look,participantId:playerId},422);
+await call(host,path+'/appearance','POST',{avatar:look},403);
+const savedLooks=new Map((await snapshot()).members.map(m=>[m.id,m.avatar]));
+
 const action=async(action:string,args?:unknown)=>call(host,path+'/host-actions','POST',{action,args,expectedStateVersion:(await snapshot()).stateVersion});
 const wait=async(state:string)=>{for(let i=0;i<120;i++){const s=await snapshot();if(s.state===state)return s;await new Promise(r=>setTimeout(r,500));}throw new Error('State did not reach '+state);};
 const pairing=await call<{token:string}>(host,path+'/display-pairing','POST',{},201);
@@ -40,7 +52,8 @@ await action('START');
 const verified:string[]=[];
 for(const round of demo.rounds){
   await wait('ROUND_ACTIVE');
-  const before=await snapshot(players[0]);assert.equal(before.automatic,true,'new HTTP rooms enable automatic play');
+  const before=await snapshot(players[0]);assert.equal(before.automatic,true,'new HTTP rooms enable automatic play');for(const m of before.members)assert.deepEqual(m.avatar,savedLooks.get(m.id),'appearance survives each round');
+  if(round===demo.rounds[0])await call(players[0],path+'/appearance?role=player','POST',{avatar:look},409);
   assert.equal(before.round?.id,round.id);assert.equal(before.reveal,undefined);assert.equal('secretConfig' in before.round!,false);assert.equal(before.round?.fillTarget,undefined,'Count answer remains secret');
   if(round.mode==='fermi'){await action('PAUSE');const paused=await snapshot(players[0]);assert.equal(paused.state,'PAUSED');await action('RESUME');}
   for(const [i,client] of players.entries()){
@@ -56,8 +69,8 @@ for(const round of demo.rounds){
   if(round.id!==demo.rounds.at(-1)!.id){await wait('INTERMISSION');if(round.mode==='fermi'){await action('PAUSE');assert.equal((await snapshot(players[1])).phase,'placements');await action('RESUME');}}
   verified.push(round.mode);console.log('Automatic mode passed: '+round.mode);
 }
-const final=await wait('SESSION_COMPLETED');assert.equal(final.leaderboard.length,3);assert.ok(final.leaderboard[0].points>0);
+const final=await wait('SESSION_COMPLETED');assert.equal(final.leaderboard.length,3);for(const p of final.leaderboard)assert.deepEqual(p.avatar,savedLooks.get(p.participantId),'podium keeps actual characters');assert.ok(final.leaderboard[0].points>0);
 await call(host,`/api/v1/quizzes/${quiz.id}`,'DELETE',undefined);
 await call(host,'/api/auth/logout','POST',{});
 await call(host,'/api/v1/quizzes','GET',undefined,401);
-console.log(JSON.stringify({origin,status:'passed',players:3,verified,checks:['creator registration','quiz save and publish','guest PIN joining','read-only display','host authorization','hidden answer keys','all five submissions','pause/resume','server scoring','placement broadcast','reconnection','final results','logout'],sessionId:room.sessionId},null,2));
+console.log(JSON.stringify({origin,status:'passed',players:3,verified,checks:['stored unique appearances','synchronized lobby edits','appearance authorization','appearance persistence through rounds and podium','creator registration','quiz save and publish','guest PIN joining','read-only display','host authorization','hidden answer keys','all five submissions','pause/resume','server scoring','placement broadcast','reconnection','final results','logout'],sessionId:room.sessionId},null,2));

@@ -20,9 +20,9 @@ export function RareAnswerControl({ value, onChange, onSubmit, disabled = false,
     const id = useId();
     return <form className="rare-answer-control" onSubmit={e => { e.preventDefault(); if (!disabled && !busy && value.trim())
         onSubmit(); }}>
-  <div className="rare-companion"><PixelSprite kind="diver"/><span>RARE ANSWERS<br /><strong>Avoid matching another player.</strong></span><PixelSprite kind="fish"/></div>
-  <label htmlFor={id}>Your answer</label><input id={id} value={value} onChange={e => onChange(e.target.value)} maxLength={100} autoComplete="off" placeholder="Type an answer" disabled={disabled} required/>
-  <p>A valid answer scores more when fewer players choose it.<br />Matching answers share the same score.</p>
+  <div className="rare-companion"><PixelSprite kind="diver"/><span>EXPEDITION CONSOLE<br /><strong>Send something unexpected.</strong></span><PixelSprite kind="fish"/></div>
+  <label htmlFor={id}>Your answer</label><input id={id} value={value} onChange={e => onChange(e.target.value)} maxLength={100} autoComplete="off" placeholder="Your discovery?" disabled={disabled} required/>
+  <p>A valid answer scores more when fewer players choose it.</p>
   <button className="btn btn-primary btn-full" disabled={disabled || busy || !value.trim()}><Lock size={17}/>{busy ? 'Sending…' : disabled ? 'Answer locked' : 'Lock answer'}</button>
  </form>;
 }

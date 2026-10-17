@@ -8,6 +8,6 @@ export function Atmosphere({ global = false }: { global?: boolean }) {
       '--delay': `${-i * 1.7}s`, '--duration': `${12 + i % 7 * 2}s`,
       '--drift': `${(i % 2 ? 1 : -1) * (18 + i * 3)}px`,
     } as CSSProperties}/>)}
-    <div className="ambient-glow"/>
+    <div className="ambient-glow"/>{!global&&<><span className="ambient-fish fish-one"/><span className="ambient-fish fish-two"/><span className="ambient-gear"/><span className="ambient-page"/></>}
   </div>;
 }

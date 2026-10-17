@@ -28,7 +28,7 @@ export function getDefaultRound(mode: ModeId): Round {
       secretConfig: { answer: 'ORBIT', allowedGuesses: [] },
     };
     case 'size_it_up': return {
-      ...common, mode, question: 'Resize the tree to 24 metres beside the 10-metre tower.',
+      ...common, mode, question: 'Calibration: resize the tree to 24 metres beside the 10-metre tower.',
       explanation: 'The tree is 24 metres tall: 2.4 times the 10-metre tower.',
       publicConfig: { unit: 'm', axis: 'height', referenceSize: 10, referenceLabel: '10 m tower', targetLabel: 'Tree', asset: 'tree', referenceAsset: 'tower', minRatio: 0.25, maxRatio: 4, calibration: { version: 1, intrinsicDimension: 100, start: 0, end: 100 } },
       secretConfig: { targetSize: 24 },

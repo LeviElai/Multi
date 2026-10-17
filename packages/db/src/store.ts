@@ -1,5 +1,6 @@
 import { DomainError, QuizInputSchema, type Quiz, type QuizInput, type QuizVersion, type Round, type SessionData, type SessionRecord, type Principal, type SessionEvent, type Submission, type WordAttempt, type Adjudication, type Award } from '../../contracts/src/index';
 import type { Store, SqlDatabase, SqlStatement, SqlValue, MutationResult } from './types';
+import {avatarFor,AvatarSchema} from '../../contracts/src/avatar';
 
 type Row=Record<string,unknown>;
 const json=(value:unknown)=>JSON.stringify(value);
@@ -105,7 +106,7 @@ export class SqlStore implements Store {
     for(let attempt=0;attempt<6;attempt++){
       const row=(await this.db.query('SELECT * FROM sessions WHERE id=?',[id])).rows[0];if(!row)throw missing();
       const session=toSession(row);
-      const [quiz,members,submissions,attempts,adjudications,awards,voids,flow]=await Promise.all([
+      const [quiz,members,submissions,attempts,adjudications,awards,voids,flow,looks]=await Promise.all([
         this.getVersion(session.versionId),
         this.db.query('SELECT id,nickname,status,joined_at FROM participants WHERE session_id=? ORDER BY joined_at,id',[id]),
         this.db.query('SELECT s.* FROM submissions s WHERE s.session_id=? AND NOT EXISTS (SELECT 1 FROM submissions n WHERE n.session_id=s.session_id AND n.participant_id=s.participant_id AND n.round_id=s.round_id AND n.revision>s.revision)',[id]),
@@ -114,9 +115,12 @@ export class SqlStore implements Store {
         this.db.query('SELECT r.round_id,r.scoring_revision,s.participant_id,s.points,s.reason,s.detail FROM round_score_current c JOIN scoring_runs r ON r.id=c.scoring_run_id JOIN round_scores s ON s.scoring_run_id=r.id WHERE c.session_id=? ORDER BY r.round_id,s.participant_id',[id]),
         this.db.query('SELECT round_id FROM session_rounds WHERE session_id=? AND voided=1',[id]),
         this.db.query("SELECT EXISTS(SELECT 1 FROM session_events WHERE session_id=? AND type='session.autopilot') AS automatic, (SELECT type FROM session_events WHERE session_id=? AND type LIKE 'phase.paused.%' ORDER BY seq DESC LIMIT 1) AS paused_phase, (SELECT payload FROM session_events WHERE session_id=? AND type='review.timed_out' ORDER BY seq DESC LIMIT 1) AS review_timeout",[id,id,id]),
+        this.db.query("SELECT e.type,e.payload FROM session_events e WHERE e.session_id=? AND (e.type='member.joined' OR (e.type LIKE 'member.look.%' AND NOT EXISTS(SELECT 1 FROM session_events n WHERE n.session_id=e.session_id AND n.type=e.type AND n.seq>e.seq))) ORDER BY e.seq",[id]),
       ]);
+      const memberLooks=new Map<string,ReturnType<typeof avatarFor>>();
+      for(const row of looks.rows){const p=parse<{participantId?:string;avatar?:unknown}>(row.payload);const v=AvatarSchema.safeParse(p.avatar);if(v.success)memberLooks.set(p.participantId??String(row.type).slice('member.look.'.length),v.data);}
       const latest=(await this.db.query('SELECT state_version FROM sessions WHERE id=?',[id])).rows[0];if(!latest||Number(latest.state_version)!==session.stateVersion)continue;
-      return {reviewTimeoutRoundId:flow.rows[0]?.review_timeout?quiz.rounds[parse<{roundIndex:number}>(flow.rows[0].review_timeout).roundIndex]?.id:undefined,automatic:Boolean(flow.rows[0]?.automatic),pausedPhase:flow.rows[0]?.paused_phase ? String(flow.rows[0].paused_phase).split('.').at(-1) as SessionRecord['state'] : undefined,session,quiz,members:members.rows.map(m=>({id:String(m.id),nickname:String(m.nickname),status:m.status as 'active'|'kicked',joinedAt:iso(m.joined_at)})),submissions:submissions.rows.map(toSubmission),attempts:attempts.rows.map(toAttempt),adjudications:adjudications.rows.map(toAdjudication),awards:awards.rows.map(a=>({roundId:String(a.round_id),participantId:String(a.participant_id),points:Number(a.points),reason:String(a.reason),scoringRevision:Number(a.scoring_revision),detail:parse(a.detail)})),voidRoundIds:voids.rows.map(v=>String(v.round_id))};
+      return {reviewTimeoutRoundId:flow.rows[0]?.review_timeout?quiz.rounds[parse<{roundIndex:number}>(flow.rows[0].review_timeout).roundIndex]?.id:undefined,automatic:Boolean(flow.rows[0]?.automatic),pausedPhase:flow.rows[0]?.paused_phase ? String(flow.rows[0].paused_phase).split('.').at(-1) as SessionRecord['state'] : undefined,session,quiz,members:members.rows.map(m=>({id:String(m.id),nickname:String(m.nickname),status:m.status as 'active'|'kicked',joinedAt:iso(m.joined_at),avatar:avatarFor(String(m.id),memberLooks.get(String(m.id)))})),submissions:submissions.rows.map(toSubmission),attempts:attempts.rows.map(toAttempt),adjudications:adjudications.rows.map(toAdjudication),awards:awards.rows.map(a=>({roundId:String(a.round_id),participantId:String(a.participant_id),points:Number(a.points),reason:String(a.reason),scoringRevision:Number(a.scoring_revision),detail:parse(a.detail)})),voidRoundIds:voids.rows.map(v=>String(v.round_id))};
     }
     throw conflict();
   }
@@ -141,7 +145,9 @@ export class SqlStore implements Store {
     const current=toSession(row),nonce=crypto.randomUUID(),id=crypto.randomUUID(),now=this.now().toISOString(),expiresAt=new Date(this.now().getTime()+7*86400000).toISOString(),guard=this.sessionGuard(sessionId,nonce);
     if(current.joinLocked)throw new DomainError('JOIN_LOCKED','The host has locked joining.',409);
     const cap=Math.min(current.maxPlayers,maxPlayers);
-    const statements:SqlStatement[]=[{sql:"UPDATE sessions SET state_version=state_version+1,latest_seq=latest_seq+1,last_mutation_id=? WHERE id=? AND state_version=? AND join_locked=0 AND state NOT IN ('SESSION_COMPLETED','SESSION_ABORTED') AND (SELECT COUNT(*) FROM participants WHERE session_id=? AND status='active')<?",params:[nonce,sessionId,current.stateVersion,sessionId,cap]},insert('participants',['id','session_id','nickname','display_name_norm','token_digest','token_expires_at','status','joined_at','last_seen_at'],[id,sessionId,nickname,nickname.normalize('NFKC').trim().toLocaleLowerCase('en'),tokenDigest,expiresAt,'active',now,now],guard),...this.eventStatements(sessionId,nonce,current.latestSeq+1,current.stateVersion+1,'member.joined',{participantId:id},now)];
+    const members=(await this.getSession(sessionId)).members;const occupied=new Set(members.map(m=>json(avatarFor(m.id,m.avatar))));
+    let avatar=avatarFor(id);for(let attempt=1;occupied.has(json(avatar))&&attempt<100;attempt++)avatar=avatarFor(id+':'+attempt);
+    const statements:SqlStatement[]=[{sql:"UPDATE sessions SET state_version=state_version+1,latest_seq=latest_seq+1,last_mutation_id=? WHERE id=? AND state_version=? AND join_locked=0 AND state NOT IN ('SESSION_COMPLETED','SESSION_ABORTED') AND (SELECT COUNT(*) FROM participants WHERE session_id=? AND status='active')<?",params:[nonce,sessionId,current.stateVersion,sessionId,cap]},insert('participants',['id','session_id','nickname','display_name_norm','token_digest','token_expires_at','status','joined_at','last_seen_at'],[id,sessionId,nickname,nickname.normalize('NFKC').trim().toLocaleLowerCase('en'),tokenDigest,expiresAt,'active',now,now],guard),...this.eventStatements(sessionId,nonce,current.latestSeq+1,current.stateVersion+1,'member.joined',{participantId:id,avatar},now)];
     const result=await this.db.batch(statements);
     if(!result[0].changes){const duplicate=await this.findPlayer(sessionId,tokenDigest);if(duplicate)return {participantId:duplicate.id};const latest=(await this.db.query('SELECT join_locked FROM sessions WHERE id=?',[sessionId])).rows[0];if(latest?.join_locked)throw new DomainError('JOIN_LOCKED','The host has locked joining.',409);const count=Number((await this.db.query("SELECT COUNT(*) AS n FROM participants WHERE session_id=? AND status='active'",[sessionId])).rows[0].n);if(count>=cap)throw new DomainError('ROOM_FULL','This room has reached its player limit.',409);throw conflict();}
     return {participantId:id};
@@ -190,7 +196,7 @@ export class SqlStore implements Store {
       statements.push(...this.scoreStatements(data.awards,sessionId,nonce,now));
     }
     for(const round of data.quiz.rounds){const voided=data.voidRoundIds.includes(round.id);if(voided!==original.voidRoundIds.includes(round.id))statements.push({sql:`UPDATE session_rounds SET voided=? WHERE session_id=? AND round_id=? AND ${guard.sql}`,params:[Number(voided),sessionId,round.id,...guard.params]});}
-    statements.push(...this.eventStatements(sessionId,nonce,seq,version,output.eventType,{state:s.state,roundIndex:s.roundIndex},now),insert('audit_logs',['id','actor_id','session_id','action','target_id','detail','created_at'],[crypto.randomUUID(),principalId,sessionId,output.audit?.action??output.eventType,output.audit?.targetId??sessionId,json({...(output.audit?.detail??{}),stateVersion:version,roundIndex:s.roundIndex}),now],guard),insert('mutation_receipts',['session_id','principal_id','idempotency_key','result_json','created_at'],[sessionId,principalId,mutationId,json(output.result??null),now],guard));
+    statements.push(...this.eventStatements(sessionId,nonce,seq,version,output.eventType,{...output.eventPayload,state:s.state,roundIndex:s.roundIndex},now),insert('audit_logs',['id','actor_id','session_id','action','target_id','detail','created_at'],[crypto.randomUUID(),principalId,sessionId,output.audit?.action??output.eventType,output.audit?.targetId??sessionId,json({...(output.audit?.detail??{}),stateVersion:version,roundIndex:s.roundIndex}),now],guard),insert('mutation_receipts',['session_id','principal_id','idempotency_key','result_json','created_at'],[sessionId,principalId,mutationId,json(output.result??null),now],guard));
     const result=await this.db.batch(statements);
     if(!result[0].changes){const duplicate=await this.receipt<T>(sessionId,principalId,mutationId);if(duplicate.found)return duplicate.result!;throw conflict();}
     return output.result;

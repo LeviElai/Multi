@@ -1,4 +1,5 @@
 import { DomainError, HostActionSchema, SubmitSchema, WordGuessSchema } from '../../../packages/contracts/src/index';
+import {avatarFor,type Avatar} from '../../../packages/contracts/src/avatar';
 import type { Ack, Adjudication, Award, HostAction, Leader, Principal, SessionData, SessionRecord, SessionState, Snapshot } from '../../../packages/contracts/src/index';
 import type { Store, MutationResult } from '../../../packages/db/src/types';
 import { normalizeAnswer, publicQuestionProjection, sanitizeAndValidateSubmission, scoreRound, validateWordGuess, wordFeedback } from '../../../packages/game-modes/src/index';
@@ -73,6 +74,15 @@ export function leaderboardProjection(data: SessionData, currentAlreadyRevealed 
 export class GameEngine {
   constructor(readonly store: Store, private readonly clock: Clock = () => Date.now(), private readonly options: EngineOptions = {}) {}
 
+  async updateAppearance(principal:Principal,id:string,avatar:Avatar,key:string){
+    return this.store.mutate(id,undefined,principal.id,key,data=>{
+      assertPrincipal(data,principal);
+      if(principal.role!=='player')throw new DomainError('FORBIDDEN','Only players can edit their own look.',403);
+      if(data.session.state!=='LOBBY')throw new DomainError('GAME_STARTED','The game has started. Your saved look is ready.',409);
+      return {data,result:{avatar},eventType:'member.look.'+principal.id,eventPayload:{avatar}};
+    });
+  }
+
   async createSession(hostId: string, versionId: string, key: string): Promise<{ sessionId: string; pin: string }> {
     if (!key || key.length > 128) throw new DomainError('IDEMPOTENCY_KEY_REQUIRED', 'A unique action key is required.', 400);
     const id = await idempotentId('session', hostId, key);
@@ -132,7 +142,7 @@ export class GameEngine {
       const latestReveal = await this.store.db.query<{ payload: string }>("SELECT payload FROM session_events WHERE session_id = ? AND type = 'round.revealed' ORDER BY seq DESC LIMIT 1", [id]);
       if (latestReveal.rows[0]) abortedAfterReveal = JSON.parse(latestReveal.rows[0].payload).roundIndex === data.session.roundIndex;
     }
-    const leaderboard = leaderboardProjection(data, abortedAfterReveal);
+    const leaderboard = leaderboardProjection(data, abortedAfterReveal).map(p=>({...p,avatar:data.members.find(m=>m.id===p.participantId)?.avatar??avatarFor(p.participantId)}));
     const effective=data.session.state==='PAUSED'?data.pausedPhase??'ROUND_ACTIVE':data.session.state;
     const phase=effective==='ROUND_REVEAL'?'reveal':effective==='INTERMISSION'?'placements':'play';
     const result: Snapshot = { automatic:data.automatic,phase,phaseId:round?.id+':'+phase,finishedCount:round ? finishedPlayers(data).size : 0,id, title: data.quiz.title, theme: data.quiz.theme, role: principal.role, state: data.session.state, stateVersion: data.session.stateVersion, serverTime: new Date(this.clock()).toISOString(), latestSeq: data.session.latestSeq, deadlineAt: data.session.deadlineAt, pausedRemainingMs: data.session.pausedRemainingMs, roundIndex: data.session.roundIndex, roundCount: data.quiz.rounds.length, round: round ? publicQuestionProjection(round) : null, joinLocked: data.session.joinLocked, members: principal.role === 'host' ? data.members : data.members.filter((member) => member.status === 'active'), ownAttempts, answerCount: answered.size, solvedCount: solved.size, leaderboard, maxPlayers: data.session.maxPlayers };

@@ -3,7 +3,7 @@ export type SqlValue=string|number|null;
 export interface SqlStatement {sql:string;params?:SqlValue[]}
 export interface SqlResult<T=Record<string,unknown>> {rows:T[];changes:number}
 export interface SqlDatabase {query<T=Record<string,unknown>>(sql:string,params?:SqlValue[]):Promise<SqlResult<T>>;batch(statements:SqlStatement[]):Promise<SqlResult[]>;dialect:'sqlite'|'postgres'}
-export type MutationResult<T>={data:SessionData;result:T;eventType:string;audit?:{action:string;targetId?:string;detail:Record<string,unknown>}};
+export type MutationResult<T>={data:SessionData;result:T;eventType:string;eventPayload?:Record<string,unknown>;audit?:{action:string;targetId?:string;detail:Record<string,unknown>}};
 export interface Store {
   db:SqlDatabase;
   ensureUser(externalId:string,displayName:string):Promise<{id:string;displayName:string}>;

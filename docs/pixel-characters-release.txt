@@ -1,0 +1,67 @@
+MULTIGAME: characters, compact controls and integrated results
+
+Characters
+One original layered SVG renderer and one PlayerIdentity component serve lobby,
+waiting feedback, score bars, grouped answers, visualizations, standings and the
+approved final podium. Options include 8 skin tones, 8 hairstyles, 6 hair colors,
+10 shirt patterns, 8 shirt colors, 8 lower-body variants, 6 faces, 12 accessories
+including none, and 5 shoe colors. Winner crowns are a temporary podium status.
+
+Initial looks are generated from stable identity and stored with the existing
+atomic join event. Assignment avoids occupied configurations in the room. Older
+members use a version-one deterministic fallback. Lobby edits are validated on
+the server and persist in ordered room events, with no new database table.
+Only a player's credential can edit that player's look; extra target identity
+fields are rejected. Once the host starts, edits are rejected and the editor
+unmounts with the last saved look. Deployment compatibility hides the edit button
+until the backend returns appearance data.
+
+Interface
+Each game now has an instrument/material surface, compact instructions, a clear
+primary action, visible sending state, and server-confirmed lock feedback. Guess
+uses a two-page board on wide screens and stacked controls on phones. Individual
+word guesses resolve without locking the entire round. Size uses a larger stage,
+a fixed reference/camera, a midpoint starting size and visual controls; the demo
+is explicitly labeled as calibration because its prompt supplies a measurement.
+
+One results scene retains the question, personal result, mode visualization and
+total standings together. Think groups include actual characters, counts,
+validity and points; unaccepted/missing answers are separate. Estimate uses a
+linear/log scale as appropriate, with clustered character markers for nearby
+guesses and readable individual values. Zero/negative values use a linear scale.
+Size retains its overlay and identifies closest results. Count uses bounded
+container fills plus numeric differences. Guess summarizes solve progress,
+exhaustion, timeout and missing guesses. There are no Answer/Placements tabs or
+Advanced disclosure hiding the main visualization.
+
+The server's 3-second reveal, 10-second placements, pause/resume/skip and final
+podium flow are unchanged. Legacy manual rooms keep their host pacing. Ties use
+the existing competition ranking policy. Long lists scroll to the current player;
+sorting keys and animation identity remain player IDs. Submission animations and
+sound are deduplicated, and resumed snapshots do not replay accepted word rows.
+Short ambient details reuse the existing worlds. Mute persists, hidden tabs stop
+decorative activity, reduced motion is respected, and low-core/save-data devices
+receive fewer particles. See art-and-audio.txt for asset provenance.
+
+Verification before release
+109 unit/integration tests passed, including identity bounds/diversity, all 576
+hair/face/hat combinations, pixel rectangle bounds, winner-crown exclusion,
+appearance persistence through database reopen, synchronization and authorization.
+Three HTTP/WebSocket lifecycle tests passed, including ten-player play and recovery.
+TypeScript and optimized Next.js production build passed.
+The extended automatic-session script passed locally with three isolated player
+cookie sessions through all five modes, appearance edits, authorization failures,
+hidden-answer checks, pause/resume, reconnection and actual characters on the podium.
+Browser review exercised lobby editing/save/cancel, keyboard Escape/focus return,
+mute persistence, two-attempt Guess solving, multiplayer estimate/rare/size/count
+inputs and locks, shared/unique answers, ties, zero-score results, paused reveal,
+standings and final podium. Responsive review used a 390 x 844 viewport and a
+64-character visual matrix. Screenshots are retained in the task outputs folder.
+
+Limits
+Browser UI review and isolated HTTP sessions are distinct checks; this was not
+three simultaneous physical-device browser sessions. No physical-phone or
+subjective speaker/headphone mix verification was performed. The code-level
+animation/reduced-motion checks do not certify every OS/browser combination.
+Existing informational Supabase index/RLS notices are unrelated to this release.
+Production deployment and live verification are reported in the delivery.

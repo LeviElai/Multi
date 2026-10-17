@@ -1,0 +1,17 @@
+MULTIGAME character and sound assets
+
+The character system is original deterministic SVG artwork on a 32 by 40 integer
+pixel grid. It uses modular skin, hair, face, clothing, hats and shoes. Artwork
+is generated locally by PlayerIdentity.tsx; no external character images, branded
+characters, runtime image-generation service or downloaded sprite packs are used.
+Crowns are a temporary winner status and are not a selectable accessory.
+
+The sound palette is original Web Audio oscillator synthesis in apps/web/lib/audio.ts.
+There are no downloaded audio files or new audio-license dependencies. Mode pitch
+variations share the existing short chip melodies. Per-event deduplication,
+voice limits, persistent mute and hidden-tab silence apply. No new background
+music was added. Existing pixel backgrounds and canonical mode logos are retained.
+
+CSS ambient fish, gears, pages, material patterns and conveyor details are authored
+in the repository. Reduced motion disables decorative animation; hidden tabs pause
+it, and low-core/save-data devices receive fewer ambient particles.

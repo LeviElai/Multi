@@ -14,7 +14,7 @@ export const RoundClock = memo(function RoundClock({ deadline, pausedMs, offset,
     useEffect(() => { setNow(Date.now()); if (paused)
         return; const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, [deadline, paused]);
     const remaining = remainingSeconds(deadline, pausedMs, offset, now);
-    useEffect(()=>{if(!paused && remaining>0 && remaining<=5 && variant!=='track')playCue('tick');},[remaining,paused,variant]);
+    useEffect(()=>{if(!paused&&remaining===3&&variant!=='track')playCue('tick',undefined,String(deadline)+':countdown');},[remaining,paused,variant,deadline]);
     if (variant === 'track')
         return <div className="timer-track"><span style={{ transform: `scaleX(${Math.min(1, remaining / duration)})` }}/></div>;
     if (variant === 'countdown')
