@@ -1,5 +1,5 @@
 'use client';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { PublicRound, Round } from '../../../../packages/contracts/src/index';
 import { Shape } from '../ModeArt';
 import { playCue } from '../../lib/audio';
@@ -15,7 +15,8 @@ export function ScaleStage({ round, ratio, truth, onRatio, personalComparison=tr
     }>['publicConfig'];
     const span = (c.calibration.end - c.calibration.start) / c.calibration.intrinsicDimension;
     // Camera is fixed by published bounds, never by the player's current value.
-    const unit = Math.min(140, 230 / Math.max(1, c.maxRatio / span));
+    const fittedUnit=Math.min(140,230/Math.max(1,c.maxRatio/span));
+    const [unit,setUnit]=useState(()=>Math.min(110,Math.max(42,fittedUnit))); 
     const points = useRef(new Map<number, {
         x: number;
         y: number;
@@ -50,8 +51,10 @@ export function ScaleStage({ round, ratio, truth, onRatio, personalComparison=tr
         const pixelsPerUnit = unit / span * rect.width / 420;
         update(start.current.ratio + (c.axis === 'height' ? start.current.y - e.clientY : e.clientX - start.current.x) / Math.max(1, pixelsPerUnit));
     } }} onPointerUp={e => end(e.pointerId)} onPointerCancel={() => points.current.clear()} onLostPointerCapture={e => end(e.pointerId)}>
+ <div className="scale-camera" onPointerDown={e=>e.stopPropagation()}><button type="button" aria-label="Zoom size stage in" disabled={unit>=140} onClick={()=>setUnit(v=>Math.min(140,v*1.4))}>+</button><button type="button" aria-label="Zoom size stage out" disabled={unit<=Math.min(10,fittedUnit)} onClick={()=>setUnit(v=>Math.max(Math.min(10,fittedUnit),v/1.4))}>−</button></div>
  <svg viewBox="0 0 420 320" role="img" aria-label={`${c.referenceLabel}: ${c.referenceSize} ${c.unit}. ${c.targetLabel}: ${ratio.toFixed(2)} times reference${truth !== undefined ? `; correct ${truth.toFixed(2)}` : ''}. Fixed ${c.axis} scale.`}><defs><pattern id={'grid-' + round.id} width="21" height="21" patternUnits="userSpaceOnUse"><path d="M21 0H0V21" fill="none" stroke="#b7d7d525"/></pattern></defs><rect width="420" height="290" fill={'url(#grid-' + round.id + ')'}/><line x1="20" x2="400" y1="265" y2="265" stroke="#87aaa5"/>
  <g transform={`translate(${95 - unit / 2},${265 - unit}) scale(${unit / 100})`}><Shape asset={c.referenceAsset ?? "block"} fill="#8db5b2"/></g><path d={`M${85 - unit / 2},${265 - unit}h-6v${unit}h6`} stroke="#badad2" fill="none"/>
  {target(ratio)}{truth !== undefined && target(truth, true)}<text x="95" y="303" textAnchor="middle" fill="#d8e5dc" fontSize="18">{c.referenceLabel.slice(0, 23)}</text><text x="300" y="303" textAnchor="middle" fill="#f2d8bd" fontSize="18">{c.targetLabel.slice(0, 23)}</text></svg>
+ {ratio*unit/span>235&&<small className="scale-offscreen">Object beyond the frame · zoom out to see it all.</small>}
  <p>{truth !== undefined ? !personalComparison?`Answer: ${truth.toFixed(2)} times reference`:`Your size ${ratio.toFixed(2)}× · correct ${truth.toFixed(2)}× · difference ${Math.abs(ratio - truth).toFixed(2)}×` : onRatio ? `Drag ${c.axis === 'height' ? 'up or down' : 'left or right'} to resize. Pinch with two fingers.` : `Compare the marked ${c.axis}.`}</p></div>;
 }

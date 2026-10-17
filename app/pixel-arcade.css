@@ -81,3 +81,15 @@ html:has(.game-preview),html:has(.game-shell){scroll-behavior:auto!important}
 .world-fish .ambient-fish{display:block}.world-draw .ambient-page{display:block}.world-crack .ambient-gear,.world-stack .ambient-gear,.world-claw .ambient-gear{display:block}
 .world-drop .ambient-world i{animation-name:carnival-glint}.world-sling .ambient-world i{animation-name:grove-leaf}.world-draw .ambient-world i{animation-name:paper-mote}@keyframes carnival-glint{0%,70%,100%{opacity:.15}75%,90%{opacity:.65}}@keyframes grove-leaf{from{transform:translate(0,-8px);opacity:0}30%{opacity:.45}to{transform:translate(20px,30px);opacity:0}}@keyframes paper-mote{50%{transform:translateY(-12px);opacity:.4}}
 @media(prefers-reduced-motion:reduce){.ambient-world *{animation:none!important}}
+
+.claw-controls .claw-arrow:nth-child(2){grid-column:3;grid-row:1}.claw-controls .btn-primary{grid-column:2;grid-row:1}.suggested-game-copy{flex:1;min-width:0}.suggested-game-copy strong{font-size:17px}.suggested-game-copy p{margin:8px 0}.suggested-game-copy small{font-size:11px;color:#53645c}.compatible-games{flex-basis:100%;width:100%}.question-game-choice{flex-wrap:wrap}.question-game-choice>.text-link{align-self:center}.arcade-game .recognized-number{display:block;font-size:23px;margin-bottom:8px}.arcade-game .recognition-status{min-height:52px}
+
+.arcade-game .arcade-locked{color:#294650!important;background:#e0edbe;border:2px solid #819b77;font-weight:700}
+
+.world-fish .ambient-fish{width:18px;height:8px;background:#7cadad;clip-path:polygon(0 0,20% 25%,65% 0,100% 50%,65% 100%,20% 75%,0 100%);top:19%;left:-40px;animation:reef-fish 43s linear infinite;opacity:.35}.world-fish .fish-two{top:68%;animation-delay:-18s;animation-duration:61s;background:#ce9f94}
+.world-draw .ambient-page{left:3%;top:25%;width:10px;height:14px;background:#e6d0a3;border-right:2px solid #a98871;animation:drift-page 28s steps(24,end) infinite;opacity:.3}.world-claw .ambient-gear,.world-crack .ambient-gear,.world-stack .ambient-gear{right:3%;bottom:18%;width:22px;height:22px;border:5px dashed #c2b685;animation:workshop-gear 34s steps(12,end) infinite;opacity:.25}
+.arcade-claw .arcade-locked{animation:collection-confirm 3.2s step-end}@keyframes collection-confirm{from{opacity:0}to{opacity:1}}
+
+.scale-stage{position:relative}.scale-camera{position:absolute;right:8px;top:8px;z-index:3;display:flex;gap:6px}.scale-camera button{width:44px;height:44px;font-size:22px;border:2px solid #80a39d;background:#18384b;color:#fff1d0;touch-action:manipulation}.scale-offscreen{display:block;text-align:center;color:#ffdc9b;font-size:11px;padding:8px}.question-game-choice{display:flex!important;gap:14px;align-items:center}.question-game-choice .compatible-games{display:block}.suggested-game-copy p{font-size:12px}
+
+.phase-placements .reveal-draw>header{display:none}.phase-placements .reveal-draw .number-notes{max-width:420px;margin:12px auto}.phase-placements .reveal-draw article{padding:14px}

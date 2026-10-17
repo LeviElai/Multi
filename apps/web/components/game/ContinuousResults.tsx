@@ -26,7 +26,7 @@ export default function ContinuousResults({snapshot:s}:{snapshot:Snapshot}){
  return <section ref={root} className={'continuous-results sequence-results step-'+step+(standings?' phase-placements':' phase-reveal')} aria-label="Round results">
  <header className="phase-heading"><div><PixelSprite kind={r.mode}/><span>{standings?'Round results':step==='answer'?'Answer':step==='comparison'?(s.participantId?'You':'Answers'):'Points'}</span></div><div className="phase-countdown"><span>{s.automatic===false?'Waiting for host':s.state==='PAUSED'?'Paused':standings?'Next round in':s.roundIndex===s.roundCount-1?'Podium in':'Standings in'}</span>{s.automatic!==false&&<RoundClock deadline={s.deadlineAt} pausedMs={s.pausedRemainingMs} paused={s.state==='PAUSED'} offset={offset} duration={standings?10:5.5}/>}</div></header>
  <h2 className="result-question">{r.question}</h2>
- {(!standings)&&<RoundVisualization snapshot={s} compare={compare}/>}
+ {(!standings||(r.mode==='draw'&&s.participantId))&&<RoundVisualization snapshot={s} compare={compare}/>}
  {standings&&<div className="compact-outcome"><small>{r.mode==='rare_answers'?'Outcome':'Answer'}</small><strong>{r.mode==='rare_answers'?`${s.reveal?.groups?.length??0} valid groups`:format(truth)+(r.mode==='size_it_up'?' times reference':s.reveal?.unit?' '+s.reveal.unit:'')}</strong></div>}
  {s.participantId&&compare&&<div className="comparison-strip"><span><small>You</small><strong>{format(submitted)}{submitted!==undefined&&r.mode==='size_it_up'?'\u00d7':''}</strong></span><span className="comparison-reason">{reason}</span></div>}
  {!standings&&step==='points'&&own&&<div className={"points-award "+(freshPoints?"fresh-award":"")} role="status">+{format(own.roundPoints)} <small>points</small></div>}
