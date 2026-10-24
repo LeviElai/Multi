@@ -63,7 +63,7 @@ test(`HTTP + Socket.IO: ${scenario.players} players, ${scenario.arcade?'eleven':
     await call('/api/auth/logout','POST',{},hostCookie,403,{Origin:'https://attacker.invalid'});
     const demo=scenario.arcade?getArcadeQuiz():(await call<QuizInput>('/api/v1/demo')).data;
     // This lifecycle fixture preserves the legacy Crack policy; deduction-v1 has clock-controlled regression coverage.
-    for(const round of demo.rounds)if(round.mode==='crack')delete round.publicConfig.crackScoring;
+    for(const round of demo.rounds){if(round.mode==='crack')delete round.publicConfig.crackScoring;if(round.mode==='fish')delete round.publicConfig.fishScoring;}
     const created=(await call<{id:string;revision:number}>('/api/v1/quizzes','POST',demo,hostCookie,201)).data;
     const version=(await call<{id:string}>(`/api/v1/quizzes/${created.id}/publish`,'POST',{expectedRevision:created.revision},hostCookie,201)).data;
     const room=(await call<{sessionId:string;pin:string}>('/api/v1/sessions','POST',{quizVersionId:version.id},hostCookie,201)).data;

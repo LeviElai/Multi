@@ -33,7 +33,7 @@ export function sanitizeArcade(r:ArcadeRound,p:Record<string,unknown>):Submissio
   return {value:v as number,...(ink?.success?{ink:ink.data}:{})};
  }
  if(r.mode==='drop'){if(p.choiceId!=='true'&&p.choiceId!=='false')invalid('Choose True or False.');return {choiceId:p.choiceId as string};}
- if(['claw','sling','fish'].includes(r.mode)&&c.kind!=='multiple'){if(typeof p.choiceId!=='string'||!c.options.some(o=>o.id===p.choiceId))invalid('Choose an answer from this round.');return {choiceId:p.choiceId as string};}
+ if(['claw','sling','fish'].includes(r.mode)&&(c.kind!=='multiple'||c.fishScoring==='catch-v1')){if(typeof p.choiceId!=='string'||!c.options.some(o=>o.id===p.choiceId))invalid('Choose an answer from this round.');return {choiceId:p.choiceId as string};}
  if(c.kind==='multiple'||c.kind==='list'){
   if(!Array.isArray(p.choices)||!p.choices.length||p.choices.length>30||p.choices.some(x=>typeof x!=='string'||x.length>100))invalid('Enter your selected answers.');
   const choices=(p.choices as string[]).map(x=>x.trim());
@@ -57,5 +57,6 @@ export function scoreArcade(r:ArcadeRound,p:Submission['payload']):{points:numbe
  else if(c.kind==='list'){const expected=String(s.answer).split('|').map(normalizeAnswer).sort();const actual=(p.choices??[]).map(normalizeAnswer).sort();correct=c.requiredCount!==undefined?actual.length===c.requiredCount&&actual.every(v=>expected.includes(v)):JSON.stringify(actual)===JSON.stringify(expected);n=correct?1000:0;}
  else {correct=[String(s.answer),...s.acceptedAlternatives].some(a=>normalizeAnswer(a)===normalizeAnswer(p.text??''));n=correct?1000:0;}
  if(r.mode==='crack'&&c.crackScoring==='deduction-v1')n=correct&&p.locked?points(p.crackPoints??0):0;
+ if(r.mode==='fish'&&c.fishScoring==='catch-v1'){n=points(p.fishPoints??0);correct=(p.fishCatches??0)>0;selected=`${p.fishCatches??0} catches`;}
  return {points:n,selected,correct,...(p.value!==undefined?{value:p.value}:{})};
 }

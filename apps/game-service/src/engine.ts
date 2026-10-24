@@ -1,3 +1,4 @@
+import {fishCast} from '../../../packages/game-modes/src/fish';
 import {crackGuess} from '../../../packages/game-modes/src/crack';
 import {READING_MS,REVEAL_MS} from '../../../packages/contracts/src/timing';
 import { DomainError, HostActionSchema, SubmitSchema, WordGuessSchema } from '../../../packages/contracts/src/index';
@@ -297,11 +298,13 @@ export class GameEngine {
       if (round.mode === 'word_puzzle') throw new DomainError('INVALID_MODE', 'Submit a word attempt for this round.', 422);
       const previous = data.submissions.find((item) => item.roundId === input.roundId && item.participantId === player.id);
       if (previous && input.revision <= previous.revision) throw new DomainError('STALE_SUBMISSION', 'Your newer acknowledged answer is already saved.', 409, { serverRevision: previous.revision });
+      const fishing=round.mode==='fish'&&round.publicConfig.fishScoring==='catch-v1';
       const deduction=round.mode==='crack'&&round.publicConfig.crackScoring==='deduction-v1';
-      if (previous && ((!deduction && round.mode !== 'amountle' && !round.allowRevision) || previous.payload.locked)) throw new DomainError('ANSWER_LOCKED', 'Your answer is already locked.', 409);
+      if (previous && ((!fishing && !deduction && round.mode !== 'amountle' && !round.allowRevision) || previous.payload.locked)) throw new DomainError('ANSWER_LOCKED', 'Your answer is already locked.', 409);
       const payload = sanitizeAndValidateSubmission(round, input.payload);
       if (round.mode === 'amountle' && previous && (payload.count ?? 0) < (previous.payload.count ?? 0)) throw new DomainError('REMOVAL_DISABLED', 'This round only permits adding to your count.', 422);
       let crackAck:Partial<Ack>={};
+      if(fishing){const result=fishCast(round,payload.choiceId!,previous,now,Date.parse(data.session.deadlineAt!));Object.assign(payload,result.payload);crackAck=result.ack;}
       if(deduction){
         const result=crackGuess(round,payload.value!,previous,now,Date.parse(data.session.deadlineAt!));
         Object.assign(payload,result.payload);crackAck=result.ack;
@@ -427,6 +430,7 @@ function finishedPlayers(data:SessionData):Set<string>{
  return new Set(data.members.filter(m=>m.status==='active').filter(m=>{
   if(round.mode==='word_puzzle'){const a=data.attempts.filter(a=>a.roundId===round.id&&a.participantId===m.id);return a.some(a=>a.solved)||a.length>=round.publicConfig.maxAttempts;}
   const sub=data.submissions.find(s=>s.roundId===round.id&&s.participantId===m.id);
+  if(round.mode==='fish'&&round.publicConfig.fishScoring==='catch-v1')return false;
   if(round.mode==='crack'&&round.publicConfig.crackScoring==='deduction-v1')return sub?.payload.locked===true;
   return !!sub&&(sub.payload.locked===true||(round.mode!=='amountle'&&!round.allowRevision));
  }).map(m=>m.id));

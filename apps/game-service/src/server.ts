@@ -219,7 +219,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
     if(aiTicking||draining||maintenance)return;
     const now=Date.now();if(now<nextAiCheck&&now<nextCompaction)return;aiTicking=true;const wake=aiWake;
     try{
-      if(now>=nextCompaction){nextCompaction=now+3600000;await compactTemporaryData(store);}
+      if(now>=nextCompaction){nextCompaction=now+3600000;try{await compactTemporaryData(store);}catch(error){log('temporary_cleanup_failed',{errorType:error instanceof Error?error.name:'unknown',code:typeof (error as {code?:unknown})?.code==='string'?(error as {code:string}).code:'unknown'});}}
       if(aiEnabled&&now>=nextAiCheck){const worked=await runGenerationWorker(store,(input,onUsage)=>geminiGenerate(input,environment.GEMINI_API_KEY!,environment.GEMINI_MODEL,onUsage));nextAiCheck=aiWake!==wake?0:Date.now()+(worked?1000:30000);}else if(!aiEnabled)nextAiCheck=now+30000;
     }catch(error){nextAiCheck=Date.now()+30000;log('generation_worker_failed',{errorType:error instanceof Error?error.name:'unknown'});}finally{aiTicking=false;}
   },1500);aiTimer.unref();

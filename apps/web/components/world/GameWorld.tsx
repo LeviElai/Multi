@@ -9,7 +9,7 @@ export const GAME_WORLDS: Record<ModeId, { name: string; cue: string; color: str
   claw:{name:'Moonlight Arcade',cue:'Move the claw. Grab your answer.',color:'#f6b4d0'},
   drop:{name:'Starlight Carnival',cue:'Left is True. Right is False.',color:'#c6b4ff'},
   sling:{name:'The Acorn Range',cue:'Pull back, aim, then release.',color:'#bde597'},
-  fish:{name:'The Coral Garden',cue:'Choose your answer, then reel it in.',color:'#7de1ce'},
+  fish:{name:'The Coral Garden',cue:'Catch the correct fish.',color:'#7de1ce'},
   stack:{name:'Cloudtop Construction',cue:'Build a number with blocks.',color:'#ffc778'},
   crack:{name:'The Clockwork Vault',cue:'Find the code. Open the vault.',color:'#a8bcea'},
   answer:{name:'The Answer Desk',cue:'Check your answers, then lock.',color:'#a8bcea'},

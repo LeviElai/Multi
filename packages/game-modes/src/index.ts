@@ -100,7 +100,7 @@ export function sanitizeAndValidateSubmission(round: Round, payload: unknown): S
       || ![Object.prototype, null].includes(Object.getPrototypeOf(payload))) invalid('Submit a valid answer object.');
   const fields = payload as Record<string, unknown>;
   if(isArcade(round)){
-    const allowed=['locked',...(round.mode==='draw'?['value','ink']:['stack','crack'].includes(round.mode)?['value']:round.mode==='fish'&&round.publicConfig.kind==='multiple'?['choices']:round.mode==='drop'||['fish','sling','claw'].includes(round.mode)?['choiceId']:round.publicConfig.kind==='multiple'||round.publicConfig.kind==='list'?['choices']:['text'])];
+    const allowed=['locked',...(round.mode==='draw'?['value','ink']:['stack','crack'].includes(round.mode)?['value']:round.mode==='fish'&&round.publicConfig.kind==='multiple'&&round.publicConfig.fishScoring!=='catch-v1'?['choices']:round.mode==='drop'||['fish','sling','claw'].includes(round.mode)?['choiceId']:round.publicConfig.kind==='multiple'||round.publicConfig.kind==='list'?['choices']:['text'])];
     if(Object.keys(fields).some(k=>!allowed.includes(k))||(fields.locked!==undefined&&typeof fields.locked!=='boolean'))invalid('This answer contains unsupported fields.');
     return {...sanitizeArcade(round,fields),...(fields.locked===undefined?{}:{locked:fields.locked as boolean})};
   }
@@ -163,7 +163,12 @@ export function scoreRound(data: SessionData, round: Round): { awards: Award[]; 
     const submission = latest.get(member.id);
     if (!submission) return;
     try {
-      if(round.mode==='crack'&&round.publicConfig.crackScoring==='deduction-v1'){
+      if(round.mode==='fish'&&round.publicConfig.fishScoring==='catch-v1'){
+        const {fishPoints,fishCatches,fishCycles,fishFeedback,...input}=submission.payload;
+        const clean=sanitizeAndValidateSubmission(round,input);
+        if(!Number.isInteger(fishPoints)||fishPoints!<0||fishPoints!>1000||!Number.isInteger(fishCatches)||fishCatches!<0||fishPoints!>fishCatches!*100)throw new Error('Invalid fishing record');
+        canonical.set(member.id,{...clean,fishPoints,fishCatches});
+      }else if(round.mode==='crack'&&round.publicConfig.crackScoring==='deduction-v1'){
         // These fields are written by the engine, never accepted by SubmitSchema.
         const {crackAttempts,crackPoints,crackHint,...input}=submission.payload;
         const clean=sanitizeAndValidateSubmission(round,input);

@@ -25,3 +25,11 @@ test('malformed successful responses cannot masquerade as signed-out identities'
  }
  globalThis.fetch=async()=>Response.json({data:null});assert.equal(await api('/me'),null);
 });
+
+test('service readiness retries transient GET failures but never credentials',async t=>{
+ const {waitForService}=await import('../../apps/web/lib/service-ready');
+ const original=globalThis.fetch;t.after(()=>globalThis.fetch=original);let calls=0;
+ globalThis.fetch=async path=>{assert.equal(path,'/api/v1/features');return ++calls===1?Response.json({error:{message:'Starting',code:'SERVICE_UNAVAILABLE'}},{status:503}):Response.json({data:{auth:'credentials'}});};
+ assert.equal((await waitForService()).auth,'credentials');assert.equal(calls,2);
+ const controller=new AbortController();controller.abort();await assert.rejects(waitForService(controller.signal));assert.equal(calls,2);
+});

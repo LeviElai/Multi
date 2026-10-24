@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowRight, KeyRound, UserPlus } from 'lucide-react';
 import { Header, Footer } from './Brand';
-import { api } from '../lib/api';
+import {waitForService} from '../lib/service-ready';
 import {creatorDestination,signInCreator} from '../lib/creator-session';
 import type { Features } from '../../../packages/contracts/src/index';
 
@@ -17,14 +17,18 @@ export default function CreatorLogin() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const sending=useRef(false);
+  const [connectionAttempt,setConnectionAttempt]=useState(0);
   useEffect(() => {
     const next = new URLSearchParams(location.search).get('return_to');
     setDestination(creatorDestination(next));
-    api<Features>('/features').then(f => setProvider(f.auth ?? 'chatgpt')).catch(() => setError('Could not reach sign-in. Refresh to try again.'));
-  }, []);
+    const controller=new AbortController();setError('');
+    waitForService(controller.signal).then(f => setProvider(f.auth ?? 'chatgpt')).catch(() => {if(!controller.signal.aborted)setError('The game server is taking too long to start. Please try again.');});
+    return()=>controller.abort();
+  }, [connectionAttempt]);
   async function submit(e: React.FormEvent) {
     e.preventDefault(); if(sending.current)return; sending.current=true;setBusy(true); setError('');
     try {
+      await waitForService();
       await signInCreator(register,{email,password,displayName:name});
       location.assign(destination);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not sign in.'); setBusy(false);sending.current=false; }
@@ -41,8 +45,8 @@ export default function CreatorLogin() {
         <label className="field"><span>Password</span><input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete={register ? 'new-password' : 'current-password'} minLength={register ? 12 : undefined} maxLength={128} required/>{register && <small>At least 12 characters.</small>}</label>
         <button className="btn btn-primary" disabled={busy}>{register ? <UserPlus size={17}/> : <KeyRound size={17}/>} {busy ? 'Opening the workshop…' : register ? 'Create account' : 'Sign in'} <ArrowRight size={17}/></button>
       </form>
-    </> : !error && <p role="status">Opening sign-in…</p>}
-    {error && <p className="notice error" role="alert">{error}</p>}
+    </> : !error && <p role="status">Connecting to the game server…</p>}
+    {error && <div className="notice error" role="alert">{error}{!provider&&<button className="btn btn-outline" onClick={()=>setConnectionAttempt(n=>n+1)}>Try again</button>}</div>}
     <Link href="/join" className="text-link auth-guest-link">Here to play? Join with a PIN →</Link>
   </main><Footer/></>;
 }

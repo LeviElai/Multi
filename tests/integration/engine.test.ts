@@ -5,13 +5,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { NodeSqliteDatabase } from '../../packages/db/src/sqlite';
 import { SqlStore } from '../../packages/db/src/store';
-import { getDemoQuiz, getDefaultRound } from '../../packages/game-modes/src/index';
+import { getDemoQuiz as currentDemoQuiz, getDefaultRound } from '../../packages/game-modes/src/index';
 import { DomainError, type HostAction, type Principal, type QuizInput } from '../../packages/contracts/src/index';
 import { GameEngine } from '../../apps/game-service/src/engine';
 import { handleApi } from '../../apps/game-service/src/api';
 import { digestToken } from '../../apps/game-service/src/security';
 import {avatarFor} from '../../packages/contracts/src/avatar';
 
+// Existing lifecycle expectations explicitly exercise published legacy Fish rules.
+function getDemoQuiz(){const quiz=currentDemoQuiz();for(const r of quiz.rounds)if(r.mode==='fish')delete r.publicConfig.fishScoring;return quiz;}
 const PIN_SECRET = 'integration-test-only-pin-key-32-bytes';
 
 test('characters persist through restart and synchronize without granting editing rights to other roles',async t=>{
@@ -585,4 +587,23 @@ test('Crack deduction accepts repeated guesses, persists attempts, and scores on
  f.advance(1000);await assert.rejects(submit(1946,201),isCode('ANSWER_LOCKED'));
  await f.action('LOCK');await f.engine.reconcile();
  assert.equal((await f.engine.snapshot(player,id)).ownPoints,solved.potentialPoints);
+});
+
+test('timed fishing persists server catches, rejects replay and keeps the round open',async t=>{
+ const round=getDefaultRound('fish');if(round.mode!=='fish')throw Error('Fish');
+ const f=await fixture(t,{...getDemoQuiz(),rounds:[round]},3,true);await f.action('START');f.advance(8000);await f.engine.reconcile();
+ const player=f.members[0].principal,id=f.room.sessionId;
+ const snapshot=await f.engine.snapshot(player,id);
+ const start=Date.parse(snapshot.deadlineAt!)-round.timerSeconds*1000;
+ const elapsed=Date.parse(snapshot.serverTime)-start;
+ f.advance((1200-elapsed%3600+3600)%3600);
+ const mutation=key();const submit=(revision:number,clientMutationId=key(),payload:Record<string,unknown>={choiceId:'b'})=>f.engine.submit(player,id,{roundId:round.id,clientMutationId,revision,payload});
+ const first=await submit(1,mutation);assert.equal(first.fishPoints,100);assert.equal(first.fishCatches,1);
+ assert.deepEqual(await submit(1,mutation),first);
+ await assert.rejects(submit(2),isCode('CAST_TOO_SOON'));
+ await assert.rejects(submit(3,key(),{choiceId:'b',fishPoints:1000}));
+ await f.restart();f.advance(3600);const second=await submit(4);assert.equal(second.fishPoints,200);
+ assert.equal((await f.engine.snapshot(player,id)).finishedCount,0);
+ assert.equal((await f.engine.snapshot(f.members[1].principal,id)).ownSubmission,undefined);
+ await f.action('LOCK');await f.engine.reconcile();assert.equal((await f.engine.snapshot(player,id)).ownPoints,200);
 });
