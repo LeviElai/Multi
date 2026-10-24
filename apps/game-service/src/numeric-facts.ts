@@ -16,7 +16,7 @@ export const NUMERIC_FACTS = [
 export const NUMERIC_MODES = new Set(['fermi','amountle','draw','stack','crack']);
 export function eligibleNumericFacts(topic:string,difficulty:string,mode?:string){
  const words=topic.toLowerCase().match(/[a-z]+/g)??[];
- const general=words.some(w=>['general','numbers','trivia','everything'].includes(w));
+ const general=words.length>0&&words.every(w=>['general','numbers','trivia','everything','knowledge','facts','quiz'].includes(w));
  return NUMERIC_FACTS.filter(f=>(general||words.some(w=>w.length>2&&f.tags.split(' ').includes(w)))
   &&(difficulty==='mixed'||f.difficulty===difficulty)
   &&(mode!=='amountle'||f.answer<=1000));
