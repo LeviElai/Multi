@@ -11,7 +11,7 @@ export const GAME_WORLDS: Record<ModeId, { name: string; cue: string; color: str
   sling:{name:'The Acorn Range',cue:'Pull back, aim, then release.',color:'#bde597'},
   fish:{name:'The Coral Garden',cue:'Choose your answer, then reel it in.',color:'#7de1ce'},
   stack:{name:'Cloudtop Construction',cue:'Build a number with blocks.',color:'#ffc778'},
-  crack:{name:'The Clockwork Vault',cue:'Turn the wheels. Lock your code.',color:'#a8bcea'},
+  crack:{name:'The Clockwork Vault',cue:'Find the code. Open the vault.',color:'#a8bcea'},
   answer:{name:'The Answer Desk',cue:'Check your answers, then lock.',color:'#a8bcea'},
   size_it_up: { name: 'The Measuring Room', cue: 'Drag to resize. Match the reference.', color: '#bde597' },
   amountle: { name: 'The Drop Shop', cue: 'Tap for one. Hold for a stream.', color: '#ffc778' },
