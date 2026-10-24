@@ -16,7 +16,7 @@ test('invented IDs, overridden facts, unrelated topics and unsupported difficult
  assert.throws(()=>decodeGeneration(wire({factId:'made-up'}),input));
  assert.throws(()=>decodeGeneration(wire({factId:'gold-number',answer:80}),input));
  assert.throws(()=>decodeGeneration(wire({factId:'gold-number'}),{...input,topic:'Space'}));
- assert.throws(()=>generationPlan({...input,topic:'Football'}),/No verified/);
+ assert.throws(()=>generationPlan({...input,topic:'Football'}),/No verified|Not enough verified/);
  assert.ok(eligibleNumericFacts('Science','easy').every(f=>f.difficulty==='easy'));
  assert.ok(eligibleNumericFacts('Science','mixed','amountle').every(f=>f.answer<=1000));
 });

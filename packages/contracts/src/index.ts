@@ -10,7 +10,7 @@ export const MODE_META: Record<ModeId,{name:string;verb:string;color:string;desc
   claw:{name:'Claw',verb:'Pick your prize',color:'#f6b4d0',description:'Move the claw and grab your answer.',symbol:'⌁'},
   drop:{name:'Drop',verb:'Choose your landing',color:'#c6b4ff',description:'Drop a ball into True or False.',symbol:'●'},
   sling:{name:'Sling',verb:'Ready, aim, answer',color:'#bde597',description:'Pull back and launch at your answer.',symbol:'Y'},
-  fish:{name:'Fish',verb:'Catch your answer',color:'#7de1ce',description:'Tap the fish carrying your answer.',symbol:'⋊'},
+  fish:{name:'Fish',verb:'Catch your answer',color:'#7de1ce',description:'Choose your answer, then reel it in.',symbol:'⋊'},
   stack:{name:'Stack',verb:'Build your answer',color:'#ffc778',description:'Drop numbered blocks to build your total.',symbol:'▤'},
   crack:{name:'Crack',verb:'Unlock the vault',color:'#a8bcea',description:'Turn the digit wheels and lock in your code.',symbol:'▣'},
   answer:{name:'Question setup',verb:'Finish your question',color:'#a8bcea',description:'Add an answer and choices to find a game.',symbol:'?'},

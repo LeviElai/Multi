@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { io, type Socket } from 'socket.io-client';
+import {getArcadeQuiz} from '../../packages/game-modes/src/fixtures';
 import type { Snapshot, QuizInput, Round } from '../../packages/contracts/src/index';
 
 const publicOrigin='http://localhost:4001';
@@ -42,7 +43,8 @@ async function command<T>(socket:Socket,event:string,payload:unknown):Promise<En
   return new Promise((resolve,reject)=>{socket.timeout(8000).emit(event,payload,(error:Error|null,result:Envelope<T>)=>error?reject(error):resolve(result));});
 }
 
-test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash recovery', {timeout:90000},async()=>{
+for(const scenario of [{players:10,arcade:false},{players:3,arcade:true}])
+test(`HTTP + Socket.IO: ${scenario.players} players, ${scenario.arcade?'eleven':'five'} modes, authorization and process-crash recovery`, {timeout:120000},async()=>{
   const directory=await mkdtemp(join(tmpdir(),'multigame-node-e2e-'));
   const environment:NodeJS.ProcessEnv={...process.env,NODE_ENV:'test',AUTOMATIC_FLOW:'0',DATABASE_URL:'',SQLITE_PATH:join(directory,'session.sqlite'),AUTO_MIGRATE:'1',PORT:'0',HOST:'127.0.0.1',PUBLIC_ORIGIN:publicOrigin,PIN_PEPPER:randomBytes(32).toString('hex'),AUTH_BOOTSTRAP_EMAIL:'host@example.test',AUTH_BOOTSTRAP_PASSWORD:'local-test-password-strong',AUTH_BOOTSTRAP_NAME:'Test Host'};
   let runtime=await launch(environment);const sockets:Socket[]=[];
@@ -59,7 +61,7 @@ test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash
     const loggedIn=await call('/api/auth/login','POST',{email:'host@example.test',password:environment.AUTH_BOOTSTRAP_PASSWORD});
     assert.match(loggedIn.response.headers.get('set-cookie')??'',/HttpOnly/);const hostCookie=loggedIn.cookie;
     await call('/api/auth/logout','POST',{},hostCookie,403,{Origin:'https://attacker.invalid'});
-    const demo=(await call<QuizInput>('/api/v1/demo')).data;
+    const demo=scenario.arcade?getArcadeQuiz():(await call<QuizInput>('/api/v1/demo')).data;
     const created=(await call<{id:string;revision:number}>('/api/v1/quizzes','POST',demo,hostCookie,201)).data;
     const version=(await call<{id:string}>(`/api/v1/quizzes/${created.id}/publish`,'POST',{expectedRevision:created.revision},hostCookie,201)).data;
     const room=(await call<{sessionId:string;pin:string}>('/api/v1/sessions','POST',{quizVersionId:version.id},hostCookie,201)).data;
@@ -68,7 +70,7 @@ test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash
     const first=await call<{participantId:string}>('/api/v1/sessions/join','POST',{pin:room.pin,nickname:'Ada'},'',201);
     const second=await call<{participantId:string}>('/api/v1/sessions/join','POST',{pin:room.pin,nickname:'Bo'},'',201);
     const participants=[first,second];
-    for(let index=2;index<10;index++)participants.push(await call<{participantId:string}>('/api/v1/sessions/join','POST',{pin:room.pin,nickname:`Player ${index+1}`},'',201));
+    for(let index=2;index<scenario.players;index++)participants.push(await call<{participantId:string}>('/api/v1/sessions/join','POST',{pin:room.pin,nickname:`Player ${index+1}`},'',201));
     const host=await connect(runtime.url,room.sessionId,hostCookie,'host');sockets.push(host.socket);
     let player=await connect(runtime.url,room.sessionId,first.cookie,'player');sockets.push(player.socket);
     for(const participant of participants.slice(1))sockets.push((await connect(runtime.url,room.sessionId,participant.cookie,'player')).socket);
@@ -85,6 +87,7 @@ test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash
       do {const current=await snapshot();if(current.state===state)return current;await new Promise(resolve=>setTimeout(resolve,180));}while(Date.now()<end);
       assert.fail(`Room did not reach ${state}`);
     };
+    let expectedPoints=0;
     await act('START');
     for(let index=0;index<demo.rounds.length;index++) {
       const current=await waitState('ROUND_ACTIVE');const round=demo.rounds[index];
@@ -107,7 +110,7 @@ test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash
         await call(`${sessionPath}/word-guesses`,'POST',{...guess,clientMutationId:randomUUID()},second.cookie);
         for(const participant of participants.slice(2))await call(`${sessionPath}/word-guesses`,'POST',{...guess,clientMutationId:randomUUID()},participant.cookie);
       }else {
-        const answer=(r:Round,participantIndex=0)=>r.mode==='fermi'?{value:r.secretConfig.answer}:r.mode==='fish'?{choiceId:'b'}:r.mode==='size_it_up'?{ratio:r.secretConfig.targetSize/r.publicConfig.referenceSize}:r.mode==='amountle'?{count:r.secretConfig.answer}:{};
+        const answer=(r:Round,participantIndex=0)=>r.mode==='fermi'?{value:r.secretConfig.answer}:['fish','claw','sling'].includes(r.mode)&&'correctOptionIds' in r.secretConfig?{choiceId:r.secretConfig.correctOptionIds[0]}:r.mode==='drop'?{choiceId:String(r.secretConfig.answer)}:r.mode==='size_it_up'?{ratio:r.secretConfig.targetSize/r.publicConfig.referenceSize}:r.mode==='amountle'?{count:r.secretConfig.answer}:['draw','stack','crack'].includes(r.mode)&&'answer' in r.secretConfig?{value:r.secretConfig.answer}:{};
         const submission={roundId:round.id,clientMutationId:randomUUID(),revision:round.mode==='amountle'?8:1,payload:answer(round)};
         const result=await command<{accepted:boolean}>(player.socket,'answer.submit',submission);assert.equal(result.data.accepted,true);
         const repeat=await command(player.socket,'answer.submit',submission);assert.deepEqual(repeat.data,result.data);
@@ -120,12 +123,12 @@ test('HTTP + Socket.IO: ten players, five modes, authorization and process-crash
         }
       }
       await act('LOCK');await waitState('ROUND_SCORED');await act('REVEAL');
-      const revealed=await snapshot(first.cookie);assert.ok(revealed.reveal);assert.equal(revealed.ownPoints,(index+1)*1000-(index>=1?333:0));
+      const revealed=await snapshot(first.cookie);assert.ok(revealed.reveal);expectedPoints+=round.mode==='drop'?500:['fish','claw','sling'].includes(round.mode)?667:1000;assert.equal(revealed.ownPoints,expectedPoints);assert.equal(revealed.roundAwards?.length,scenario.players);
       await act('NEXT');
     }
     const complete=await waitState('SESSION_COMPLETED');
-    assert.equal(complete.leaderboard.length,10);assert.ok(complete.leaderboard.every(row=>row.rank===1));
-    assert.equal(complete.leaderboard[0].nickname,'Ada');assert.equal(complete.leaderboard[0].points,4667);
+    assert.equal(complete.leaderboard.length,scenario.players);assert.ok(complete.leaderboard.every(row=>row.rank===1));
+    assert.equal(complete.leaderboard[0].nickname,'Ada');assert.equal(complete.leaderboard[0].points,scenario.arcade?9501:4667);
     sockets.forEach(socket=>socket.disconnect());await runtime.stop('SIGKILL');runtime=await launch(environment);
     assert.deepEqual((await snapshot()).leaderboard,complete.leaderboard);
     await call('/api/auth/logout','POST',{},hostCookie);

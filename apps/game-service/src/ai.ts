@@ -32,8 +32,8 @@ export async function queueGeneration(store:Store,owner:string,key:string,input:
  if(job.status==='rejected')throw new DomainError('AI_QUOTA','You have no room for that many questions this month. Try a smaller quiz.',429);
  return jobView(job);
 }
-const jobView=(job:Job)=>({id:job.id,status:job.status,quizId:job.quiz_id,message:job.status==='failed'?(job.error_code==='PROVIDER_UNAVAILABLE'?'The question maker is temporarily unavailable. Your credits were returned.':job.error_code==='TIMEOUT'?'The request took too long. Your credits were returned.':'The draft did not pass the game checks. Your credits were returned. Try a narrower topic or fewer game types.'):undefined});
-function failureCode(error:unknown){const message=error instanceof Error?error.message:'';return /timeout|abort|Incomplete generation/i.test(message)?'TIMEOUT':/Provider status|fetch failed/i.test(message)?'PROVIDER_UNAVAILABLE':error instanceof z.ZodError?('ANSWER_FORMAT:'+error.issues.slice(0,3).map(i=>i.path.join('.')+':'+i.code).join(',')).slice(0,240):'GAME_CHECK';}
+const jobView=(job:Job)=>({id:job.id,status:job.status,quizId:job.quiz_id,message:job.status==='failed'?(job.error_code==='NO_VERIFIED_FACTS'?'There are not enough verified number facts for this topic and difficulty yet. Your credits were returned. Try fewer questions about science, history or general trivia.':job.error_code==='PROVIDER_UNAVAILABLE'?'The question maker is temporarily unavailable. Your credits were returned.':job.error_code==='TIMEOUT'?'The request took too long. Your credits were returned.':'The draft did not pass the game checks. Your credits were returned. Try a narrower topic or fewer game types.'):undefined});
+function failureCode(error:unknown){const message=error instanceof Error?error.message:'';return /No verified numerical|Not enough verified/i.test(message)?'NO_VERIFIED_FACTS':/timeout|abort|Incomplete generation/i.test(message)?'TIMEOUT':/Provider status|fetch failed/i.test(message)?'PROVIDER_UNAVAILABLE':error instanceof z.ZodError?('ANSWER_FORMAT:'+error.issues.slice(0,3).map(i=>i.path.join('.')+':'+i.code).join(',')).slice(0,240):'GAME_CHECK';}
 export async function generationStatus(store:Store,owner:string,id:string){const job=(await store.db.query<Job>('SELECT * FROM creator_generations WHERE id=? AND owner_id=?',[id,owner])).rows[0];if(!job)throw new DomainError('NOT_FOUND','This generation is unavailable.',404);return jobView(job);}
 
 // Structured, bounded output; the model cannot select IDs, provenance, URLs or execute tools.
@@ -71,6 +71,7 @@ export function validatedGeneration(value:unknown,input:GenerationRequest):QuizI
 export type TokenUsage={input:number;output:number;model:string};
 export type RecordUsage=(usage:TokenUsage)=>Promise<void>;
 export function generationPlan(input:GenerationRequest){
+ if(input.modes.every(mode=>NUMERIC_MODES.has(mode))&&new Set(input.modes.flatMap(mode=>eligibleNumericFacts(input.topic,input.difficulty,mode).map(f=>f.id))).size<input.count)throw new Error('Not enough verified numerical facts for this request');
  const rules:Record<GenerationRequest['modes'][number],string>={
   fermi:'',
   amountle:'',
