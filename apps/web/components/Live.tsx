@@ -85,6 +85,7 @@ export default function Live({ id, role = 'player', displayToken }: {
     catch (e) {
         if (serial !== requestId.current)
             return;
+        if(role==='host'&&e instanceof ApiError&&e.status===401){location.replace('/login?return_to='+encodeURIComponent(location.pathname));return;}
         failed.current = true;
         setConnected(false);
         setError(e instanceof Error ? e.message : 'Connection interrupted.');

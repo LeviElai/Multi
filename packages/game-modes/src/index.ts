@@ -162,7 +162,16 @@ export function scoreRound(data: SessionData, round: Round): { awards: Award[]; 
   if (!skipped && round.mode !== 'word_puzzle') members.filter(member => member.status === 'active').forEach(member => {
     const submission = latest.get(member.id);
     if (!submission) return;
-    try { canonical.set(member.id, sanitizeAndValidateSubmission(round, submission.payload)); }
+    try {
+      if(round.mode==='crack'&&round.publicConfig.crackScoring==='deduction-v1'){
+        // These fields are written by the engine, never accepted by SubmitSchema.
+        const {crackAttempts,crackPoints,crackHint,...input}=submission.payload;
+        const clean=sanitizeAndValidateSubmission(round,input);
+        const ceiling=Math.max(1,Math.round(1000*.8**((crackAttempts??1)-1)));
+        if(!Number.isInteger(crackAttempts)||crackAttempts!<1||!Number.isInteger(crackPoints)||crackPoints!<0||crackPoints!>ceiling)throw new Error('Invalid Crack record');
+        canonical.set(member.id,{...clean,crackAttempts,crackPoints});
+      }else canonical.set(member.id, sanitizeAndValidateSubmission(round, submission.payload));
+    }
     catch { invalidIds.add(member.id); }
   });
   const awards = members.map(member => ({

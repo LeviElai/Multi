@@ -6,6 +6,7 @@ import {playCue} from '../../lib/audio';
 import SlingGame from './SlingGame';
 import ClawMachine from './ClawMachine';
 import FishGame from './FishGame';
+import CrackGame from './CrackGame';
 import {holdRoundAnimation,useTimeline,COMMIT_MS} from './physical-motion';
 import {plinkoPath,PLINKO_PEGS,type PlinkoPoint} from '../../../../packages/game-modes/src/physical';
 
@@ -15,7 +16,7 @@ export default function ArcadePlayer(p:Props){
  const c=p.round.publicConfig as Config;
  if(p.round.mode==='answer')return <p className="notice">This question needs a supported game. Ask the host to update it.</p>;
  return <section className={'arcade-game arcade-'+p.round.mode} aria-label={p.round.mode+' game'}>
- {p.round.mode==='sling'?<Sling {...p} c={c}/>:p.round.mode==='claw'?<Claw {...p} c={c}/>:p.round.mode==='draw'?<Draw {...p} c={c}/>:p.round.mode==='stack'?<Stack {...p} c={c}/>:p.round.mode==='crack'?<Crack {...p} c={c}/>:p.round.mode==='drop'?<Drop {...p}/>:<Choice {...p} c={c}/>}
+ {p.round.mode==='sling'?<Sling {...p} c={c}/>:p.round.mode==='claw'?<Claw {...p} c={c}/>:p.round.mode==='draw'?<Draw {...p} c={c}/>:p.round.mode==='stack'?<Stack {...p} c={c}/>:p.round.mode==='crack'?(c.crackScoring==='deduction-v1'?<CrackGame config={c} initial={p.initial} disabled={p.disabled} busy={p.busy} send={p.send}/>:<Crack {...p} c={c}/>):p.round.mode==='drop'?<Drop {...p}/>:<Choice {...p} c={c}/>}
  </section>;
 }
 function useCommit(p:Props){

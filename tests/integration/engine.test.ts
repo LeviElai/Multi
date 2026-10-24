@@ -566,3 +566,23 @@ test('automatic skip during reading awards zero once and continues without a hos
  f.advance(5500);await f.engine.reconcile();assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).phase,'placements');f.advance(10000);await f.engine.reconcile();const next=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.equal(next.phase,'reading');assert.equal(next.roundIndex,1);
  assert.equal((await f.store.getSession(f.room.sessionId)).awards.length,2);
 });
+
+test('Crack deduction accepts repeated guesses, persists attempts, and scores only the server-confirmed solve',async t=>{
+ const round=getDefaultRound('crack');if(round.mode!=='crack')throw new Error('Crack');round.secretConfig.answer=1945;
+ const f=await fixture(t,{...getDemoQuiz(),rounds:[round]},3,true);await f.action('START');f.advance(8000);await f.engine.reconcile();
+ const player=f.members[0].principal,id=f.room.sessionId;
+ const submit=(value:number,revision:number,mutation=key())=>f.engine.submit(player,id,{roundId:round.id,clientMutationId:mutation,revision,payload:{value}});
+ const mutation=key(),first=await submit(1000,1,mutation);assert.equal(first.direction,'higher');assert.equal(first.attempt,1);assert.equal(first.solved,false);
+ assert.deepEqual(await submit(1000,1,mutation),first);
+ await assert.rejects(submit(2000,2),isCode('GUESS_TOO_SOON'));
+ f.advance(750);const second=await submit(2000,99);assert.equal(second.direction,'lower');assert.equal(second.attempt,2);assert.ok(second.potentialPoints!<first.potentialPoints!);
+ await f.restart();f.advance(750);await assert.rejects(submit(2000,100),isCode('DUPLICATE_GUESS'));
+ for(let n=3;n<=12;n++){f.advance(750);assert.equal((await submit(1000+n,100+n)).attempt,n);}
+ const unsolved=await f.engine.snapshot(player,id);assert.equal(unsolved.finishedCount,0);assert.equal(unsolved.ownSubmission?.payload.crackAttempts,12);
+ const other=await f.engine.snapshot(f.members[1].principal,id);assert.equal(other.ownSubmission,undefined);
+ await assert.rejects(f.engine.submit(player,id,{roundId:round.id,clientMutationId:key(),revision:150,payload:{value:1945,crackPoints:1000}}));
+ f.advance(750);const solved=await submit(1945,200);assert.equal(solved.solved,true);assert.equal(solved.attempt,13);assert.ok(solved.potentialPoints!>0&&solved.potentialPoints!<100);
+ f.advance(1000);await assert.rejects(submit(1946,201),isCode('ANSWER_LOCKED'));
+ await f.action('LOCK');await f.engine.reconcile();
+ assert.equal((await f.engine.snapshot(player,id)).ownPoints,solved.potentialPoints);
+});

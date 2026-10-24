@@ -1,9 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowRight, KeyRound, UserPlus } from 'lucide-react';
 import { Header, Footer } from './Brand';
 import { api } from '../lib/api';
+import {creatorDestination,signInCreator} from '../lib/creator-session';
 import type { Features } from '../../../packages/contracts/src/index';
 
 export default function CreatorLogin() {
@@ -15,24 +16,25 @@ export default function CreatorLogin() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const sending=useRef(false);
   useEffect(() => {
     const next = new URLSearchParams(location.search).get('return_to');
-    if (next?.startsWith('/') && !next.startsWith('//') && !next.includes('\\')) setDestination(next);
+    setDestination(creatorDestination(next));
     api<Features>('/features').then(f => setProvider(f.auth ?? 'chatgpt')).catch(() => setError('Could not reach sign-in. Refresh to try again.'));
   }, []);
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setError('');
+    e.preventDefault(); if(sending.current)return; sending.current=true;setBusy(true); setError('');
     try {
-      await api('/api/auth/' + (register ? 'register' : 'login'), { method: 'POST', body: JSON.stringify({ email, password, displayName: name }) });
+      await signInCreator(register,{email,password,displayName:name});
       location.assign(destination);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not sign in.'); setBusy(false); }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not sign in.'); setBusy(false);sending.current=false; }
   }
   return <><Header/><main className="page login-page">
     <span className="eyebrow">THE CREATOR WORKSHOP</span>
-    <h1>{register ? 'Make room for play.' : 'Your next game starts here.'}</h1>
+    <h1>{register ? 'Create account' : 'Sign in'}</h1>
     <p>Save your quizzes and host a room. Your players only need a PIN.</p>
     {provider === 'chatgpt' ? <a className="btn btn-primary" href={'/signin-with-chatgpt?return_to=' + encodeURIComponent(destination)} target="_top">Continue with ChatGPT <ArrowRight size={17}/></a> : provider === 'credentials' ? <>
-      <div className="auth-tabs" aria-label="Creator account"><button aria-pressed={!register} onClick={() => {setRegister(false);setError('');}}>Sign in</button><button aria-pressed={register} onClick={() => {setRegister(true);setError('');}}>Create account</button></div>
+      <div className="auth-tabs" aria-label="Creator account"><button disabled={busy} aria-pressed={!register} onClick={() => {setRegister(false);setError('');}}>Sign in</button><button disabled={busy} aria-pressed={register} onClick={() => {setRegister(true);setError('');}}>Create account</button></div>
       <form onSubmit={submit}>
         {register && <label className="field"><span>Your name</span><input value={name} onChange={e => setName(e.target.value)} autoComplete="nickname" maxLength={60} required/></label>}
         <label className="field"><span>Email</span><input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" maxLength={254} required/></label>

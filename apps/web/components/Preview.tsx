@@ -1,4 +1,5 @@
 'use client';
+import {crackGuess} from '../../../packages/game-modes/src/crack';
 import {isArcade} from '../../../packages/game-modes/src/arcade';
 import { newId } from '../../../packages/contracts/src/id';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
@@ -141,6 +142,7 @@ function PracticeRound({ quiz, round, base, onScore, onNext }: {
             const clean = sanitizeAndValidateSubmission(round, input);
             if (round.mode === 'amountle' && (clean.count ?? 0) < (payload.current.count ?? 0))
                 throw new Error('Removal is disabled.');
+            if(round.mode==='crack'&&round.publicConfig.crackScoring==='deduction-v1'){const result=crackGuess(round,clean.value!,submission,Date.parse(now),Date.parse(deadline!));Object.assign(clean,result.payload);extra=result.ack;}
             payload.current = clean;
             setSubmission({ id: newId(), roundId: round.id, participantId: people[0].id, clientMutationId: newId(), revision: 1, payload: clean, acceptedAt: now });
             if (clean.locked)

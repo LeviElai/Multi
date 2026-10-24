@@ -10,7 +10,7 @@ export function getDefaultRound(mode: ModeId): Round {
   if(['draw','claw','drop','sling','fish','stack','crack','answer'].includes(mode))return {
     ...common,mode:mode as 'draw',allowRevision:false,question:mode==='drop'?'An octopus has three hearts.': ['fish','claw','sling'].includes(mode)?'What is the capital of France?':'How many sides does a hexagon have?',
     scoringPolicy:'exact',questionType:mode==='drop'?'boolean':'single',
-    publicConfig:{unit:'',min:0,max:99999999,step:1,tolerance:100,codeLength:4,blockValues:[1,5,10,25],kind:mode==='drop'?'boolean':['fish','claw','sling'].includes(mode)?'choice':mode==='answer'?'text':'number',options:['fish','claw','sling'].includes(mode)?[{id:'a',label:'Rome'},{id:'b',label:'Paris'},{id:'c',label:'Berlin'}]:[]},
+    publicConfig:{...(mode==='crack'?{crackScoring:'deduction-v1' as const}:{}),unit:'',min:0,max:99999999,step:1,tolerance:100,codeLength:4,blockValues:[1,5,10,25],kind:mode==='drop'?'boolean':['fish','claw','sling'].includes(mode)?'choice':mode==='answer'?'text':'number',options:['fish','claw','sling'].includes(mode)?[{id:'a',label:'Rome'},{id:'b',label:'Paris'},{id:'c',label:'Berlin'}]:[]},
     secretConfig:{answer:mode==='drop'?true:['fish','claw','sling','answer'].includes(mode)?'Paris':6,acceptedAlternatives:[],correctOptionIds:['fish','claw','sling'].includes(mode)?['b']:[]}
   } as Round;
   switch (mode) {

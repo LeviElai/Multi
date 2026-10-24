@@ -1,0 +1,7 @@
+.vault{display:grid;gap:16px;padding:18px;border:5px solid #9bb0b0;background:#28495a;box-shadow:inset 0 0 0 3px #172f40;color:#fff0c7}
+.meter{display:flex;justify-content:space-between;gap:10px;font-size:13px;flex-wrap:wrap}.meter strong{color:#ffe29a}
+.label{display:grid;gap:10px;text-align:center;font-weight:bold}
+.label input{box-sizing:border-box;width:100%;min-width:0;border:3px solid #b5c2b3;background:#102d3d;color:#ffe5a1;text-align:center;font:32px monospace;letter-spacing:.15em;padding:16px 5px;min-height:72px;border-radius:0}
+.label input:focus-visible{outline:3px solid #ffdc8c;outline-offset:3px}
+.feedback{min-height:36px;text-align:center;line-height:1.4;font-size:14px;color:#d4edca}
+@media(max-width:380px){.vault{padding:12px;gap:10px}.label input{font-size:26px;padding:10px 4px}.feedback{font-size:12px}}

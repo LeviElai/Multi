@@ -56,5 +56,6 @@ export function scoreArcade(r:ArcadeRound,p:Submission['payload']):{points:numbe
  else if(c.kind==='multiple'){correct=JSON.stringify([...(p.choices??[])].sort())===JSON.stringify([...s.correctOptionIds].sort());const chosen=new Set(p.choices??[]),hits=s.correctOptionIds.filter(id=>chosen.has(id)).length,wrong=[...chosen].filter(id=>!s.correctOptionIds.includes(id)).length; n=c.selectionScoring==='balanced-v1'?points(1000*Math.max(0,hits/s.correctOptionIds.length-wrong/Math.max(1,c.options.length-s.correctOptionIds.length))):correct?1000:0;selected=c.options.filter(o=>p.choices?.includes(o.id)).map(o=>o.label).join(', ');}
  else if(c.kind==='list'){const expected=String(s.answer).split('|').map(normalizeAnswer).sort();const actual=(p.choices??[]).map(normalizeAnswer).sort();correct=c.requiredCount!==undefined?actual.length===c.requiredCount&&actual.every(v=>expected.includes(v)):JSON.stringify(actual)===JSON.stringify(expected);n=correct?1000:0;}
  else {correct=[String(s.answer),...s.acceptedAlternatives].some(a=>normalizeAnswer(a)===normalizeAnswer(p.text??''));n=correct?1000:0;}
+ if(r.mode==='crack'&&c.crackScoring==='deduction-v1')n=correct&&p.locked?points(p.crackPoints??0):0;
  return {points:n,selected,correct,...(p.value!==undefined?{value:p.value}:{})};
 }
