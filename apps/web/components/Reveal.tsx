@@ -1,7 +1,7 @@
 'use client';
 import type { Snapshot, Leader } from '../../../packages/contracts/src/index';
 import { MODE_META } from '../../../packages/contracts/src/index';
-import { Trophy, ArrowUpRight, Copy, Download, Check } from 'lucide-react';
+import { Trophy, ArrowUpRight, Copy, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { playCue } from '../lib/audio';
 import Link from 'next/link';
@@ -29,10 +29,7 @@ export function Podium({ snapshot: s }: {
         playCue('final',undefined,s.id+':final'); }, [s.state]);
     const [copied, setCopied] = useState(false);
     const own = s.leaderboard.find(p => p.participantId === s.participantId);
-    const winners = s.leaderboard.filter(p => p.rank <= 3);
-    const leader = winners[0];
-    function download() { const title = s.title.replace(/[&<>"']/g, ''); const text = own ? `${own.nickname}: ${own.points} points · rank ${own.rank}` : `${leader?.points ?? 0} winning points`; const safe = text.replace(/[&<>"']/g, ''); const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080"><rect width="1080" height="1080" fill="#e7ed59"/><rect x="50" y="50" width="980" height="980" rx="20" fill="none" stroke="#20211f" stroke-width="4"/><text x="90" y="150" font-family="Arial" font-size="42" font-weight="bold">MULTIGAME</text><text x="90" y="380" font-family="Arial" font-size="85" font-weight="bold">FINAL RESULTS</text><text x="90" y="500" font-family="Arial" font-size="44">${title.slice(0, 32)}</text><text x="90" y="680" font-family="Arial" font-size="38">${safe.slice(0, 45)}</text><text x="90" y="945" font-family="Arial" font-size="26">MULTIGAME</text></svg>`; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); a.download = 'multigame-my-result.svg'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 500); }
-    return <div className="results-view"><FinalStage snapshot={s}/>{own && <p className="personal-result">You finished <strong>#{own.rank}</strong> with <strong>{own.points.toLocaleString('en')}</strong> points.</p>}<div className="results-actions"><Link href="/random" className="btn btn-primary">Play again →</Link><button className="btn btn-dark" onClick={download}><Download size={17}/> Download my result</button><button className="btn btn-outline" onClick={() => { navigator.clipboard.writeText(`${s.title} · ${own ? `I scored ${own.points} points!` : 'Final results'} Played on MULTIGAME.`).then(() => setCopied(true)).catch(() => setCopied(false)); }}>{copied ? <Check size={16}/> : <Copy size={16}/>} {copied ? 'Copied' : 'Copy result text'}</button><Link href="/create" className="btn btn-primary">{s.role === "host" ? "Host another quiz" : "Create a quiz"} <ArrowUpRight size={18}/></Link></div><p className="control-hint">Only share your result if you are comfortable including your nickname.</p><Leaderboard leaders={s.leaderboard} ownId={s.participantId}/></div>;
+    return <div className="results-view"><FinalStage snapshot={s}/>{own && <p className="personal-result">You finished <strong>#{own.rank}</strong> with <strong>{own.points.toLocaleString('en')}</strong> points.</p>}<div className="results-actions"><Link href="/random" className="btn btn-primary">Play again →</Link><button className="btn btn-outline" onClick={() => { navigator.clipboard.writeText(`${s.title} · ${own ? `I scored ${own.points} points!` : 'Final results'} Played on MULTIGAME.`).then(() => setCopied(true)).catch(() => setCopied(false)); }}>{copied ? <Check size={16}/> : <Copy size={16}/>} {copied ? 'Copied' : 'Copy result text'}</button><Link href="/create" className="btn btn-primary">{s.role === "host" ? "Host another quiz" : "Create a quiz"} <ArrowUpRight size={18}/></Link></div><p className="control-hint">Only share your result if you are comfortable including your nickname.</p><Leaderboard leaders={s.leaderboard} ownId={s.participantId}/></div>;
 }
 function RoundDetails({ snapshot: s }: {
     snapshot: Snapshot;

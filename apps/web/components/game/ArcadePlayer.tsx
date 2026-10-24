@@ -5,7 +5,7 @@ import {recognizeNumber,type PenStroke} from '../../../../packages/game-modes/sr
 import {playCue} from '../../lib/audio';
 import SlingGame from './SlingGame';
 import ClawMachine from './ClawMachine';
-import {FishArt} from './FishArt';
+import FishGame from './FishGame';
 import {holdRoundAnimation,useTimeline,COMMIT_MS} from './physical-motion';
 import {plinkoPath,PLINKO_PEGS,type PlinkoPoint} from '../../../../packages/game-modes/src/physical';
 
@@ -31,16 +31,8 @@ function useCommit(p:Props){
 function Sling(p:Props&{c:Config}){const {effect,commit,restored}=useCommit(p);return <SlingGame c={p.c} disabled={p.disabled||p.busy} effect={effect} restored={restored} onCommit={id=>void commit({choiceId:id},id)}/>;}
 function Claw(p:Props&{c:Config}){const {effect,commit,restored}=useCommit(p);return <ClawMachine c={p.c} disabled={p.disabled||p.busy} effect={effect} restored={restored} onCommit={id=>void commit({choiceId:id},id)}/>;}
 function Choice(p:Props&{c:Config}){
- const {c}=p,{effect,commit}=useCommit(p),[catches,setCatches]=useState<string[]>(p.initial?.choices??[]);
- const multiple=c.kind==='multiple',blocked=p.disabled||p.busy||!!effect;
- function toggle(id:string){setCatches(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);playCue('adjust','fish');}
- return <><p className="arcade-instruction">{multiple?'Catch every correct fish. Tap again to let one go.':'Tap the fish carrying your answer.'}</p>
- <div className={'arcade-choice-stage '+(effect?'has-catch':'')} style={{minHeight:Math.max(370,c.options.length*106+50)}}>
- <div className="reef-life" aria-hidden="true"><i/><i/><i/><i/><i/><i/></div><div className="reef-bubbles" aria-hidden="true"><i/><i/><i/></div>
- <div className="arcade-options">{c.options.map((o,i)=><button key={o.id} className={'arcade-option '+(effect===o.id||catches.includes(o.id)?'is-caught':'')} style={{'--lane':i,'--lanes':c.options.length,'--swim-duration':(7+i*.5)+'s'} as CSSProperties} disabled={blocked} aria-pressed={multiple?catches.includes(o.id):undefined} aria-label={'Catch '+o.label} onPointerDown={e=>{if(blocked)return;e.currentTarget.setPointerCapture(e.pointerId);e.currentTarget.style.animationPlayState='paused';}} onPointerUp={e=>{if(blocked||!e.currentTarget.hasPointerCapture(e.pointerId))return;e.currentTarget.releasePointerCapture(e.pointerId);e.currentTarget.style.animationPlayState='';if(multiple)toggle(o.id);else void commit({choiceId:o.id},o.id);}} onPointerCancel={e=>{e.currentTarget.style.animationPlayState='';}} onClick={e=>{if(e.detail===0&&!blocked){if(multiple)toggle(o.id);else void commit({choiceId:o.id},o.id);}}}><span className="answer-creature" aria-hidden="true"><FishArt species={i}/></span><strong>{o.label}</strong>{catches.includes(o.id)&&<span className="catch-word">✓</span>}</button>)}</div></div>
- <div className="fish-answer-guide" aria-label="Fish answers">{c.options.map((o,i)=><span key={o.id}><i style={{background:['#f6aa55','#7dc7bf','#dd91b0','#a1a5e5','#d8cf6c','#79b4d4'][i]}}/>{o.label}</span>)}</div>
- {multiple&&<><div className="catch-basket"><strong>Your catch · {catches.length}</strong>{catches.length?catches.map(id=><button key={id} disabled={blocked} onClick={()=>toggle(id)}>{c.options.find(o=>o.id===id)?.label} ×</button>):<small>Tap fish to add them here.</small>}<small>Correct catches earn points. Wrong catches reduce your score.</small></div><button className="btn btn-primary btn-full" disabled={blocked||!catches.length} onClick={()=>void commit({choices:catches},'caught')}>Reel in {catches.length} fish</button></>}
- {effect&&<p role="status" className="arcade-locked">{multiple?'Your catch':c.options.find(o=>o.id===effect)?.label} · locked</p>}</>;
+ const {effect,commit}=useCommit(p);
+ return <FishGame config={p.c} disabled={p.disabled||p.busy} effect={effect} initial={p.initial} onCommit={commit}/>;
 }
 function Drop(p:Props){
  const {effect,commit,restored}=useCommit(p),ball=useRef<HTMLDivElement>(null),caption=useRef<HTMLSpanElement>(null),position=useRef(p.initial?.choiceId==='false'?75:25),fixed=useRef(!!p.initial?.locked),path=useRef<PlinkoPoint[]>([]),lastPathIndex=useRef(0),lastPeg=useRef<HTMLElement|null>(null);

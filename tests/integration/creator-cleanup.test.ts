@@ -50,13 +50,13 @@ test('failed generation keeps a safe diagnostic and returns credits once',async 
 
 
 test('AI cannot invent Size artwork or leave Count facts implicit',()=>{
- const input=GenerationInput.parse({topic:'football',count:2,modes:['size_it_up','amountle']});
+ const input=GenerationInput.parse({topic:'Science',count:2,modes:['size_it_up','amountle']});
  const quiz=decodeGeneration({title:'Football',questions:[
  {mode:'size_it_up',question:'Resize a football goal.',explanation:'Unsupported model suggestion.',answerData:JSON.stringify({answer:2.44,referenceSize:1.75,asset:'goal',referenceAsset:'person',referenceLabel:'Person',targetLabel:'Goal',unit:'m'})},
- {mode:'amountle',question:'How many players in 7 matches?',explanation:'Assumes an unstated team size.',answerData:JSON.stringify({groups:7,perGroup:22,unit:'players'})}
+ {mode:'amountle',question:'How many players in 7 matches?',explanation:'Assumes an unstated team size.',answerData:JSON.stringify({factId:'gold-number'})}
  ]},input);
  const size=quiz.rounds[0];if(size.mode!=='size_it_up')throw new Error('Size missing');assert.equal(size.publicConfig.asset,'car');assert.equal(size.secretConfig.targetSize,1.5);assert.doesNotMatch(size.question,/goal|1[.,]5/);
- const count=quiz.rounds[1];if(count.mode!=='amountle')throw new Error('Count missing');assert.equal(count.secretConfig.answer,154);assert.match(count.question,/7 groups have 22 players each/);assert.doesNotMatch(count.question,/154/);
+ const count=quiz.rounds[1];if(count.mode!=='amountle')throw new Error('Count missing');assert.equal(count.secretConfig.answer,79);assert.match(count.question,/atomic number of gold/);assert.doesNotMatch(count.question,/79/);
 });
 
 

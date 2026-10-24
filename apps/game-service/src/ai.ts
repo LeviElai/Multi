@@ -1,3 +1,4 @@
+import {NUMERIC_MODES,eligibleNumericFacts} from './numeric-facts';
 import {roundFromAnswer,type QuestionAnswer} from '../../../packages/game-modes/src/question';
 import {curatedWord} from './quiz-words';
 import {normalizeAnswer} from '../../../packages/game-modes/src/shared';
@@ -36,15 +37,20 @@ function failureCode(error:unknown){const message=error instanceof Error?error.m
 export async function generationStatus(store:Store,owner:string,id:string){const job=(await store.db.query<Job>('SELECT * FROM creator_generations WHERE id=? AND owner_id=?',[id,owner])).rows[0];if(!job)throw new DomainError('NOT_FOUND','This generation is unavailable.',404);return jobView(job);}
 
 // Structured, bounded output; the model cannot select IDs, provenance, URLs or execute tools.
-const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),answer:z.union([z.number().finite(),z.string().max(100),z.boolean()]).optional(),options:z.array(z.string().trim().min(1).max(80)).min(2).max(6).optional(),unit:z.string().max(30).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(8)})).min(2).max(32).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
+const generatedSchema=z.object({title:z.string().min(1).max(100),questions:z.array(z.object({mode:z.enum(MODES),question:z.string().min(1).max(250),explanation:z.string().max(320),sourceUrl:z.string().url().optional(),answer:z.union([z.number().finite(),z.string().max(100),z.boolean()]).optional(),options:z.array(z.string().trim().min(1).max(80)).min(2).max(6).optional(),unit:z.string().max(30).optional(),word:z.string().regex(/^[A-Z]{3,12}$/).optional(),answers:z.array(z.object({canonical:z.string().min(1).max(100),aliases:z.array(z.string().max(100)).max(8)})).min(2).max(32).optional(),referenceSize:z.number().positive().optional(),referenceLabel:z.string().max(60).optional(),targetLabel:z.string().max(60).optional(),asset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional(),referenceAsset:z.enum(['tower','bottle','circle','rocket','block','tree','person','car']).optional()})).min(1).max(20)});
 export function validatedGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const parsed=generatedSchema.parse(value);
  if(input.distractorFor){if(input.count!==1||input.modes.length!==1||input.modes[0]!=='fish'||parsed.questions.length!==1||normalizeAnswer(String(parsed.questions[0].answer))!==normalizeAnswer(input.distractorFor.answer))throw new Error('Distractor request changed the correct answer');parsed.questions[0].question=input.distractorFor.question;}
  if(input.count>=input.modes.length&&input.modes.some(mode=>!parsed.questions.some(q=>q.mode===mode)))throw new Error('Missing requested mode');
  if(parsed.questions.length!==input.count)throw new Error('Wrong question count');
+ const fingerprints=new Set<string>();
  const rounds:Round[]=parsed.questions.map(q=>{
+  const fingerprint=normalizeAnswer(q.question).replace(/[^a-z0-9]/g,'');
+  if(fingerprints.has(fingerprint))throw new Error('Duplicate question');
+  fingerprints.add(fingerprint);
+  if(NUMERIC_MODES.has(q.mode)&&/\b(each|per group|altogether|in total|multiply|divided by|times as many)\b|\d\s*[+×*÷]\s*\d/i.test(q.question))throw new Error('Numerical trivia required, not arithmetic');
   if(!input.modes.includes(q.mode))throw new Error('Unrequested mode');
-  const r=getDefaultRound(q.mode);r.id=crypto.randomUUID();r.question=q.mode==='word_puzzle'?q.question.replace(/^Unscramble\b/i,'Find'):q.question;r.explanation=q.explanation;r.provenance='needs_review';
+  const r=getDefaultRound(q.mode);r.id=crypto.randomUUID();r.question=q.mode==='word_puzzle'?q.question.replace(/^Unscramble\b/i,'Find'):q.question;r.explanation=q.explanation;r.provenance='needs_review';r.sourceUrl=q.sourceUrl;
   if(r.mode==='fermi'){if(typeof q.answer!=='number'||q.answer<=0)throw new Error('Numeric answer required');r.secretConfig.answer=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'',max:Math.min(1e15,Math.max(100,q.answer*8)),tolerance:q.answer,step:Number.isInteger(q.answer)?1:0.001};}
   if(r.mode==='amountle'){if(typeof q.answer!=='number'||!Number.isInteger(q.answer)||q.answer<1||q.answer>1000)throw new Error('Count must be 1–1000');r.secretConfig.answer=q.answer;r.publicConfig={...r.publicConfig,unit:q.unit??'items',maxCount:Math.min(10000,Math.max(30,q.answer*2)),tolerance:Math.max(10,q.answer/2)};}
   if(r.mode==='word_puzzle'){if(!q.word)throw new Error('Word required');if(new RegExp('\\b'+q.word+'\\b','i').test(q.question))throw new Error('Clue gives away the word');r.secretConfig.answer=q.word;r.publicConfig.length=q.word.length;}
@@ -66,26 +72,34 @@ export type TokenUsage={input:number;output:number;model:string};
 export type RecordUsage=(usage:TokenUsage)=>Promise<void>;
 export function generationPlan(input:GenerationRequest){
  const rules:Record<GenerationRequest['modes'][number],string>={
-  fermi:'fermi answerData: {"answer":144,"unit":"tiles"}. Positive numeric answer (at most 3 decimals). Use a self-contained estimation puzzle with every needed number in the question, not outside trivia or current tournament formats.',
-  amountle:'amountle answerData: {"groups":6,"perGroup":8,"unit":"sweets"}. Choose two integer factors 2..50, product <=1000, and a short counted noun relevant to the topic. Leave question and explanation empty: the server writes the multiplication puzzle and computes the answer.',
+  fermi:'',
+  amountle:'',
   word_puzzle:'word_puzzle: leave question and explanation empty; answerData is "{}". The server supplies a curated word and clue.',
-  draw:'draw answerData: {"answer":206,"unit":"bones"}. An exact non-negative integer up to 99999999. Use a stable fact or self-contained arithmetic puzzle.',
-  stack:'stack answerData: {"answer":46,"unit":"blocks"}. An exact non-negative integer up to 999999. Use a self-contained arithmetic puzzle.',
-  crack:'crack answerData: {"answer":1945,"unit":"year"}. An exact year or code, non-negative integer up to 99999999.',
+  draw:'',
+  stack:'',
+  crack:'',
   drop:'drop answerData: {"answer":true}. A factual True/False statement, boolean answer, concise explanation. Avoid ambiguous wording.',
   fish:'fish answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once. Verify every distractor is incorrect.',
   claw:'claw answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once.',
   sling:'sling answerData: {"answer":"Paris","options":["Rome","Paris","Berlin"]}. Exactly one correct choice. 2..4 distinct short labels, correct answer present exactly once.',
   size_it_up:'size_it_up: leave question and explanation empty; answerData is "{}". The server supplies a calibrated silhouette puzzle. Do not invent artwork or measurements.'
  };
+ for(const mode of input.modes){if(NUMERIC_MODES.has(mode)){const facts=eligibleNumericFacts(input.topic,input.difficulty,mode);if(!facts.length)throw new Error('No verified numerical facts for this topic and difficulty');rules[mode]=`${mode}: answerData must contain only {"factId":"selected-id"}. Select a distinct fact from this verified bank: ${JSON.stringify(facts.map(({id,question})=>({id,question})))}. Leave question and explanation empty. Never invent a fact ID or reuse a fact.`;}}
  const schema={type:'object',properties:{title:{type:'string'},questions:{type:'array',items:{type:'object',properties:{mode:{type:'string',enum:input.modes},question:{type:'string'},explanation:{type:'string'},answerData:{type:'string'}},required:['mode','question','explanation','answerData']}}},required:['title','questions']};
- const prompt=`Write exactly ${input.count} accurate, fun English quiz questions. Only the selected modes; use each at least once if count permits. Keep every non-Size question relevant to the requested topic. Each answerData is a JSON-encoded object string with the EXACT keys below, using varied new values suitable for the topic; examples demonstrate format only, do not copy them. Questions <=250 characters, explanations <=320 characters with concise reasoning. ${input.modes.map(m=>rules[m]).join(' ')} Use precise nouns and units; do not conflate arms and tentacles or other distinct quantities. Use stable facts or fully specified puzzles, not advice, personal data, offensive or disputed claims or current events. Do not invent sources. Check arithmetic, scope and hidden-word privacy. No extra commentary.`;
+ const prompt=`Write exactly ${input.count} accurate, fun English quiz questions. Only the selected modes; use each at least once if count permits. Keep every non-Size question relevant to the requested topic. Each answerData is a JSON-encoded object string with the EXACT keys below, using varied new values suitable for the topic; examples demonstrate format only, do not copy them. Questions <=250 characters, explanations <=320 characters with concise reasoning. ${input.modes.map(m=>rules[m]).join(' ')} Use precise nouns and units; do not conflate arms and tentacles or other distinct quantities. Use stable factual trivia, never arithmetic worksheets, not advice, personal data, offensive or disputed claims or current events. Do not invent sources. Check arithmetic, scope and hidden-word privacy. No extra commentary.`;
  return {schema,prompt,maxOutputTokens:Math.min(8000,500+input.count*280)};
 }
 export function decodeGeneration(value:unknown,input:GenerationRequest):QuizInput{
  const wire=z.object({title:z.string(),questions:z.array(z.object({mode:z.enum(MODES),question:z.string(),explanation:z.string(),answerData:z.string().max(12000)})).max(20)}).parse(value);
- let sizeIndex=0;const usedWords=new Set<string>();
+ let sizeIndex=0;const usedWords=new Set<string>(),usedFacts=new Set<string>();
  return validatedGeneration({title:wire.title,questions:wire.questions.map(({answerData,...question})=>{
+  if(NUMERIC_MODES.has(question.mode)){
+    const {factId}=z.object({factId:z.string()}).strict().parse(JSON.parse(answerData));
+    const fact=eligibleNumericFacts(input.topic,input.difficulty,question.mode).find(f=>f.id===factId);
+    if(!fact||usedFacts.has(factId))throw new Error('Unverified, unrelated or repeated numerical fact');
+    usedFacts.add(factId);
+    return {mode:question.mode,question:fact.question,answer:fact.answer,unit:fact.unit,explanation:fact.explanation,sourceUrl:fact.sourceUrl};
+  }
   if(question.mode==='size_it_up'){
     // Only shipped artwork and explicit house calibrations can enter a Size draft.
     // Model-suggested objects (e.g. an unsupported football goal) are never trusted.
@@ -103,12 +117,7 @@ export function decodeGeneration(value:unknown,input:GenerationRequest):QuizInpu
     const [word,clue]=curatedWord(input.topic,suggestion,usedWords);
     return {...question,question:clue,explanation:`${word}: ${clue}`,word};
   }
-  const data:unknown=JSON.parse(answerData.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Invalid answer fields');if(question.mode==='amountle'){
-  const factors=z.object({groups:z.number().int().min(2).max(50),perGroup:z.number().int().min(2).max(50),unit:z.string().trim().min(1).max(30)}).parse(data);
-  const answer=factors.groups*factors.perGroup;
-  return {...question,question:`${factors.groups} groups have ${factors.perGroup} ${factors.unit} each. How many ${factors.unit} are there in total?`,explanation:`${factors.groups} x ${factors.perGroup} = ${answer} ${factors.unit}.`,answer,unit:factors.unit};
- }
-  const fields={...data} as Record<string,unknown>;
+  const data:unknown=JSON.parse(answerData.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,''));if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('Invalid answer fields');  const fields={...data} as Record<string,unknown>;
   return {...fields,...question};})},input);
 }
 export async function geminiGenerate(input:GenerationRequest,key:string,model='gemini-3.5-flash-lite',onUsage?:RecordUsage,fetcher:typeof fetch=fetch):Promise<QuizInput>{
