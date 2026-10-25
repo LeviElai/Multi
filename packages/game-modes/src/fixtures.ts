@@ -61,8 +61,10 @@ export function getDemoQuiz(): QuizInput {
 export function getArcadeQuiz():QuizInput{
  const quiz={...getDemoQuiz(),title:'The eleven-game arcade',rounds:MODES.map(getDefaultRound)};
  for(const r of quiz.rounds){
-  if(r.mode==='draw'){r.question='A shelf has 12 boxes with 8 pencils each. How many pencils are there?';r.secretConfig.answer=96;r.publicConfig.unit='pencils';r.explanation='12 × 8 = 96 pencils.';}
-  if(r.mode==='stack'){r.question='A picnic has 7 baskets with 6 apples each. How many apples are there?';r.secretConfig.answer=42;r.publicConfig.unit='apples';r.explanation='7 × 6 = 42 apples.';}
+  if(r.mode==='fermi'){r.question='Approximately how many kilometres is Earth’s equatorial diameter?';r.secretConfig.answer=12756;r.publicConfig={...r.publicConfig,unit:'km',max:100000,tolerance:12756};r.sourceUrl='https://science.nasa.gov/earth/facts/';r.explanation='NASA gives an equatorial diameter of 12,756 km. The polar diameter is different.';}
+  if(r.mode==='amountle'){r.question='What is the atomic number of gold?';r.secretConfig.answer=79;r.publicConfig={...r.publicConfig,unit:'protons',maxCount:160,tolerance:40};r.sourceUrl='https://periodic-table.rsc.org/element/79/Gold';r.explanation='Gold has 79 protons in its nucleus.';}
+  if(r.mode==='draw'){r.question='What is the atomic number of oxygen?';r.secretConfig.answer=8;r.publicConfig.unit='';r.sourceUrl='https://periodic-table.rsc.org/element/8/oxygen';r.explanation='The Royal Society of Chemistry lists atomic number 8.';}
+  if(r.mode==='stack'){r.question='How many countries founded the United Nations in 1945?';r.secretConfig.answer=51;r.publicConfig.unit='countries';r.sourceUrl='https://www.un.org/en/about-us';r.explanation='The United Nations began with 51 member states.';}
   if(r.mode==='crack'){r.question='In what year did World War II end?';r.secretConfig.answer=1945;r.publicConfig.unit='year';r.explanation='World War II ended in 1945.';}
   if(r.mode==='claw'){r.question='Which of these numbers is prime?';r.publicConfig.options=[{id:'a',label:'21'},{id:'b',label:'29'},{id:'c',label:'27'}];r.secretConfig.answer='29';r.explanation='29 has no positive divisors other than 1 and itself.';}
   if(r.mode==='sling'){r.question='Which planet is known as the Red Planet?';r.publicConfig.options=[{id:'a',label:'Venus'},{id:'b',label:'Mars'},{id:'c',label:'Jupiter'}];r.secretConfig.answer='Mars';r.explanation='Iron-rich minerals give Mars its reddish appearance.';}
@@ -74,11 +76,9 @@ export function getArcadeQuiz():QuizInput{
 export function getWorkshopQuiz(): QuizInput {
  const quiz=getArcadeQuiz();quiz.title='The arcade warm-up';quiz.description='A little space, a hidden word, and some unexpected discoveries.';
  for(const r of quiz.rounds){
-  if(r.mode==='fermi'){r.question='Light travels about 300,000 km each second. Roughly how far does it travel in eight minutes?';r.secretConfig.answer=144000000;r.publicConfig={...r.publicConfig,unit:'km',max:1e9,tolerance:144000000};r.explanation='Eight minutes is 480 seconds. 480 × 300,000 = 144 million km.';}
   if(r.mode==='rare_answers'){r.question='Name a living flightless bird. Try to choose one nobody else will.';r.secretConfig.answers=[{canonical:'Penguin',aliases:['penguins','emperor penguin','king penguin']},{canonical:'Ostrich',aliases:['ostriches']},{canonical:'Emu',aliases:['emus']},{canonical:'Kiwi',aliases:['kiwis','kiwi bird']},{canonical:'Cassowary',aliases:['cassowaries']},{canonical:'Rhea',aliases:['rheas']},{canonical:'Kakapo',aliases:['kākāpō','owl parrot']},{canonical:'Takahe',aliases:['takahē','south island takahe']}];r.explanation='This round groups penguin species as Penguin. Ostrich, emu, kiwi, cassowary, rhea, kākāpō and takahē are also in the accepted set. Matching answers share the same score.';r.publicConfig.adjudication='host_review';}
   if(r.mode==='word_puzzle'){r.question='Five letters: flat and even. Read it backwards and it stays the same.';r.secretConfig.answer='LEVEL';r.explanation='LEVEL is a palindrome. Both Ls and both Es count separately.';}
   if(r.mode==='size_it_up'){r.question='A city car beside a 1.75 m ruler. Resize it to the length you would expect.';r.secretConfig.targetSize=4.2;r.publicConfig={...r.publicConfig,axis:'width',referenceSize:1.75,referenceLabel:'1.75 m reference',targetLabel:'City car',asset:'car',referenceAsset:'block',minRatio:0.5,maxRatio:5};r.explanation='Our reference city car is 4.2 m long, or 2.4 times the 1.75 m ruler. Real models vary.';}
-  if(r.mode==='amountle'){r.question='A party has six tables, each with eight guests. Drop one sweet for every guest.';r.secretConfig.answer=48;r.publicConfig={...r.publicConfig,maxCount:120,unit:'sweets'};r.explanation='6 tables × 8 guests = 48 sweets.';}
  }
  return quiz;
 }

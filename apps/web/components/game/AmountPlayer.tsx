@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import type {Round,PublicRound,Submission,Ack} from '../../../../packages/contracts/src/index';
-import {PourQueue} from '../../lib/pour-state';
+import {PourQueue,pourFlow} from '../../lib/pour-state';
 import {Lock} from 'lucide-react';
 import {PourControl} from './PourControl';
 export default function Amount({ round, disabled, initial, send, paused=false }: {round:PublicRound;paused?:boolean;disabled:boolean;busy?:boolean;initial?:number;send:(payload:Submission['payload'])=>Promise<Ack>}) {
@@ -10,7 +10,7 @@ export default function Amount({ round, disabled, initial, send, paused=false }:
     }>['publicConfig'];
     const [, render] = useState(0);
     const [locking,setLocking]=useState(false);
-    const flow=1;
+    const flow=pourFlow(c.maxCount,round.timerSeconds);
     const mounted = useRef(true);
     const sendRef = useRef(send);
     sendRef.current = send;

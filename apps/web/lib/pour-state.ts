@@ -59,3 +59,9 @@ export function pourRepresentation(count: number) {
 export function holdPourTotal(elapsedMs:number,flow=1) {
   return elapsedMs<300?1:1+(1+Math.floor((elapsedMs-300)/100))*flow;
 }
+
+/** Reach even large configured ranges within a round; taps always add one.
+ * Uses the public range, never the secret answer. */
+export function pourFlow(maxCount:number,seconds:number):number {
+ return Math.max(1,Math.ceil(maxCount/(Math.max(10,seconds)*8)));
+}

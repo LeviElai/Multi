@@ -42,3 +42,12 @@ test('hold pouring is elapsed-time based and catches delayed frames without chan
  assert.equal(holdPourTotal(300),2);assert.equal(holdPourTotal(2500),24);
  assert.equal(holdPourTotal(299,100),1);assert.equal(holdPourTotal(500,100),301);
 });
+
+test('large ranges remain reachable with hold while short taps keep single-unit precision',async()=>{
+ const {pourFlow,holdPourTotal}=await import('../../apps/web/lib/pour-state');
+ for(const max of [100,1000,10000])for(const seconds of [10,40,90]){
+  const flow=pourFlow(max,seconds);
+  assert.equal(holdPourTotal(100,flow),1);
+  assert.ok(holdPourTotal(seconds*1000-500,flow)>=max);
+ }
+});
