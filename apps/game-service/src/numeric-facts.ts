@@ -1,6 +1,6 @@
 /** Editorial facts checked against the linked primary sources on 2026-10-24.
  * Models select IDs; they never supply the published question or answer.
- * Deliberately small: unsupported topics fail closed rather than invent evidence.
+ * Unsupported topics fail closed rather than invent evidence. New records require editorial source review.
  */
 export const NUMERIC_FACTS = [
  {id:'gold-number',question:'What is the atomic number of gold?',answer:79,unit:'',tags:'science chemistry elements gold',difficulty:'challenging',sourceUrl:'https://periodic-table.rsc.org/element/79/Gold',explanation:'Gold has atomic number 79.'},
@@ -11,6 +11,22 @@ export const NUMERIC_FACTS = [
  {id:'venus-diameter',question:'Approximately how many kilometres is Venus’s equatorial diameter?',answer:12104,unit:'km',tags:'science space astronomy venus planets',difficulty:'challenging',sourceUrl:'https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/',explanation:'NASA gives an equatorial diameter of about 12,104 km.'},
  {id:'un-foundation',question:'In what year was the United Nations founded?',answer:1945,unit:'year',tags:'history politics united nations world',difficulty:'easy',sourceUrl:'https://www.un.org/en/about-us',explanation:'The United Nations was founded in 1945.'},
  {id:'un-original-members',question:'How many member states did the United Nations have when it was founded in 1945?',answer:51,unit:'member states',tags:'history politics united nations world',difficulty:'challenging',sourceUrl:'https://www.un.org/en/about-us',explanation:'The UN began with 51 member states in 1945.'},
+ {"id": "mercury-order", "question": "Counting outward from the Sun, what number planet is Mercury?", "answer": 1, "unit": "", "tags": "science space astronomy planets solar system mercury", "difficulty": "easy", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "Mercury is planet 1 from the Sun."},
+ {"id": "venus-order", "question": "Counting outward from the Sun, what number planet is Venus?", "answer": 2, "unit": "", "tags": "science space astronomy planets solar system venus", "difficulty": "easy", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "Venus is planet 2 from the Sun."},
+ {"id": "earth-order", "question": "Counting outward from the Sun, what number planet is Earth?", "answer": 3, "unit": "", "tags": "science space astronomy planets solar system earth", "difficulty": "easy", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "Earth is planet 3 from the Sun."},
+ {"id": "mars-order", "question": "Counting outward from the Sun, what number planet is Mars?", "answer": 4, "unit": "", "tags": "science space astronomy planets solar system mars", "difficulty": "easy", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "Mars is planet 4 from the Sun."},
+ {"id": "jupiter-order", "question": "Counting outward from the Sun, what number planet is Jupiter?", "answer": 5, "unit": "", "tags": "science space astronomy planets solar system jupiter", "difficulty": "easy", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "Jupiter is planet 5 from the Sun."},
+ {"id": "saturn-order", "question": "Counting outward from the Sun, what number planet is Saturn?", "answer": 6, "unit": "", "tags": "science space astronomy planets solar system saturn", "difficulty": "easy", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "Saturn is planet 6 from the Sun."},
+ {"id": "uranus-order", "question": "Counting outward from the Sun, what number planet is Uranus?", "answer": 7, "unit": "", "tags": "science space astronomy planets solar system uranus", "difficulty": "easy", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "Uranus is planet 7 from the Sun."},
+ {"id": "neptune-order", "question": "Counting outward from the Sun, what number planet is Neptune?", "answer": 8, "unit": "", "tags": "science space astronomy planets solar system neptune", "difficulty": "easy", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "Neptune is planet 8 from the Sun."},
+ {"id": "mercury-diameter", "question": "About how many kilometres across is Mercury at its equator?", "answer": 4880, "unit": "km", "tags": "science space astronomy planets mercury", "difficulty": "challenging", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "NASA gives 4,880 km for the equatorial diameter."},
+ {"id": "mars-diameter", "question": "About how many kilometres across is Mars at its equator?", "answer": 6792, "unit": "km", "tags": "science space astronomy planets mars", "difficulty": "challenging", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "NASA gives 6,792 km for the equatorial diameter."},
+ {"id": "jupiter-diameter", "question": "About how many kilometres across is Jupiter at its equator?", "answer": 142984, "unit": "km", "tags": "science space astronomy planets jupiter", "difficulty": "challenging", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "NASA gives 142,984 km for the equatorial diameter."},
+ {"id": "saturn-diameter", "question": "About how many kilometres across is Saturn at its equator?", "answer": 120536, "unit": "km", "tags": "science space astronomy planets saturn", "difficulty": "challenging", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "NASA gives 120,536 km for the equatorial diameter."},
+ {"id": "uranus-diameter", "question": "About how many kilometres across is Uranus at its equator?", "answer": 51118, "unit": "km", "tags": "science space astronomy planets uranus", "difficulty": "challenging", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "NASA gives 51,118 km for the equatorial diameter."},
+ {"id": "neptune-diameter", "question": "About how many kilometres across is Neptune at its equator?", "answer": 49528, "unit": "km", "tags": "science space astronomy planets neptune", "difficulty": "challenging", "sourceUrl": "https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/", "explanation": "NASA gives 49,528 km for the equatorial diameter."},
+ {"id": "carbon-number", "question": "What is the atomic number of carbon?", "answer": 6, "unit": "", "tags": "science chemistry elements carbon", "difficulty": "easy", "sourceUrl": "https://periodic-table.rsc.org/element/6/carbon", "explanation": "The Royal Society of Chemistry lists atomic number 6."},
+ {"id": "oxygen-number", "question": "What is the atomic number of oxygen?", "answer": 8, "unit": "", "tags": "science chemistry elements oxygen", "difficulty": "easy", "sourceUrl": "https://periodic-table.rsc.org/element/8/oxygen", "explanation": "The Royal Society of Chemistry lists atomic number 8."},
 ] as const;
 
 export const NUMERIC_MODES = new Set(['fermi','amountle','draw','stack','crack']);
@@ -19,5 +35,9 @@ export function eligibleNumericFacts(topic:string,difficulty:string,mode?:string
  const general=words.length>0&&words.every(w=>['general','numbers','trivia','everything','knowledge','facts','quiz'].includes(w));
  return NUMERIC_FACTS.filter(f=>(general||words.some(w=>w.length>2&&f.tags.split(' ').includes(w)))
   &&(difficulty==='mixed'||f.difficulty===difficulty)
-  &&(mode!=='amountle'||f.answer<=1000));
+  &&(mode!=='amountle'||f.answer<=1000)
+  &&(!mode||mode==='fermi'||!isApproximateFact(f)));
 }
+
+/** Physical measurements are estimation prompts, never exact locks or codes. */
+export function isApproximateFact(f:{question:string}) { return /approximately|about how many|nearest degree/i.test(f.question); }

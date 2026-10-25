@@ -119,3 +119,12 @@ test('close/reopen recovers authoritative state, members, history and receipts f
 test('PostgreSQL placeholder conversion preserves literal question marks and comments',()=>{
   assert.equal(postgresPlaceholders("SELECT '?', \"?\", ? -- ?\n, ? /* ? */"),"SELECT '?', \"?\", $1 -- ?\n, $2 /* ? */");
 });
+
+ test('recovery worker ignores scored rooms waiting for a manual reveal',async t=>{
+ const f=await fixture(t);
+ await f.store.mutate(f.record.id,0,f.owner.id,uuid(),data=>{data.session.state='ROUND_SCORED';data.session.deadlineAt=null;return mutation(data);});
+ assert.deepEqual(await f.store.overdueSessions(new Date().toISOString()),[]);
+ const snapshot=await f.store.getSession(f.record.id);
+ await f.store.mutate(f.record.id,snapshot.session.stateVersion,f.owner.id,uuid(),data=>mutation(data,'session.autopilot'));
+ assert.deepEqual(await f.store.overdueSessions(new Date().toISOString()),[f.record.id]);
+ });

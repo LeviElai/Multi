@@ -14,3 +14,9 @@
 .status{margin:0;min-height:2.5em;text-align:center;font-size:14px;line-height:1.25;color:#ffdc8c}
 @media(prefers-reduced-motion:reduce){.hook{transition:none}.lane:active{transform:none}}
 @media(max-height:700px) and (max-width:600px){.lane{min-height:44px}.water{height:32px}.fish{height:26px;width:36px}.pond{padding:5px;gap:4px}.game{gap:5px}}
+
+.splash{position:absolute;left:50%;top:50%;pointer-events:none;opacity:0}.splash i{position:absolute;width:5px;height:5px;background:#ffdc8c;box-shadow:1px 1px #10394d}.splash i:nth-child(1){transform:translate(-12px,-10px)}.splash i:nth-child(2){transform:translate(10px,-16px)}.splash i:nth-child(3){transform:translate(3px,5px)}
+.lane[data-outcome=catch] .splash{animation:catch-splash .5s ease-out}.lane[data-outcome=catch] .fish{animation:catch-lift .5s steps(5,end)}.lane[data-outcome=miss] .hook{color:#f4aa8c}.lane[data-outcome=catch]{background:#245a56;border-color:#ffdc8c}
+@keyframes catch-splash{0%{opacity:1;transform:scale(.3)}65%{opacity:1}100%{opacity:0;transform:scale(2)}}
+@keyframes catch-lift{0%{transform:translate(-50%,0)}60%{transform:translate(-50%,-16px) rotate(-12deg)}100%{transform:translate(-50%,0)}}
+@media(prefers-reduced-motion:reduce){.lane[data-outcome=catch] .splash,.lane[data-outcome=catch] .fish{animation:none}}

@@ -479,7 +479,7 @@ test('host result-stage controls persist for players and display without leaking
 });
 
 
-test('autopilot: five modes, 5.5s reveal, 10s placements, pause every phase and final podium without NEXT',async t=>{
+test('autopilot: five modes, 5.5s reveal, host-paced placements, paused play and final podium',async t=>{
  const f=await fixture(t,getDemoQuiz(),2,true);await f.action('START');
  for(let index=0;index<5;index++){
   const round=f.version.rounds[index];let s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
@@ -499,11 +499,10 @@ test('autopilot: five modes, 5.5s reveal, 10s placements, pause every phase and 
   await f.action('RESUME');f.advance(5499);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'ROUND_REVEAL');
   f.advance(1);await f.engine.reconcile();s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
   if(index===4){assert.equal(s.state,'SESSION_COMPLETED');break;}
-  assert.equal(s.phase,'placements');assert.equal(Date.parse(s.deadlineAt!)-Date.parse(s.serverTime),10000);
-  await f.action('PAUSE');f.advance(15000);await f.restart();s=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);
-  assert.equal(s.phase,'placements');assert.equal(s.pausedRemainingMs,10000);
-  await f.action('RESUME');f.advance(9999);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'INTERMISSION');
-  f.advance(1);await f.engine.reconcile();
+  assert.equal(s.phase,'placements');assert.equal(s.deadlineAt,null);
+  f.advance(60000);await f.restart();await f.engine.reconcile();
+  assert.equal((await f.store.getSession(f.room.sessionId)).session.state,'INTERMISSION');
+  await f.action('ADVANCE');
  }
  const data=await f.store.getSession(f.room.sessionId);assert.equal(data.awards.length,10);
  const versions=data.session.stateVersion;await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.stateVersion,versions);
@@ -518,7 +517,7 @@ test('autopilot: phase-aware advance, stale commands, inactive-player timeout an
  s=await f.engine.snapshot(f.members[1].principal,f.room.sessionId);assert.equal(s.phase,'placements');assert.equal(s.leaderboard.find(p=>p.participantId===f.members[1].principal.id)?.roundPoints,0);
  await f.action('ADVANCE');assert.equal((await f.store.getSession(f.room.sessionId)).session.roundIndex,1);
  await f.active();f.advance(41000);await f.engine.reconcile();s=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.equal(s.phase,'reveal');
- await f.restart();f.advance(15500);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.roundIndex,2);
+ await f.restart();f.advance(15500);await f.engine.reconcile();assert.equal((await f.store.getSession(f.room.sessionId)).session.roundIndex,1);await f.action('ADVANCE');assert.equal((await f.store.getSession(f.room.sessionId)).session.roundIndex,2);
 });
 
 test('autopilot: unreviewed answers expire without impersonating a host or blocking the finale',async t=>{
@@ -565,7 +564,7 @@ test('automatic skip during reading awards zero once and continues without a hos
  const f=await fixture(t,getDemoQuiz(),2,true);await f.action('START');await f.action('SKIP');
  const first=await f.engine.snapshot(f.members[0].principal,f.room.sessionId);assert.equal(first.phase,'reveal');assert.ok(first.reveal?.skipped);assert.ok(first.leaderboard.every(p=>p.points===0));
  await f.action('PAUSE');await assert.rejects(f.action('SKIP'),isCode('INVALID_TRANSITION'));await f.action('RESUME');
- f.advance(5500);await f.engine.reconcile();assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).phase,'placements');f.advance(10000);await f.engine.reconcile();const next=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.equal(next.phase,'reading');assert.equal(next.roundIndex,1);
+ f.advance(5500);await f.engine.reconcile();assert.equal((await f.engine.snapshot(f.hostPrincipal,f.room.sessionId)).phase,'placements');f.advance(10000);await f.engine.reconcile();await f.action('ADVANCE');const next=await f.engine.snapshot(f.hostPrincipal,f.room.sessionId);assert.equal(next.phase,'reading');assert.equal(next.roundIndex,1);
  assert.equal((await f.store.getSession(f.room.sessionId)).awards.length,2);
 });
 

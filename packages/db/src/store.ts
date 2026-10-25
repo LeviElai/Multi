@@ -217,6 +217,6 @@ export class SqlStore implements Store {
     }
     return statements;
   }
-  async overdueSessions(now:string):Promise<string[]>{return (await this.db.query("SELECT id FROM sessions WHERE (deadline_at<=? AND state IN ('ROUND_PREPARE','ROUND_COUNTDOWN','ROUND_ACTIVE','REVIEW_REQUIRED','ROUND_REVEAL','INTERMISSION')) OR state IN ('ROUND_LOCKED','ROUND_EVALUATING','ROUND_SCORED') ORDER BY created_at LIMIT 200",[now])).rows.map(r=>String(r.id));}
+  async overdueSessions(now:string):Promise<string[]>{return (await this.db.query("SELECT id FROM sessions WHERE (deadline_at<=? AND state IN ('ROUND_PREPARE','ROUND_COUNTDOWN','ROUND_ACTIVE','REVIEW_REQUIRED','ROUND_REVEAL','INTERMISSION')) OR state IN ('ROUND_LOCKED','ROUND_EVALUATING') OR (state='ROUND_SCORED' AND EXISTS(SELECT 1 FROM session_events e WHERE e.session_id=sessions.id AND e.type='session.autopilot')) ORDER BY created_at LIMIT 200",[now])).rows.map(r=>String(r.id));}
   async events(sessionId:string,after:number):Promise<SessionEvent[]>{return (await this.db.query('SELECT * FROM session_events WHERE session_id=? AND seq>? ORDER BY seq LIMIT 500',[sessionId,after])).rows.map(r=>({eventId:String(r.event_id),sessionId:String(r.session_id),seq:Number(r.seq),type:String(r.type),occurredAt:iso(r.occurred_at),stateVersion:Number(r.state_version),payload:parse(r.payload)}));}
 }

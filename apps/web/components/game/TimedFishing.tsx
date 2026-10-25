@@ -7,7 +7,7 @@ import {playCue} from '../../lib/audio';
 import styles from './TimedFishing.module.css';
 export default function TimedFishing({config,round,initial,disabled,busy,serverTime,deadlineAt,send}:{config:ArcadeRound['publicConfig'];round:PublicRound;initial?:Submission['payload'];disabled:boolean;busy:boolean;serverTime?:string;deadlineAt?:string|null;send:(payload:Submission['payload'])=>Promise<Ack>}){
  const [points,setPoints]=useState(initial?.fishPoints??0),[catches,setCatches]=useState(initial?.fishCatches??0),[feedback,setFeedback]=useState(initial?.fishFeedback??'Tap a correct fish in the gold zone');
- const [cast,setCast]=useState(''),[cooldown,setCooldown]=useState(false);
+ const [cast,setCast]=useState(''),[cooldown,setCooldown]=useState(false),[outcome,setOutcome]=useState<'catch'|'miss'|''>('');
  const offset=useRef(0),lanes=useRef<(HTMLSpanElement|null)[]>([]),sending=useRef(false),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
  useEffect(()=>{offset.current=serverTime?Date.parse(serverTime)-Date.now():0;},[serverTime]);
  useEffect(()=>()=>clearTimeout(timer.current),[]);
@@ -17,16 +17,16 @@ export default function TimedFishing({config,round,initial,disabled,busy,serverT
  },[disabled,deadlineAt,round.timerSeconds]);
  async function catchFish(id:string){
   if(disabled||busy||cooldown||sending.current)return;
-  sending.current=true;setCast(id);playCue('pour','fish');
-  try{const ack=await send({choiceId:id});setPoints(ack.fishPoints??points);setCatches(ack.fishCatches??catches);setFeedback(ack.fishFeedback??'Catch saved');playCue((ack.fishCatches??catches)>catches?'submit':'error','fish');}
+  sending.current=true;setCast(id);setOutcome('');playCue('pour','fish');
+  try{const ack=await send({choiceId:id});setPoints(ack.fishPoints??points);setCatches(ack.fishCatches??catches);setOutcome((ack.fishCatches??catches)>catches?'catch':'miss');setFeedback(ack.fishFeedback??'Catch saved');playCue((ack.fishCatches??catches)>catches?'submit':'error','fish');}
   catch{setFeedback('Cast not confirmed. Try again.');}
-  finally{sending.current=false;setCooldown(true);timer.current=setTimeout(()=>{setCooldown(false);setCast('');},650);}
+  finally{sending.current=false;setCooldown(true);timer.current=setTimeout(()=>{setCooldown(false);setCast('');setOutcome('');},650);}
  }
  return <div className={styles.game}>
   <div className={styles.score}><span>{catches} caught</span><strong>{points} / 1,000</strong></div>
   <div className={styles.pond} role="group" aria-label="Tap correct fish in the gold zone">
-   {config.options.map((option,index)=><button type="button" key={option.id} className={styles.lane} disabled={disabled||busy||cooldown} onClick={()=>void catchFish(option.id)} aria-label={'Catch '+option.label} data-cast={cast===option.id}>
-    <strong>{option.label}</strong><span className={styles.water}><span className={styles.zone} aria-hidden="true"/><span className={styles.fish} ref={el=>{lanes.current[index]=el;}} aria-hidden="true"><FishArt species={index}/></span><span className={styles.hook} aria-hidden="true">⌄</span></span>
+   {config.options.map((option,index)=><button type="button" key={option.id} className={styles.lane} disabled={disabled||busy||cooldown} onClick={()=>void catchFish(option.id)} aria-label={'Catch '+option.label} data-cast={cast===option.id} data-outcome={cast===option.id?outcome:''}>
+    <strong>{option.label}</strong><span className={styles.water}><span className={styles.zone} aria-hidden="true"/><span className={styles.fish} ref={el=>{lanes.current[index]=el;}} aria-hidden="true"><FishArt species={index}/></span><span className={styles.hook} aria-hidden="true">⌄</span><span className={styles.splash} aria-hidden="true"><i/><i/><i/></span></span>
    </button>)}
   </div>
   <p className={styles.status} role="status" aria-live="polite">{feedback}</p>

@@ -31,3 +31,13 @@ test('numeric worksheets are rejected even through the internal draft validator'
  }
  assert.doesNotMatch(generationPlan(input).prompt,/self-contained arithmetic|multiplication puzzle/);
 });
+
+test('exact interaction banks exclude approximate physical measurements',()=>{
+ for(const mode of ['draw','stack','crack','amountle']) {
+  const facts=eligibleNumericFacts('General trivia','mixed',mode);
+  assert.ok(facts.length>0);
+  assert.ok(facts.every(f=>!/approximately|about how many|nearest degree/i.test(f.question)));
+ }
+ assert.ok(eligibleNumericFacts('Space','challenging','fermi').length>=8);
+ assert.equal(new Set(NUMERIC_FACTS.map(f=>f.id)).size,NUMERIC_FACTS.length);
+});

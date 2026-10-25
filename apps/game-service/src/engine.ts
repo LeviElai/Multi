@@ -243,7 +243,7 @@ export class GameEngine {
         if(phase==='REVIEW_REQUIRED'){session.deadlineAt=new Date(now).toISOString();return finish('review.finishing');}
         if(phase==='ROUND_PREPARE'){transition(data,'ROUND_ACTIVE',new Date(now+currentRound(data).timerSeconds*1000).toISOString());return finish('round.started');}
         if(phase==='ROUND_ACTIVE'){transition(data,'ROUND_LOCKED',new Date(now).toISOString());return finish('round.locked');}
-        if(phase==='ROUND_REVEAL'){if(session.roundIndex===data.quiz.rounds.length-1){completeSession(data,now);return finish('session.completed');}transition(data,'INTERMISSION',new Date(now+10000).toISOString());return finish('placements.started');}
+        if(phase==='ROUND_REVEAL'){if(session.roundIndex===data.quiz.rounds.length-1){completeSession(data,now);return finish('session.completed');}transition(data,'INTERMISSION',null);return finish('placements.started');}
         if(phase==='INTERMISSION'){startFollowingRound(data,now);return finish('round.started');}
         throw new DomainError('INVALID_TRANSITION','Wait for the current phase.',409);
       }
@@ -388,7 +388,7 @@ export class GameEngine {
             const scheduled = Date.parse(session.deadlineAt ?? new Date(this.clock()).toISOString());
             if(current.automatic && session.state==='REVIEW_REQUIRED'){current.reviewTimeoutRoundId=currentRound(current).id;const scored=scoreRound(current,currentRound(current));awardCurrent(current,scored.awards);transition(current,'ROUND_SCORED');return stateChanged(current,'review.timed_out');}
             if(current.automatic && session.state==='ROUND_SCORED'){transition(current,'ROUND_REVEAL',new Date(this.clock()+REVEAL_MS).toISOString());return stateChanged(current,'round.revealed');}
-            if(current.automatic && session.state==='ROUND_REVEAL'){if(session.roundIndex===current.quiz.rounds.length-1){completeSession(current,scheduled);return stateChanged(current,'session.completed');}transition(current,'INTERMISSION',new Date(scheduled+10000).toISOString());return stateChanged(current,'placements.started');}
+            if(current.automatic && session.state==='ROUND_REVEAL'){if(session.roundIndex===current.quiz.rounds.length-1){completeSession(current,scheduled);return stateChanged(current,'session.completed');}transition(current,'INTERMISSION',null);return stateChanged(current,'placements.started');}
             if (session.state === 'ROUND_PREPARE') {
               transition(current, current.automatic?'ROUND_ACTIVE':'ROUND_COUNTDOWN', new Date(scheduled + (current.automatic?currentRound(current).timerSeconds*1000:COUNTDOWN_MS)).toISOString()); return stateChanged(current, 'round.countdown');
             }
