@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import layout from './Live.module.css';
+import {snapshotClock} from '../lib/server-clock';
 import { Play, Pause, Plus, SkipForward, Square, Lock, Unlock, Copy, Check, Monitor, Users, Wifi, WifiOff, ArrowRight, ArrowLeft, X, RotateCcw } from 'lucide-react';
 import type { Snapshot, HostAction, Profile } from '../../../packages/contracts/src/index';
 import { MODE_META } from '../../../packages/contracts/src/index';
@@ -73,7 +74,7 @@ export default function Live({ id, role = 'player', displayToken }: {
         return () => { document.removeEventListener('keydown', handler); previous?.focus(); };
     }, [pair, confirm]);
     const accept = useCallback((snapshot: Snapshot) => { const old = accepted.current; if (old && (snapshot.stateVersion < old.version || (snapshot.stateVersion === old.version && snapshot.latestSeq < old.seq)))
-        return; terminalSnapshot.current=['SESSION_COMPLETED','SESSION_ABORTED'].includes(snapshot.state);accepted.current = { version: snapshot.stateVersion, seq: snapshot.latestSeq }; offset.current = Date.parse(snapshot.serverTime) - Date.now(); if(!old||snapshot.stateVersion!==old.version||snapshot.latestSeq!==old.seq)setS(snapshot); if (failed.current) {
+        return; terminalSnapshot.current=['SESSION_COMPLETED','SESSION_ABORTED'].includes(snapshot.state);accepted.current = { version: snapshot.stateVersion, seq: snapshot.latestSeq }; offset.current = snapshotClock(snapshot).offsetMs; if(!old||snapshot.stateVersion!==old.version||snapshot.latestSeq!==old.seq)setS(snapshot); if (failed.current) {
         setRestored(true);
         setTimeout(() => setRestored(false), 3500);
     } failed.current = false; setConnected(true); setError(''); }, []);

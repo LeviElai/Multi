@@ -5,11 +5,11 @@ import {fishPosition} from '../../../../packages/game-modes/src/fish';
 import {FishArt} from './FishArt';
 import {playCue} from '../../lib/audio';
 import styles from './TimedFishing.module.css';
-export default function TimedFishing({config,round,initial,disabled,busy,serverTime,deadlineAt,send}:{config:ArcadeRound['publicConfig'];round:PublicRound;initial?:Submission['payload'];disabled:boolean;busy:boolean;serverTime?:string;deadlineAt?:string|null;send:(payload:Submission['payload'])=>Promise<Ack>}){
+export default function TimedFishing({config,round,initial,disabled,busy,serverTime,clock,deadlineAt,send}:{config:ArcadeRound['publicConfig'];round:PublicRound;initial?:Submission['payload'];disabled:boolean;busy:boolean;serverTime?:string;clock?:{offsetMs:number;deliveryMs:number};deadlineAt?:string|null;send:(payload:Submission['payload'])=>Promise<Ack>}){
  const [points,setPoints]=useState(initial?.fishPoints??0),[catches,setCatches]=useState(initial?.fishCatches??0),[feedback,setFeedback]=useState(initial?.fishFeedback??'Tap a correct fish in the gold zone');
  const [cast,setCast]=useState(''),[cooldown,setCooldown]=useState(false),[outcome,setOutcome]=useState<'catch'|'miss'|''>('');
  const offset=useRef(0),lanes=useRef<(HTMLSpanElement|null)[]>([]),sending=useRef(false),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
- useEffect(()=>{offset.current=serverTime?Date.parse(serverTime)-Date.now():0;},[serverTime]);
+ useEffect(()=>{offset.current=clock?clock.offsetMs+clock.deliveryMs:serverTime?Date.parse(serverTime)-Date.now():0;},[serverTime,clock?.offsetMs,clock?.deliveryMs]);
  useEffect(()=>()=>clearTimeout(timer.current),[]);
  useEffect(()=>{if(disabled||!deadlineAt)return;let frame=0;const start=Date.parse(deadlineAt)-round.timerSeconds*1000;
   const animate=()=>{const now=Date.now()+offset.current;lanes.current.forEach((el,i)=>{if(!el)return;const p=fishPosition(now,start,i);el.style.left=p.position+'%';el.dataset.ready=String(p.catchable);});frame=requestAnimationFrame(animate);};
@@ -17,10 +17,10 @@ export default function TimedFishing({config,round,initial,disabled,busy,serverT
  },[disabled,deadlineAt,round.timerSeconds]);
  async function catchFish(id:string){
   if(disabled||busy||cooldown||sending.current)return;
-  sending.current=true;setCast(id);setOutcome('');playCue('pour','fish');
+  const castStarted=performance.now();sending.current=true;setCast(id);setOutcome('');playCue('pour','fish');
   try{const ack=await send({choiceId:id});setPoints(ack.fishPoints??points);setCatches(ack.fishCatches??catches);setOutcome((ack.fishCatches??catches)>catches?'catch':'miss');setFeedback(ack.fishFeedback??'Catch saved');playCue((ack.fishCatches??catches)>catches?'submit':'error','fish');}
   catch{setFeedback('Cast not confirmed. Try again.');}
-  finally{sending.current=false;setCooldown(true);timer.current=setTimeout(()=>{setCooldown(false);setCast('');setOutcome('');},650);}
+  finally{sending.current=false;setCooldown(true);timer.current=setTimeout(()=>{setCooldown(false);setCast('');setOutcome('');},Math.max(0,650-(performance.now()-castStarted)));}
  }
  return <div className={styles.game}>
   <div className={styles.score}><span>{catches} caught</span><strong>{points} / 1,000</strong></div>

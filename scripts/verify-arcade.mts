@@ -1,5 +1,6 @@
 /** Real HTTP + WebSocket smoke test. Credentials live only in ignored local QA state. */
 import assert from 'node:assert/strict';
+import {recordClock,snapshotClock} from '../apps/web/lib/server-clock';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {io,type Socket} from 'socket.io-client';
@@ -13,9 +14,10 @@ const file='.sites-runtime/arcade-accounts.json';let accounts:Record<string,{ema
 try{accounts=JSON.parse(await readFile(file,'utf8'));}catch{}
 const account=accounts[origin]??{email:`arcade-qa-${randomUUID().slice(0,8)}@example.test`,password:randomUUID()+randomUUID()};accounts[origin]=account;await writeFile(file,JSON.stringify(accounts),{mode:0o600});
 async function call<T=any>(path:string,method='GET',body?:unknown,cookie='',expected=200,key=randomUUID()){
- const response=await fetch(origin+path,{method,headers:{Origin:origin,'Idempotency-Key':key,...(body===undefined?{}:{'Content-Type':'application/json'}),...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});
+ const started=performance.now();const response=await fetch(origin+path,{method,headers:{Origin:origin,'Idempotency-Key':key,...(body===undefined?{}:{'Content-Type':'application/json'}),...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});
  const raw=await response.text();assert.ok(raw,`${method} ${path}: empty HTTP ${response.status}`);const value=JSON.parse(raw) as {data:T;error?:{message:string;code:string}};
  assert.equal(response.status,expected,`${method} ${path}: ${JSON.stringify(value.error??{})}`);
+ recordClock(value.data,Date.now(),performance.now()-started);
  return {data:value.data,cookie:response.headers.getSetCookie().map(s=>s.split(';')[0]).join('; ')};
 }
 const authPath='/api/auth/';let hostCookie='';console.log('Signing in');
@@ -61,8 +63,9 @@ try{
   const before=await snap(clients[0].cookie);assert.equal(before.reveal,undefined);assert.ok(!JSON.stringify(before.round).includes('secretConfig'));assert.ok(!JSON.stringify(before.round).includes('correctOptionIds'));
   if(r.mode==='fish'){await action('PAUSE');assert.equal((await snap()).state,'PAUSED');await action('RESUME');}
   const earned:number[]=[];
-  if(r.mode==='fish'&&r.publicConfig.fishScoring==='catch-v1'){const clock=await snap(),start=Date.parse(clock.deadlineAt!)-r.timerSeconds*1000,index=r.publicConfig.options.findIndex(o=>o.id===r.secretConfig.correctOptionIds[0]),elapsed=Date.parse(clock.serverTime)-start+index*600;await new Promise(resolve=>setTimeout(resolve,(1800-elapsed%3600+3600)%3600));}
+
   for(const [j,client]of clients.entries()){
+   if(r.mode==='fish'&&r.publicConfig.fishScoring==='catch-v1'){const sample=await snap(client.cookie),clock=snapshotClock(sample),start=Date.parse(sample.deadlineAt!)-r.timerSeconds*1000,index=r.publicConfig.options.findIndex(o=>o.id===r.secretConfig.correctOptionIds[0]),elapsed=Date.now()+clock.offsetMs+clock.deliveryMs-start+index*600;await new Promise(resolve=>setTimeout(resolve,(1800-elapsed%3600+3600)%3600));}
    const payload=r.mode==='word_puzzle'?{roundId:r.id,clientMutationId:randomUUID(),guess:j<2?r.secretConfig.answer:'AAAAA'}:{roundId:r.id,clientMutationId:randomUUID(),revision:1,payload:answer(r,j<2)};
    const path=base+(r.mode==='word_puzzle'?'/word-guesses':'/submissions');const receipt=await call(path,'POST',payload,client.cookie);if(r.mode==='fish'&&r.publicConfig.fishScoring==='catch-v1'&&j<2)assert.equal(receipt.data.fishPoints,100,'Timed catch must be accepted');earned.push(receipt.data.fishPoints??receipt.data.potentialPoints??(isArcade(r)?scoreArcade(r,answer(r,j<2)).points:j<2?1000:0));
    if(j===0){const repeated=await call(path,'POST',payload,client.cookie);assert.deepEqual(repeated.data,receipt.data);}
