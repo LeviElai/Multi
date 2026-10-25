@@ -24,3 +24,11 @@ test('Clock sample survives lazy mounting without treating an old snapshot as cu
 test('Cold-start outliers cannot lead the animation by many seconds',()=>{
  assert.equal(estimateClock(new Date().toISOString(),Date.now(),30000).deliveryMs,750);
 });
+
+test('Unmeasured practice and socket clocks do not drift backwards on rerender',t=>{
+ let now=1700000000000;t.mock.method(Date,'now',()=>now);
+ const snapshot={serverTime:new Date(now).toISOString()};
+ const first=snapshotClock(snapshot);now+=5000;
+ assert.equal(snapshotClock(snapshot).offsetMs,first.offsetMs);
+ assert.equal(now+snapshotClock(snapshot).offsetMs,1700000005000);
+});

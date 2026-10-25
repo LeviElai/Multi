@@ -10,5 +10,7 @@ export function recordClock(value:unknown,receivedAt:number,roundTripMs:number){
   samples.set(value,estimateClock(value.serverTime,receivedAt,roundTripMs));
 }
 export function snapshotClock(value:{serverTime:string}):ClockSample {
- return samples.get(value)??{offsetMs:Date.parse(value.serverTime)-Date.now(),deliveryMs:0};
+ let sample=samples.get(value);
+ if(!sample){sample={offsetMs:Date.parse(value.serverTime)-Date.now(),deliveryMs:0};samples.set(value,sample);}
+ return sample;
 }
