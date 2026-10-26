@@ -62,7 +62,19 @@ export class CreatorAuth {
   }
   async handle(request:Request):Promise<Response|null> {
     const path=new URL(request.url).pathname;
-    if(path==='/api/auth/me' && request.method==='GET') return Response.json({data:await this.identify(request)});
+    if(path==='/api/auth/me' && request.method==='GET') {
+      const started=Date.now();
+      try {
+        const identity=await this.identify(request);
+        const state=identity?'authenticated':readCookie(request,this.cookieName)?'expired':'anonymous';
+        // Only lifecycle metadata: never log cookies, token digests, names or email addresses.
+        console.info(JSON.stringify({event:'session_restored',state,durationMs:Date.now()-started}));
+        return state==='expired'?this.failure('SESSION_EXPIRED','Your session has expired. Sign in again.',401):Response.json({data:identity});
+      } catch(error) {
+        console.warn(JSON.stringify({event:'session_restore_failed',state:'recoverable_failure',durationMs:Date.now()-started,errorType:error instanceof Error?error.name:'UnknownError'}));
+        throw error;
+      }
+    }
     if(path==='/api/auth/logout'&&request.method==='POST') {
       const token=readCookie(request,this.cookieName);
       if(token)await this.db.query('DELETE FROM auth_sessions WHERE token_digest = ?',[digestToken(token)]);

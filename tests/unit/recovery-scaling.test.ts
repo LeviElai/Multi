@@ -7,7 +7,7 @@ for(const n of [5,12,40,400,4000,100000])test('Stack is practical and exact for 
  const scale=stackScale(n);assert.ok(scale.practical);assert.ok(scale.placements<=32);
  const q:QuestionAnswer={type:'single',kind:'integer',text:'How many objects?',answer:String(n),alternatives:[],distractors:[],unit:'objects',exact:true};
  assert.ok(recommend(q).games.includes('stack'));const round=roundFromAnswer(q,'stack',questionSeed('single'));assert.ok(isArcade(round));assert.deepEqual(validateAuthorConfig(round),[]);
- let left=n,total=0;for(const v of [...round.publicConfig.blockValues].reverse()){while(left>=v){left-=v;total+=v;}}assert.equal(total,n);assert.equal(scoreArcade(round,sanitizeAndValidateSubmission(round,{value:total,locked:true})).points,1000);
+ let left=n,total=0;const blocks:{value:number;x:number}[]=[];for(const v of [...round.publicConfig.blockValues].reverse()){while(left>=v){left-=v;total+=v;blocks.push({value:v,x:50});}}assert.equal(total,n);assert.equal(scoreArcade(round,sanitizeAndValidateSubmission(round,{value:total,blocks,locked:true})).points,1000);
  if(n===4000)assert.ok(round.publicConfig.blockValues.includes(100));if(n===100000)assert.ok(round.publicConfig.blockValues.includes(1000));
 });
 test('impractical Stack tails prefer another game; unsupported words never expose Answer',()=>{

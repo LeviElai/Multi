@@ -19,3 +19,66 @@
 .sling-grab-zone{pointer-events:all;cursor:grab;touch-action:none}
 .arcade-drop .plinko-board{background:#302f4c url('/art/pixel/carnival.svg') center/cover}.plinko-board:before{content:'';position:absolute;inset:0;border:2px solid #d3b18e;pointer-events:none;z-index:4}.plinko-bins span{border-top:3px solid #dfbd8c}.plinko-divider{border-left-color:#ad8fae}
 .machine-marquee{font-family:var(--pixel),monospace}.pull-hint{font:10px var(--pixel),monospace}
+
+/* Stack geometry matches the deterministic support model (24% board width). */
+.arcade-stack .stack-tower,.arcade-stack .ready-block{width:24%;max-width:none}
+.arcade-stack .block-unsupported .ready-block{animation:unsupported-block .7s ease-in forwards}
+@keyframes unsupported-block{60%{top:65%;rotate:12deg}100%{top:110%;rotate:35deg;opacity:0}}
+@media(prefers-reduced-motion:reduce){.arcade-stack .block-unsupported .ready-block{animation:none;opacity:.35}}
+
+.plinko-ball,.sling-garden .pixel-projectile{width:24px;height:24px;min-width:24px;min-height:24px;aspect-ratio:1;border:0;border-radius:0;background:transparent url('/art/pixel/pebble.svg') center/contain no-repeat;box-shadow:none;image-rendering:pixelated}
+.plinko-ball:after{display:none}.sling-garden .pixel-projectile{position:absolute;transform:translate(-50%,-50%);z-index:8;touch-action:none;cursor:grab}
+
+.fastest-answer{display:flex;align-items:center;gap:8px;padding:8px 12px;color:#ffe29a;background:#263e50;border:2px solid #b99a63;font-size:14px}.fastest-answer svg{width:12px;height:16px;flex:none}
+/* The daily quest and joining a friend share the entrance, without a full-screen spacer. */
+.plaza-home .plaza-entry{min-height:0;padding-bottom:12px}
+.plaza-home .plaza-content{padding-top:18px;gap:10px}
+.plaza-home .plaza-hosting{margin-bottom:18px}
+/* One active-round frame: safe-area aware, keyboard aware, no page chrome. */
+.game-focus,.game-focus-live{--board-height:clamp(130px,calc(var(--game-height,100dvh) - 330px),380px);box-sizing:border-box!important;position:fixed!important;inset:var(--game-top,0px) 0 auto!important;height:var(--game-height,100dvh)!important;min-height:0!important;z-index:40;padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))!important;margin:0!important;background-color:#244758;display:flex;flex-direction:column;gap:6px}
+.game-focus>.perspective-switch{display:none}.game-focus .practice-round-heading,.game-focus-live .round-meta{height:38px;min-height:38px;margin:0!important;padding:0!important}.game-focus .practice-question,.game-focus-live .round-question{font-size:clamp(16px,4.5vw,23px)!important;line-height:1.25!important;margin:0!important;padding:8px!important;flex:none;overflow-wrap:anywhere}
+.game-focus .mode-player,.game-focus-live .mode-player{padding:0!important;margin:0!important;min-height:0;flex:1;width:100%;display:flex;flex-direction:column;gap:4px;max-width:700px;align-self:center}
+.game-focus .mode-inputs,.game-focus-live .mode-inputs{min-height:0;flex:1}
+.game-focus .arcade-game,.game-focus-live .arcade-game{padding:8px!important;margin:0!important;min-height:0}
+.game-focus .arcade-instruction,.game-focus-live .arcade-instruction{font-size:12px;margin:0 0 6px!important;line-height:1.3}
+.game-focus :is(.stack-yard,.plinko-board,.sling-garden,.prize-machine),.game-focus-live :is(.stack-yard,.plinko-board,.sling-garden,.prize-machine){height:var(--board-height)!important;min-height:0!important;max-height:none!important}
+.game-focus :is(.arcade-action-row,.stack-denominations),.game-focus-live :is(.arcade-action-row,.stack-denominations){margin:6px 0 0!important;gap:6px!important}
+.game-focus .arcade-action-row .btn,.game-focus-live .arcade-action-row .btn{min-height:44px;padding:7px!important;font-size:12px!important;min-width:0;flex:1}
+.game-focus .game-rules,.game-focus-live .game-rules{position:relative;margin:0!important;font-size:11px;flex:none}
+.game-focus .game-rules summary,.game-focus-live .game-rules summary{min-height:44px;padding:8px;cursor:pointer}
+.game-focus .game-rules[open]>p,.game-focus-live .game-rules[open]>p{position:absolute;bottom:100%;left:0;right:0;z-index:30;background:#fff1d1;color:#244758;padding:16px;border:3px solid #8c7655;max-height:50dvh;overflow:auto;box-shadow:4px 4px #142b40}
+.game-focus .sync-hint:empty,.game-focus-live .sync-hint:empty{display:none}.game-focus .sync-hint,.game-focus-live .sync-hint{margin:0;font-size:10px;min-height:0}
+.game-focus .practice-end{position:absolute;right:12px;bottom:8px;min-height:44px;padding:8px;font-size:11px;z-index:2}.game-focus-live .game-header{height:44px!important;min-height:44px!important;padding:0!important}.game-focus-live .live-main{padding:0!important;margin:0!important;min-height:0;flex:1;display:flex;flex-direction:column;gap:6px;width:100%}.game-focus-live .timer-track{margin:0!important;height:5px;min-height:5px}.game-focus-live .active-layout,.game-focus-live .play-area,.game-focus-live .play-area>div:not(.pause-overlay){display:flex;flex-direction:column;flex:1;min-height:0}.game-focus-live .player-score{display:none}
+.game-focus .notebook canvas,.game-focus-live .notebook canvas{height:var(--board-height)!important;min-height:100px;max-height:240px!important;width:100%;touch-action:none}
+.game-focus .control-hint,.game-focus-live .control-hint{margin:4px 0;font-size:11px;line-height:1.25}
+@media(max-height:650px){.game-focus,.game-focus-live{--board-height:clamp(100px,calc(var(--game-height,100dvh) - 310px),240px)}.game-focus-live{--board-height:clamp(100px,calc(var(--game-height,100dvh) - 355px),240px)}.game-focus .stack-denominations legend,.game-focus-live .stack-denominations legend{font-size:10px;margin:0}.game-focus .stack-denominations .btn,.game-focus-live .stack-denominations .btn{min-height:44px;padding:5px!important}.game-focus .prize-slot strong,.game-focus-live .prize-slot strong{font-size:10px;padding:2px}.game-focus .sling-target-art,.game-focus-live .sling-target-art{width:40px;height:40px}.game-focus .sling-answer strong,.game-focus-live .sling-answer strong{font-size:11px;padding:3px}.game-focus .sling-answer,.game-focus-live .sling-answer{min-height:44px}}
+.game-focus :is(.fill-game,.word-game),.game-focus-live :is(.fill-game,.word-game){margin:0;padding:0}
+.game-focus .pour-scene,.game-focus-live .pour-scene{height:var(--board-height)!important;max-height:250px;width:100%;min-height:0}
+.game-focus .fill-target,.game-focus-live .fill-target{margin:0;font-size:12px}
+.game-focus .fill-game>p,.game-focus-live .fill-game>p{font-size:11px;margin:4px 0}
+.game-focus .fill-game>small,.game-focus-live .fill-game>small{display:none}
+.game-focus .pour-trigger,.game-focus-live .pour-trigger{min-height:44px!important;padding:8px!important;margin:4px 0!important}
+.game-focus .count-lock,.game-focus-live .count-lock{min-height:44px!important;margin:4px 0!important;padding:8px!important}
+.game-focus .pour-sync,.game-focus-live .pour-sync{font-size:11px;margin:2px 0}
+.game-focus .fixed-scale,.game-focus-live .fixed-scale{margin:0;padding:0;min-height:0}
+.game-focus .fixed-scale>svg,.game-focus-live .fixed-scale>svg{height:var(--board-height)!important;max-height:240px!important;width:100%}
+.game-focus .fixed-scale>p,.game-focus-live .fixed-scale>p{display:none}
+.game-focus .scale-values,.game-focus-live .scale-values{margin:4px 0;font-size:11px}.game-focus .scale-values strong,.game-focus-live .scale-values strong{font-size:13px}
+.game-focus .slider-label,.game-focus-live .slider-label{margin:4px 0;font-size:11px}.game-focus .size-slider,.game-focus-live .size-slider{margin:0;height:44px}.game-focus .step-controls,.game-focus-live .step-controls{margin:0;gap:8px}.game-focus .step-controls button,.game-focus-live .step-controls button{min-height:44px;min-width:44px}
+.game-focus .btn-full,.game-focus-live .btn-full{min-height:44px!important;margin:4px 0!important;padding:8px!important;font-size:13px!important}
+.game-focus .word-grid,.game-focus-live .word-grid{gap:3px;margin:0 auto;max-width:220px}.game-focus .word-row,.game-focus-live .word-row{gap:3px}.game-focus .word-tile,.game-focus-live .word-tile{height:clamp(22px,4dvh,34px)!important;min-height:0;max-height:none;font-size:18px;aspect-ratio:auto}
+.game-focus .word-legend,.game-focus-live .word-legend{margin:4px 0;font-size:9px;gap:8px}
+.game-focus .word-accessible-input,.game-focus-live .word-accessible-input{height:44px;min-height:44px;margin:4px 0;padding:5px;font-size:14px}
+.game-focus .word-attempt-count,.game-focus-live .word-attempt-count{display:none}
+.game-focus .word-keyboard,.game-focus-live .word-keyboard{margin:4px 0;gap:3px}.game-focus .word-keyboard>div,.game-focus-live .word-keyboard>div{gap:3px}.game-focus .word-keyboard button,.game-focus-live .word-keyboard button{height:44px;min-height:44px;padding:2px;font-size:12px}
+.game-focus .word-game>.btn-full,.game-focus-live .word-game>.btn-full{display:none}
+.game-focus .notebook,.game-focus-live .notebook{margin:0!important;padding:6px!important}.game-focus .recognition-status,.game-focus-live .recognition-status{font-size:12px;min-height:24px;margin:6px 0;line-height:1.25}
+.game-focus .drawing-accessibility,.game-focus-live .drawing-accessibility{font-size:11px;margin:4px 0}.game-focus .drawing-accessibility summary,.game-focus-live .drawing-accessibility summary{min-height:44px;padding:8px}.game-focus .drawing-accessibility[open],.game-focus-live .drawing-accessibility[open]{position:absolute;bottom:55px;left:10px;right:10px;z-index:20;background:#fff1d1;color:#244758;padding:10px;border:3px solid #8c7655}
+.game-focus .fixed-scale,.game-focus-live .fixed-scale{padding:0!important}.game-focus .fixed-scale>svg,.game-focus-live .fixed-scale>svg{height:clamp(90px,calc(var(--game-height,100dvh) - 400px),240px)!important}
+.game-focus .calibration-note,.game-focus-live .calibration-note{font-size:10px;line-height:1.2;margin:2px 0}
+.game-focus .scale-values,.game-focus-live .scale-values{padding:0!important;line-height:1.1}.game-focus .scale-values strong,.game-focus-live .scale-values strong{margin:2px 0}
+.game-focus .word-game,.game-focus-live .word-game{display:flex;flex-direction:column;gap:2px}.game-focus .word-grid,.game-focus-live .word-grid{padding:3px!important}.game-focus .word-legend,.game-focus-live .word-legend{padding:0!important;min-height:0;line-height:1.2}.game-focus .word-keyboard>div,.game-focus-live .word-keyboard>div{margin:0!important}.game-focus .word-keyboard,.game-focus-live .word-keyboard{gap:2px!important}.game-focus .word-keyboard button,.game-focus-live .word-keyboard button{border-width:2px;box-sizing:border-box;line-height:1}
+@media(max-height:650px){.game-focus .word-accessible-input,.game-focus-live .word-accessible-input{position:absolute;width:1px;height:1px;min-height:1px;clip-path:inset(50%);padding:0;margin:0}.game-focus .word-accessible-input:focus,.game-focus-live .word-accessible-input:focus{position:static;clip-path:none;width:100%;height:44px;min-height:44px}.game-focus .word-tile,.game-focus-live .word-tile{height:22px!important}.game-focus .word-legend,.game-focus-live .word-legend{font-size:9px}}
+@media(max-height:650px){.game-focus{--board-height:clamp(90px,calc(var(--game-height,100dvh) - 380px),190px)}.game-focus-live{--board-height:clamp(80px,calc(var(--game-height,100dvh) - 425px),190px)}.game-focus .fixed-scale>svg,.game-focus-live .fixed-scale>svg{height:clamp(75px,calc(var(--game-height,100dvh) - 470px),150px)!important}.game-focus .recognition-status,.game-focus-live .recognition-status{padding:0!important}}
+.machine-marquee,.prize-rail,.prize-cable,.prize-gripper,.machine-lamp{pointer-events:none}
+.game-focus .prize-shelf,.game-focus-live .prize-shelf{top:58px!important;bottom:38px!important;height:auto!important;align-items:center}.game-focus .prize-slot,.game-focus-live .prize-slot{min-height:44px;gap:2px;padding:3px!important}.game-focus .prize-capsule,.game-focus-live .prize-capsule{width:34px!important;height:34px!important}.game-focus .machine-marquee,.game-focus-live .machine-marquee{height:30px;line-height:26px;font-size:12px}.game-focus .prize-chute,.game-focus-live .prize-chute{height:28px;bottom:5px}

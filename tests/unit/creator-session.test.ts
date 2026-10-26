@@ -4,6 +4,7 @@ import {creatorDestination,signInCreator} from '../../apps/web/lib/creator-sessi
 import {api} from '../../apps/web/lib/api';
 test('creator returns stay local and cannot loop into authentication',()=>{
  for(const target of ['//evil.test','/\\evil.test','/login?return_to=/login','/api/auth/logout','/\n/evil.test',null])assert.equal(creatorDestination(target),'/create');
+ assert.equal(creatorDestination('/daily/2026-10-26'),'/daily/2026-10-26');
  assert.equal(creatorDestination('/host/room-1'),'/host/room-1');
  assert.equal(creatorDestination('/quiz/id?tab=questions'),'/quiz/id?tab=questions');
 });

@@ -17,7 +17,7 @@ export const DISABLED_STRIPE_CONFIG: StripeConfig = Object.freeze({ enabled: fal
 const subscriptionEvents = new Set(['customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted']);
 const eventSchema = z.object({
   id: z.string().regex(/^evt_[A-Za-z0-9]+$/).max(255), type: z.string().max(150), livemode: z.boolean(),
-  data: z.object({ object: z.record(z.unknown()) }),
+  data: z.object({ object: z.record(z.string(),z.unknown()) }),
 });
 
 /** Verify untouched body bytes before JSON parsing. Supports secret-rotation v1 signatures. */

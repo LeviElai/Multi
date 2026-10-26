@@ -15,7 +15,7 @@ export interface Store {
   archiveQuiz(id:string,ownerId:string):Promise<void>;
   publishQuiz(id:string,ownerId:string,expectedRevision:number,idempotencyKey?:string):Promise<QuizVersion>;
   getVersion(id:string,ownerId?:string):Promise<QuizVersion>;
-  createSession(record:SessionRecord):Promise<void>;
+  createSession(record:SessionRecord, rulesVersion?:2):Promise<void>;
   getSession(id:string):Promise<SessionData>;
   findSessionByPinDigest(digest:string):Promise<SessionData|null>;
   findPlayer(sessionId:string,tokenDigest:string):Promise<Principal|null>;

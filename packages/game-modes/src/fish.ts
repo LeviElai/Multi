@@ -6,8 +6,9 @@ export function fishPosition(now:number,start:number,index:number){
  const cycle=Math.floor(elapsed/FISH_PERIOD),phase=(elapsed%FISH_PERIOD)/FISH_PERIOD;
  return {cycle,position:phase*100,catchable:phase>=.35&&phase<=.65};
 }
-export function fishCast(round:ArcadeRound,choiceId:string,previous:Submission|undefined,now:number,deadline:number){
+export function fishCast(round:ArcadeRound,choiceId:string,previous:Submission|undefined,now:number,deadline:number,elapsedMs?:number){
  if(now>=deadline)throw new DomainError('ROUND_CLOSED','Time is up.',409);
+ if(round.publicConfig.fishScoring==='single-catch-v2'&&previous)throw new DomainError('ANSWER_LOCKED','Your catch is already saved.',409);
  if(previous&&now-Date.parse(previous.acceptedAt)<650)throw new DomainError('CAST_TOO_SOON','Your line is returning. Cast again in a moment.',429);
  const index=round.publicConfig.options.findIndex(o=>o.id===choiceId);
  if(index<0)throw new DomainError('INVALID_ANSWER','Choose a fish from this pond.',422);
@@ -20,6 +21,12 @@ export function fishCast(round:ArcadeRound,choiceId:string,previous:Submission|u
  const inZone=position>=35&&position<=65+150/FISH_PERIOD*100;
  const correct=round.secretConfig.correctOptionIds.includes(choiceId);
  const caught=inZone&&correct;
+ if(round.publicConfig.fishScoring==='single-catch-v2'){
+  const elapsed=Math.max(0,Math.min(round.timerSeconds*1000,elapsedMs??now-start));
+  const fishPoints=caught?Math.round(round.maxPoints*(1-.5*elapsed/(round.timerSeconds*1000))):0;
+  const fishFeedback=caught?'Caught! +'+fishPoints:!inZone?'Missed · 0 points':'Wrong fish · 0 points';
+  return {payload:{choiceId,locked:true,fishCatches:Number(caught),fishPoints,fishCycles:cycles,fishFeedback},ack:{fishCatches:Number(caught),fishPoints,fishFeedback}};
+ }
  const fishCatches=(previous?.payload.fishCatches??0)+Number(caught);
  const fishPoints=Math.max(0,Math.min(1000,(previous?.payload.fishPoints??0)+(caught?100:inZone&&!correct?-50:0)));
  const fishFeedback=caught?'Caught! +100':!inZone?'Missed the zone': 'Wrong fish · −50';

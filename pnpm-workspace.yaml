@@ -10,3 +10,8 @@ allowBuilds:
 cacheDir: ${SITES_PNPM_SHARED_STORE:-.sites-runtime/pnpm-store}/policy-cache
 packageImportMethod: auto
 storeDir: ${SITES_PNPM_SHARED_STORE:-.sites-runtime/pnpm-store}
+overrides:
+  browserslist: 4.28.7
+  baseline-browser-mapping: 2.11.0
+  source-map-js: 1.2.2
+  fast-uri: 3.1.9

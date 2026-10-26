@@ -17,7 +17,7 @@ export default function CrackGame({config,initial,disabled,busy,send}:{config:Ar
  return <form className={styles.vault} onSubmit={guess}>
   <div className={styles.meter}><span>Guess {attempts+Number(!solved)}</span><strong>{potential.toLocaleString()} {solved?'points':'max points'}</strong></div>
   <label className={styles.label} htmlFor="crack-code">{solved?'Vault opened':'Enter your code'}<input ref={input} id="crack-code" inputMode="numeric" pattern="[0-9]*" autoComplete="off" enterKeyHint="go" placeholder={'0'.repeat(config.codeLength)} maxLength={config.codeLength} value={code} disabled={disabled||!!solved} readOnly={busy} onChange={e=>setCode(e.target.value.replace(/\D/g,''))}/></label>
-  <div className={styles.feedback} role="status" aria-live="polite">{feedback==='solved'?'✓ Cracked!':feedback==='higher'?'↑ Try a higher number':feedback==='lower'?'↓ Try a lower number':'Each wrong guess costs 20% of the next score.'}</div>
+  <div className={styles.feedback} role="status" aria-live="polite">{feedback==='solved'?'✓ Cracked!':feedback==='higher'?'↑ Try a higher number':feedback==='lower'?'↓ Try a lower number':'Turn your hunch into a code.'}</div>
   <button className="btn btn-primary btn-full" disabled={disabled||busy||cooldown||!!solved||!code||Number(code)<config.min||Number(code)>config.max}>{solved?'Unlocked':busy?'Checking…':cooldown?'Ready in a moment…':'Try code'}</button>
  </form>;
 }

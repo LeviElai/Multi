@@ -1,3 +1,4 @@
+import {activeResponseMs} from '../../../packages/game-modes/src/speed';
 import {fishCast} from '../../../packages/game-modes/src/fish';
 import {crackGuess} from '../../../packages/game-modes/src/crack';
 import {READING_MS,REVEAL_MS} from '../../../packages/contracts/src/timing';
@@ -9,7 +10,7 @@ import { normalizeAnswer, publicQuestionProjection, sanitizeAndValidateSubmissio
 import { digestPin, digestToken, idempotentId, newPin, opaqueToken, sanitizeNickname } from './security';
 
 type Clock = () => number;
-export type EngineOptions = { pinSecret?: string; maxPlayers?: number; automatic?:boolean };
+export type EngineOptions = { pinSecret?: string; maxPlayers?: number; automatic?:boolean; rulesVersion?:2 };
 export type StateReceipt = { state: SessionState; stateVersion: number };
 export type ReviewDecision = { roundId: string; answerKey: string; decision: 'accept' | 'reject'; canonical?: string; expectedStateVersion: number };
 const TERMINAL = new Set<SessionState>(['SESSION_COMPLETED', 'SESSION_ABORTED']);
@@ -50,6 +51,9 @@ function stateChanged(data: SessionData, eventType: string): MutationResult<Stat
   return { data, result: receipt(data), eventType };
 }
 function transition(data: SessionData, state: SessionState, deadlineAt: string | null = null): void {
+  if(state==='ROUND_ACTIVE'&&data.session.state!=='PAUSED'&&deadlineAt){
+    data.roundClock={roundId:currentRound(data).id,startedAt:Date.parse(deadlineAt)-currentRound(data).timerSeconds*1000,pauses:[]};
+  }
   data.session.state = state;
   data.session.deadlineAt = deadlineAt;
 }
@@ -102,7 +106,7 @@ export class GameEngine {
       const pinDigest = await digestPin(pin, this.options.pinSecret ?? '');
       if (await this.store.findSessionByPinDigest(pinDigest)) continue;
       const record: SessionRecord = { id, versionId, hostId, pin, pinDigest, state: 'LOBBY', stateVersion: 0, roundIndex: -1, deadlineAt: null, pausedRemainingMs: null, extensionCount: 0, joinLocked: false, createdAt: new Date(this.clock()).toISOString(), completedAt: null, lastMutationId: key, latestSeq: 0, maxPlayers: this.options.maxPlayers ?? 25 };
-      try { await this.store.createSession(record); if(this.options.automatic)await this.store.mutate(id,undefined,hostId,'enable-autopilot-v1',data=>stateChanged(data,'session.autopilot')); const committed = await this.store.getSession(id); return { sessionId: id, pin: committed.session.pin }; }
+      try { await this.store.createSession(record,this.options.rulesVersion); if(this.options.automatic)await this.store.mutate(id,undefined,hostId,'enable-autopilot-v1',data=>stateChanged(data,'session.autopilot')); const committed = await this.store.getSession(id); return { sessionId: id, pin: committed.session.pin }; }
       catch (error) {
         // The other identical request may have committed before this one.
         try {
@@ -220,10 +224,12 @@ export class GameEngine {
       if (action.action === 'PAUSE') {
         if (!['ROUND_ACTIVE',...(data.automatic?['ROUND_PREPARE','ROUND_REVEAL','INTERMISSION']:[])].includes(session.state) || !session.deadlineAt || Date.parse(session.deadlineAt) <= now) throw new DomainError('INVALID_TRANSITION', 'Only an active round can be paused.', 409);
         session.pausedRemainingMs = Math.max(0, Date.parse(session.deadlineAt) - now);
+        if(session.state==='ROUND_ACTIVE'&&data.roundClock)data.roundClock.pauses.push({start:now});
         data.pausedPhase=session.state;transition(data, 'PAUSED'); return finish(data.automatic?'phase.paused.'+beforeState:'round.paused');
       }
       if (action.action === 'RESUME') {
         if (session.state !== 'PAUSED') throw new DomainError('INVALID_TRANSITION', 'This round is not paused.', 409);
+        const pause=data.roundClock?.pauses.at(-1);if(pause&&pause.end===undefined)pause.end=now;
         transition(data, data.automatic ? data.pausedPhase??'ROUND_ACTIVE' : 'ROUND_ACTIVE', new Date(now + (session.pausedRemainingMs ?? 0)).toISOString());
         session.pausedRemainingMs = null; return finish('round.resumed');
       }
@@ -298,15 +304,16 @@ export class GameEngine {
       if (round.mode === 'word_puzzle') throw new DomainError('INVALID_MODE', 'Submit a word attempt for this round.', 422);
       const previous = data.submissions.find((item) => item.roundId === input.roundId && item.participantId === player.id);
       if (previous && input.revision <= previous.revision) throw new DomainError('STALE_SUBMISSION', 'Your newer acknowledged answer is already saved.', 409, { serverRevision: previous.revision });
-      const fishing=round.mode==='fish'&&round.publicConfig.fishScoring==='catch-v1';
+      const fishing=round.mode==='fish'&&round.publicConfig.fishScoring!==undefined;
       const deduction=round.mode==='crack'&&round.publicConfig.crackScoring==='deduction-v1';
       if (previous && ((!fishing && !deduction && round.mode !== 'amountle' && !round.allowRevision) || previous.payload.locked)) throw new DomainError('ANSWER_LOCKED', 'Your answer is already locked.', 409);
       const payload = sanitizeAndValidateSubmission(round, input.payload);
       if (round.mode === 'amountle' && previous && (payload.count ?? 0) < (previous.payload.count ?? 0)) throw new DomainError('REMOVAL_DISABLED', 'This round only permits adding to your count.', 422);
       let crackAck:Partial<Ack>={};
-      if(fishing){const result=fishCast(round,payload.choiceId!,previous,now,Date.parse(data.session.deadlineAt!));Object.assign(payload,result.payload);crackAck=result.ack;}
+      const elapsedMs=data.roundClock?.roundId===round.id?activeResponseMs(data.roundClock,new Date(now).toISOString()):undefined;
+      if(fishing){const result=fishCast(round,payload.choiceId!,previous,now,Date.parse(data.session.deadlineAt!),elapsedMs);Object.assign(payload,result.payload);crackAck=result.ack;}
       if(deduction){
-        const result=crackGuess(round,payload.value!,previous,now,Date.parse(data.session.deadlineAt!));
+        const result=crackGuess(round,payload.value!,previous,now,Date.parse(data.session.deadlineAt!),elapsedMs);
         Object.assign(payload,result.payload);crackAck=result.ack;
       }
       const acceptedAt = new Date(now).toISOString();

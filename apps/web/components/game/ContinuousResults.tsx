@@ -13,6 +13,8 @@ export default function ContinuousResults({snapshot:s}:{snapshot:Snapshot}){
  const offset=useMemo(()=>Date.parse(s.serverTime)-Date.now(),[s.serverTime]);
  const priorStep=useRef(step);const freshPoints=step==='points'&&priorStep.current!=='points';useEffect(()=>{priorStep.current=step;},[step]);
  const best=Math.max(0,...s.leaderboard.map(p=>p.roundPoints));const winners=s.leaderboard.filter(p=>p.roundPoints===best);
+ const fastest=s.roundAwards?.filter(a=>a.points>0&&(a.detail.correct===true||a.detail.solved===true||a.reason==='exact')&&typeof a.detail.responseMs==='number'&&Number.isFinite(a.detail.responseMs)).sort((a,b)=>Number(a.detail.responseMs)-Number(b.detail.responseMs))[0];
+ const fastestName=s.leaderboard.find(p=>p.participantId===fastest?.participantId)?.nickname;
  const root=useRef<HTMLElement>(null);
  useEffect(()=>{root.current?.scrollIntoView({block:'start',behavior:'instant'});},[r.id]);
  useEffect(()=>{playCue(standings?'standings':step==='points'?(own&&own.roundPoints>0?'win':'click'):'reveal',r.mode,s.id+':'+r.id+':'+(standings?'standings':step));},[step,s.phaseId]);
@@ -31,6 +33,7 @@ export default function ContinuousResults({snapshot:s}:{snapshot:Snapshot}){
  {s.participantId&&compare&&<div className="comparison-strip"><span><small>You</small><strong>{format(submitted)}{submitted!==undefined&&r.mode==='size_it_up'?'\u00d7':''}</strong></span><span className="comparison-reason">{reason}</span></div>}
  {!standings&&step==='points'&&own&&<div className={"points-award "+(freshPoints?"fresh-award":"")} role="status">+{format(own.roundPoints)} <small>points</small></div>}
  {!s.participantId&&!standings&&step==='points'&&<div className="shared-round-best">{best>0?<><small>Round best</small><strong>{winners.map(p=>p.nickname).join(' / ')}</strong><b>+{format(best)} points</b></>:<strong>No points this round</strong>}</div>}
+ {standings&&fastest&&fastestName&&<div className="fastest-answer" role="status"><svg viewBox="0 0 12 16" shapeRendering="crispEdges" aria-hidden="true"><path d="M6 0h5L8 6h4L4 16l1-7H0z" fill="currentColor"/></svg><span>Fastest correct: <strong>{fastestName}</strong> · {(Number(fastest.detail.responseMs)/1000).toFixed(1)}s</span></div>}
  {standings&&<div className="continuous-standings"><Standings leaders={s.leaderboard} previousLeaders={s.previousLeaderboard} ownId={s.participantId} sequence={step} countStart={s.state==='PAUSED'?Date.now()+1200-(10000-(s.pausedRemainingMs??0)):Date.parse(s.deadlineAt??s.serverTime)-8800} offset={s.state==='PAUSED'?0:offset} paused={s.state==='PAUSED'}/></div>}
  {s.reveal?.explanation&&step!=='answer'&&<details className="result-notes"><summary>About this answer</summary><p>{s.reveal.explanation}</p>{s.reveal.sourceUrl&&<a href={s.reveal.sourceUrl} target="_blank" rel="noopener noreferrer">Source</a>}</details>}
  </section>;

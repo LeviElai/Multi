@@ -588,8 +588,8 @@ test('Crack deduction accepts repeated guesses, persists attempts, and scores on
  assert.equal((await f.engine.snapshot(player,id)).ownPoints,solved.potentialPoints);
 });
 
-test('timed fishing persists server catches, rejects replay and keeps the round open',async t=>{
- const round=getDefaultRound('fish');if(round.mode!=='fish')throw Error('Fish');
+test('legacy timed fishing persists server catches, rejects replay and keeps the round open',async t=>{
+ const round=getDefaultRound('fish');if(round.mode!=='fish')throw Error('Fish');round.publicConfig.fishScoring='catch-v1';
  const f=await fixture(t,{...getDemoQuiz(),rounds:[round]},3,true);await f.action('START');f.advance(8000);await f.engine.reconcile();
  const player=f.members[0].principal,id=f.room.sessionId;
  const snapshot=await f.engine.snapshot(player,id);
@@ -605,4 +605,31 @@ test('timed fishing persists server catches, rejects replay and keeps the round 
  assert.equal((await f.engine.snapshot(player,id)).finishedCount,0);
  assert.equal((await f.engine.snapshot(f.members[1].principal,id)).ownSubmission,undefined);
  await f.action('LOCK');await f.engine.reconcile();assert.equal((await f.engine.snapshot(player,id)).ownPoints,200);
+});
+
+test('speed scoring persists the server clock across pause, extension and process restart',async t=>{
+ const round=getDefaultRound('drop');round.speedScoring='time-v1';round.timerSeconds=40;
+ const f=await fixture(t,{...getDemoQuiz(),rounds:[round]},2,true);await f.action('START');f.advance(8000);await f.engine.reconcile();
+ const id=f.room.sessionId,first=f.members[0].principal,second=f.members[1].principal;
+ const before=await f.store.getSession(id);assert.equal(before.roundClock?.roundId,round.id);
+ const submit=(player:Principal)=>f.engine.submit(player,id,{roundId:round.id,clientMutationId:key(),revision:1,payload:{choiceId:String(round.mode==='drop'?round.secretConfig.answer:true),locked:true}});
+ await submit(first);f.advance(3000);await f.action('PAUSE');f.advance(10000);await f.restart();await f.action('RESUME');f.advance(3000);await submit(second);
+ await f.action('LOCK');await f.engine.reconcile();
+ const a=await f.engine.snapshot(first,id),b=await f.engine.snapshot(second,id);
+ assert.ok(a.ownPoints!>b.ownPoints!);assert.ok(b.ownPoints!>=800);
+ const saved=await f.store.getSession(id);assert.equal(saved.roundClock?.pauses.length,1);
+ const awards=saved.awards;assert.equal(Number(awards.find(a=>a.participantId===second.id)?.detail.responseMs)-Number(awards.find(a=>a.participantId===first.id)?.detail.responseMs),6000);
+});
+
+
+test('new hosted rules are durable without altering the published quiz or existing rooms',async t=>{
+ const f=await fixture(t);
+ const engine=new GameEngine(f.store,()=>Date.now(),{pinSecret:PIN_SECRET,rulesVersion:2});
+ const room=await engine.createSession(f.host.id,f.version.id,key());
+ const updated=await f.store.getSession(room.sessionId);
+ assert.ok(updated.quiz.rounds.every(r=>r.speedScoring==='time-v1'));
+ assert.equal(updated.quiz.rounds.find(r=>r.mode==='fish')?.publicConfig.fishScoring,'single-catch-v2');
+ assert.equal((await f.store.getSession(f.room.sessionId)).quiz.rounds.find(r=>r.mode==='fish')?.publicConfig.fishScoring,undefined);
+ assert.equal((await f.store.getVersion(f.version.id)).rounds.find(r=>r.mode==='fish')?.publicConfig.fishScoring,undefined);
+ await f.restart();assert.ok((await f.store.getSession(room.sessionId)).quiz.rounds.every(r=>r.speedScoring==='time-v1'));
 });

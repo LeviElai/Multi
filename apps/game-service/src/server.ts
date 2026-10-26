@@ -1,3 +1,4 @@
+import {prepareDaily,selectDailyWithAI} from './daily-preparation';
 import {compactTemporaryData} from './cost-maintenance';
 import { geminiGenerate, runGenerationWorker } from './ai';
 import { adsReady } from './ads';
@@ -93,11 +94,11 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
   const {db,store}=await createRuntime(environment);
   const auth=new CreatorAuth(store,db,secure);
   try {await auth.initialize(environment);}catch(error){await db.close();throw error;}
-  const engine=new GameEngine(store,()=>Date.now(),{pinSecret,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0'});
+  const engine=new GameEngine(store,()=>Date.now(),{pinSecret,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0',rulesVersion:environment.GAME_RULES_V2==='1'?2:undefined});
   const adsConfig={unitPath:environment.GOOGLE_REWARDED_AD_UNIT??'',approved:environment.ADS_APPROVED==='1',consentReady:environment.ADS_CONSENT_READY==='1'};
   const aiEnabled=!!environment.GEMINI_API_KEY;
   const features:Features={ai:aiEnabled,billing:false,ads:adsReady(adsConfig),stage:'private_alpha',transport:'socket',auth:'credentials'};
-  let nextAiCheck=0,aiWake=0,nextCompaction=0;
+  let nextAiCheck=0,aiWake=0,nextCompaction=0,nextDailyCheck=0;
   const limiter=new RateLimiter();let draining=false;let ticking=false;
   let broadcastTimer:NodeJS.Timeout|undefined;let broadcasting=false;let broadcastAgain=false;
   const connections=new Map<string,Connected>();
@@ -129,7 +130,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
       if(path==='/api/v1/sessions/join'&&!limiter.allow(`join:${address}`,90,60000))throw new DomainError('RATE_LIMITED','Too many join attempts. Try again in a minute.',429);
       const request=await webRequest(req,allowedOrigin??publicOrigin);
       const authResponse=await auth.handle(request);
-      const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0',aiEnabled,adsConfig});
+      const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0',rulesVersion:environment.GAME_RULES_V2==='1'?2:undefined,aiEnabled,adsConfig});
       await sendResponse(res,response,secure,allowedOrigin);
       if(req.method!=='GET'&&response.ok){scheduleBroadcast();if(path==='/api/v1/ai/generate'){aiWake++;nextAiCheck=0;}}
       log('http_request',{method:req.method,path:safeLogPath,status:response.status,durationMs:Date.now()-started});
@@ -200,7 +201,7 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
         const url=new URL(connection.request.url);url.pathname=`/api/v1/sessions/${connection.sessionId}/${route}`;
         const headers=new Headers(connection.request.headers);headers.set('Content-Type','application/json');
         if(typeof data.idempotencyKey==='string')headers.set('Idempotency-Key',data.idempotencyKey);
-        const response=await handleApi(new Request(url,{method:'POST',headers,body:JSON.stringify(data)}),{store,user:await auth.identify(connection.request),features,cookieSecure:secure,pinSecret,clientIp:requestAddress(socket.request,environment.TRUST_PROXY==='1'),maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0'});
+        const response=await handleApi(new Request(url,{method:'POST',headers,body:JSON.stringify(data)}),{store,user:await auth.identify(connection.request),features,cookieSecure:secure,pinSecret,clientIp:requestAddress(socket.request,environment.TRUST_PROXY==='1'),maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0',rulesVersion:environment.GAME_RULES_V2==='1'?2:undefined});
         const result=await response.json() as {data?:unknown;error?:unknown};
         if(typeof ack==='function')ack(result);
         if(response.ok){if(event==='answer.submit'||event==='word.guess')socket.emit('answer.ack',result.data);scheduleBroadcast();}
@@ -217,8 +218,9 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
   let aiTicking=false;
   const aiTimer=setInterval(async()=>{
     if(aiTicking||draining||maintenance)return;
-    const now=Date.now();if(now<nextAiCheck&&now<nextCompaction)return;aiTicking=true;const wake=aiWake;
+    const now=Date.now();if(now<nextAiCheck&&now<nextCompaction&&now<nextDailyCheck)return;aiTicking=true;const wake=aiWake;
     try{
+      if(now>=nextDailyCheck){nextDailyCheck=now+3600000;if(environment.DAILY_ENABLED==='1')try{const result=await prepareDaily(db,now,environment.GEMINI_API_KEY?(day,candidates)=>selectDailyWithAI(day,candidates,environment.GEMINI_API_KEY!,environment.GEMINI_MODEL):undefined);log('daily_prepared',result);}catch(error){nextDailyCheck=now+60000;log('daily_preparation_failed',{errorType:error instanceof Error?error.name:'unknown'});}}
       if(now>=nextCompaction){nextCompaction=now+3600000;try{await compactTemporaryData(store);}catch(error){log('temporary_cleanup_failed',{errorType:error instanceof Error?error.name:'unknown',code:typeof (error as {code?:unknown})?.code==='string'?(error as {code:string}).code:'unknown'});}}
       if(aiEnabled&&now>=nextAiCheck){const worked=await runGenerationWorker(store,(input,onUsage)=>geminiGenerate(input,environment.GEMINI_API_KEY!,environment.GEMINI_MODEL,onUsage));nextAiCheck=aiWake!==wake?0:Date.now()+(worked?1000:30000);}else if(!aiEnabled)nextAiCheck=now+30000;
     }catch(error){nextAiCheck=Date.now()+30000;log('generation_worker_failed',{errorType:error instanceof Error?error.name:'unknown'});}finally{aiTicking=false;}

@@ -10,7 +10,7 @@ export function getDefaultRound(mode: ModeId): Round {
   if(['draw','claw','drop','sling','fish','stack','crack','answer'].includes(mode))return {
     ...common,mode:mode as 'draw',allowRevision:false,question:mode==='drop'?'An octopus has three hearts.': ['fish','claw','sling'].includes(mode)?'What is the capital of France?':'How many sides does a hexagon have?',
     scoringPolicy:'exact',questionType:mode==='drop'?'boolean':'single',
-    publicConfig:{...(mode==='fish'?{fishScoring:'catch-v1' as const}:{}),...(mode==='crack'?{crackScoring:'deduction-v1' as const}:{}),unit:'',min:0,max:99999999,step:1,tolerance:100,codeLength:4,blockValues:[1,5,10,25],kind:mode==='drop'?'boolean':['fish','claw','sling'].includes(mode)?'choice':mode==='answer'?'text':'number',options:['fish','claw','sling'].includes(mode)?[{id:'a',label:'Rome'},{id:'b',label:'Paris'},{id:'c',label:'Berlin'}]:[]},
+    publicConfig:{...(mode==='fish'?{fishScoring:'single-catch-v2' as const}:{}),...(mode==='crack'?{crackScoring:'deduction-v1' as const}:{}),unit:'',min:0,max:99999999,step:1,tolerance:100,codeLength:4,blockValues:[1,5,10,25],kind:mode==='drop'?'boolean':['fish','claw','sling'].includes(mode)?'choice':mode==='answer'?'text':'number',options:['fish','claw','sling'].includes(mode)?[{id:'a',label:'Rome'},{id:'b',label:'Paris'},{id:'c',label:'Berlin'}]:[]},
     secretConfig:{answer:mode==='drop'?true:['fish','claw','sling','answer'].includes(mode)?'Paris':6,acceptedAlternatives:[],correctOptionIds:['fish','claw','sling'].includes(mode)?['b']:[]}
   } as Round;
   switch (mode) {
@@ -59,7 +59,7 @@ export function getDemoQuiz(): QuizInput {
 }
 
 export function getArcadeQuiz():QuizInput{
- const quiz={...getDemoQuiz(),title:'The eleven-game arcade',rounds:MODES.map(getDefaultRound)};
+ const quiz={...getDemoQuiz(),title:'The eleven-game arcade',rounds:MODES.map(mode=>{const r=getDefaultRound(mode);r.speedScoring='time-v1';if(r.mode==='stack')r.publicConfig.stackPhysics='support-v1';return r;})};
  for(const r of quiz.rounds){
   if(r.mode==='fermi'){r.question='Approximately how many kilometres is Earth’s equatorial diameter?';r.secretConfig.answer=12756;r.publicConfig={...r.publicConfig,unit:'km',max:100000,tolerance:12756};r.sourceUrl='https://science.nasa.gov/earth/facts/';r.explanation='NASA gives an equatorial diameter of 12,756 km. The polar diameter is different.';}
   if(r.mode==='amountle'){r.question='What is the atomic number of gold?';r.secretConfig.answer=79;r.publicConfig={...r.publicConfig,unit:'protons',maxCount:160,tolerance:40};r.sourceUrl='https://periodic-table.rsc.org/element/79/Gold';r.explanation='Gold has 79 protons in its nucleus.';}

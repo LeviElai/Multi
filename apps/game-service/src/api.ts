@@ -1,3 +1,4 @@
+import {DailyChallengeService,utcDay} from './daily';
 import { GenerationInput, queueGeneration, generationStatus, quota } from './ai';
 import { adsReady, rewardTicket, claimReward, type AdsConfig } from './ads';
 import { browseCommunity, communityQuiz, CommunityInput, shareCommunity, copyCommunity } from './community';
@@ -11,7 +12,7 @@ import { GameEngine } from './engine';
 import { assertRateBudget, assertSameOrigin, cookieValue, digestToken, idempotentId, mutationKey, participantCookie, rateLimit } from './security';
 
 export type ApiUser = { id: string; displayName: string };
-export type ApiContext = { store: Store; user: ApiUser | null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; automatic?:boolean; aiEnabled?:boolean; adsConfig?:AdsConfig; clientIp?: string };
+export type ApiContext = { store: Store; user: ApiUser | null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; automatic?:boolean; rulesVersion?:2; aiEnabled?:boolean; adsConfig?:AdsConfig; clientIp?: string };
 const DEFAULT_FEATURES: Features = { ai: false, billing: false, ads: false, stage: 'private_alpha', transport: 'polling' };
 const uuid = z.string().uuid();
 const revision = z.number().int().positive();
@@ -117,13 +118,34 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
     const method = request.method.toUpperCase();
     if (!url.pathname.startsWith('/api/v1/')) throw new DomainError('NOT_FOUND', 'This endpoint does not exist.', 404);
     assertSameOrigin(request);
-    const engine = new GameEngine(ctx.store, undefined, { pinSecret: ctx.pinSecret, maxPlayers: ctx.maxPlayers, automatic:ctx.automatic });
+    const engine = new GameEngine(ctx.store, undefined, { pinSecret: ctx.pinSecret, maxPlayers: ctx.maxPlayers, automatic:ctx.automatic, rulesVersion:ctx.rulesVersion });
     const features: Features = { ...DEFAULT_FEATURES, ...ctx.features, ai: !!ctx.aiEnabled, billing: false, ads: adsReady(ctx.adsConfig) };
     const body = !['GET', 'HEAD', 'DELETE'].includes(method) ? await readJson(request) : {};
     const user = ctx.user;
     // Trusted adapter supplies clientIp. Never trust arbitrary forwarded headers.
     const ipDigest = await digestToken(ctx.clientIp ?? 'unidentified-client');
 
+    if(path==='daily'||path.startsWith('daily/')){
+      const daily=new DailyChallengeService(ctx.store.db),day=url.searchParams.get('day')??utcDay(Date.now());
+      if(method==='GET'&&path==='daily')return ok(await daily.overview(day,user?.id));
+      if(method==='GET'&&path==='daily/archive')return ok(await daily.archive(url.searchParams.get('before')??utcDay(Date.now()),user?.id));
+      if(method==='GET'&&path==='daily/leaderboard')return ok(await daily.board(day,user?.id,z.coerce.number().int().min(0).max(100000).parse(url.searchParams.get('offset')??0)));
+      if(method==='POST'&&path==='daily/start'){
+        const owner=requireUser(user),input=z.object({day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),practice:z.boolean().default(false)}).strict().parse(body);
+        await rateLimit(ctx.store.db,`daily-start:${owner.id}`,30,3600000);
+        return ok(await daily.start(input.day,owner,input.practice));
+      }
+      const attempt=path.match(/^daily\/attempts\/([^/]+)(\/answer)?$/);
+      if(attempt){const owner=requireUser(user),id=uuid.parse(attempt[1]);
+        if(method==='GET'&&!attempt[2])return ok(await daily.snapshot(id,owner.id));
+        if(method==='POST'&&attempt[2]){
+          const input=z.object({index:z.number().int().min(0).max(9),choice:z.number().int().min(-1).max(3)}).strict().parse(body);
+          await rateLimit(ctx.store.db,`daily-answer:${owner.id}`,120,60000);
+          return ok(await daily.answer(id,owner.id,{...input,key:mutationKey(request)}));
+        }
+      }
+      throw new DomainError('NOT_FOUND','This challenge action is unavailable.',404);
+    }
     if (method === 'GET' && path === 'me') {
       if (!user) return ok(null);
       const profile: Profile = { ...user, features, plan: 'free', quotaRemaining: ctx.aiEnabled ? (await quota(ctx.store,user.id)).remaining : 0 };

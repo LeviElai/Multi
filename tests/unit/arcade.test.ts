@@ -60,7 +60,7 @@ test('new unanswered drafts remain incomplete; exact numeric entry does not quie
  const r=roundFromAnswer(q('-3','What is 2 minus 5?'),'fermi',seed);assert.equal(r.scoringPolicy,'exact');assert.deepEqual(validateAuthorConfig(r),[]);
 });
 test('stack unit scaling is reachable without revealing the target; invalid code sizes are rejected',()=>{
- const r=roundFromAnswer(q('100000','How many items?'),'stack',questionSeed('single'));assert.ok(isArcade(r));assert.equal(r.publicConfig.step,1);assert.ok(r.publicConfig.blockValues.includes(1000));assert.ok(!('answer' in publicQuestionProjection(r).publicConfig));assert.equal(sanitizeAndValidateSubmission(r,{value:100000}).value,100000);assert.equal(sanitizeAndValidateSubmission(r,{value:100001}).value,100001);
+ const r=roundFromAnswer(q('100000','How many items?'),'stack',questionSeed('single'));assert.ok(isArcade(r));assert.equal(r.publicConfig.step,1);assert.ok(r.publicConfig.blockValues.includes(1000));assert.ok(!('answer' in publicQuestionProjection(r).publicConfig));const blocks=Array.from({length:100},()=>({x:50,value:1000}));assert.equal(sanitizeAndValidateSubmission(r,{value:100000,blocks}).value,100000);assert.equal(sanitizeAndValidateSubmission(r,{value:100001,blocks:[...blocks,{x:50,value:1}]}).value,100001);assert.throws(()=>sanitizeAndValidateSubmission(r,{value:100000}));
  const code=getDefaultRound('crack');assert.ok(isArcade(code));code.secretConfig.answer=12345;code.publicConfig.codeLength=4;assert.ok(validateArcade(code).length);
 });
 test('local handwriting recognizes separated handwritten 206 and fails safely on empty input',()=>{

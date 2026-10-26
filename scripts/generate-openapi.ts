@@ -4,49 +4,10 @@ import { getDemoQuiz } from '../packages/game-modes/src/index';
 import { FermiSchema, RareSchema, WordSchema, SizeSchema, AmountSchema, QuizInputSchema, HostActionSchema, SubmitSchema, WordGuessSchema, STATES } from '../packages/contracts/src/index';
 
 type Schema = Record<string, unknown>;
-/** Generate the supported JSON Schema subset directly from the actual Zod
- * contracts. Fail on unknown validators instead of silently losing constraints. */
-export function jsonSchema(schema: z.ZodTypeAny): Schema {
-  const definition = schema._def;
-  switch (definition.typeName) {
-    case 'ZodString': {
-      const output: Schema = { type: 'string' };
-      for (const check of definition.checks ?? []) {
-        if (check.kind === 'min') output.minLength = check.value;
-        else if (check.kind === 'max') output.maxLength = check.value;
-        else if (check.kind === 'uuid') output.format = 'uuid';
-        else if (check.kind === 'url') output.format = 'uri';
-        else if (check.kind === 'email') output.format = 'email';
-        else if (check.kind === 'regex') output.pattern = check.regex.source;
-        else if (check.kind !== 'trim') throw new Error(`Unsupported string validator: ${check.kind}`);
-      }
-      return output;
-    }
-    case 'ZodNumber': {
-      const output: Schema = { type: 'number' };
-      for (const check of definition.checks ?? []) {
-        if (check.kind === 'int') output.type = 'integer';
-        else if (check.kind === 'min') output[check.inclusive ? 'minimum' : 'exclusiveMinimum'] = check.value;
-        else if (check.kind === 'max') output[check.inclusive ? 'maximum' : 'exclusiveMaximum'] = check.value;
-        else if (check.kind !== 'finite') throw new Error(`Unsupported number validator: ${check.kind}`);
-      }
-      return output;
-    }
-    case 'ZodBoolean': return { type: 'boolean' };
-    case 'ZodLiteral': return { type: typeof definition.value, const: definition.value };
-    case 'ZodEnum': return { type: 'string', enum: definition.values };
-    case 'ZodArray': return { type: 'array', items: jsonSchema(definition.type), ...(definition.minLength ? { minItems: definition.minLength.value } : {}), ...(definition.maxLength ? { maxItems: definition.maxLength.value } : {}) };
-    case 'ZodObject': {
-      const shape: Record<string, z.ZodTypeAny> = definition.shape();
-      return { type: 'object', properties: Object.fromEntries(Object.entries(shape).map(([key, value]) => [key, jsonSchema(value)])), required: Object.entries(shape).filter(([, value]) => !value.isOptional()).map(([key]) => key), ...(definition.unknownKeys === 'strict' ? { additionalProperties: false } : {}) };
-    }
-    case 'ZodDiscriminatedUnion': return { oneOf: definition.options.map(jsonSchema), discriminator: { propertyName: definition.discriminator } };
-    case 'ZodUnion': return { anyOf: definition.options.map(jsonSchema) };
-    case 'ZodOptional': return jsonSchema(definition.innerType);
-    case 'ZodDefault': return { ...jsonSchema(definition.innerType), default: definition.defaultValue() };
-    case 'ZodNullable': return { anyOf: [jsonSchema(definition.innerType), { type: 'null' }] };
-    default: throw new Error(`Unsupported schema: ${definition.typeName}`);
-  }
+/** Use the public Zod converter; private schema internals change across releases. */
+export function jsonSchema(schema:z.ZodType):Schema {
+  const { $schema: dialect, ...result }=z.toJSONSchema(schema,{target:'draft-2020-12',io:'input'});
+  return result;
 }
 const ref = (name: string): Schema => ({ $ref: `#/components/schemas/${name}` });
 const object = (properties: Record<string, unknown>, required = Object.keys(properties)): Schema => ({ type: 'object', properties, required });

@@ -5,7 +5,7 @@ import {getDefaultRound} from '../../packages/game-modes/src/fixtures';
 import {sanitizeAndValidateSubmission} from '../../packages/game-modes/src/index';
 import type {Submission} from '../../packages/contracts/src/index';
 test('fishing uses server time, bounded points, repeatable catches and penalties',()=>{
- const r=getDefaultRound('fish');if(r.mode!=='fish')throw Error();r.timerSeconds=40;
+ const r=getDefaultRound('fish');if(r.mode!=='fish')throw Error();r.timerSeconds=40;r.publicConfig.fishScoring='catch-v1';
  const start=100000,deadline=start+40000;let previous:Submission|undefined;
  const cast=(id:string,at:number)=>{const result=fishCast(r,id,previous,at,deadline);previous={id:'test',roundId:r.id,participantId:'test',clientMutationId:'test',revision:1,payload:result.payload,acceptedAt:new Date(at).toISOString()};return result;}
  // Correct option b is offset by 600 ms and reaches the middle at 1200 ms.
@@ -24,4 +24,19 @@ test('fishing uses server time, bounded points, repeatable catches and penalties
  assert.throws(()=>cast('b',deadline),/Time is up/);
  assert.throws(()=>sanitizeAndValidateSubmission(r,{choiceId:'b',fishPoints:1000}),/unsupported fields/);
  assert.throws(()=>fishCast(r,'missing',undefined,start+1200,deadline),/Choose a fish/);
+});
+
+test('single catch commits a timed result, including misses, and rejects retries',()=>{
+ const round=getDefaultRound('fish');if(round.mode!=='fish')throw Error();
+ round.timerSeconds=40;const start=100000,deadline=start+40000;
+ const early=fishCast(round,'b',undefined,start+1200,deadline);
+ const late=fishCast(round,'b',undefined,start+1200+8*FISH_PERIOD,deadline);
+ assert.equal(early.payload.locked,true);
+ assert.equal(early.payload.fishPoints,985);
+ assert.ok(early.payload.fishPoints>late.payload.fishPoints);
+ assert.equal(fishCast(round,'a',undefined,start+1800,deadline).payload.fishPoints,0);
+ assert.equal(fishCast(round,'b',undefined,start+3000,deadline).payload.fishPoints,0);
+ const saved:Submission={id:'x',roundId:round.id,participantId:'p',clientMutationId:'m',revision:1,payload:early.payload,acceptedAt:new Date(start+1200).toISOString()};
+ assert.throws(()=>fishCast(round,'b',saved,start+4800,deadline),/already saved/);
+ assert.throws(()=>fishCast(round,'b',undefined,deadline,deadline),/Time is up/);
 });

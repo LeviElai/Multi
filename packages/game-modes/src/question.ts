@@ -48,11 +48,11 @@ export function answerFromRound(r:Round):QuestionAnswer{
 export function roundFromAnswer(q:QuestionAnswer,mode:ModeId,old:Round):Round{
  const compatible=recommend(q).games;if(!compatible.includes(mode))mode=compatible[0]??'answer';
  const base=getDefaultRound(mode),n=Number(q.answer),safe=Number.isFinite(n)?n:0;
- const r={...base,id:old.id,question:q.text,answerProvided:!!q.answer.trim(),questionType:q.type,answerStructure:q.kind,scoringPolicy:q.exact?'exact' as const:'proximity' as const,provenance:old.provenance,sourceUrl:old.sourceUrl,explanation:old.explanation,allowRevision:false,timerSeconds:old.timerSeconds} as Round;
+ const r={...base,speedScoring:'time-v1',id:old.id,question:q.text,answerProvided:!!q.answer.trim(),questionType:q.type,answerStructure:q.kind,scoringPolicy:q.exact?'exact' as const:'proximity' as const,provenance:old.provenance,sourceUrl:old.sourceUrl,explanation:old.explanation,allowRevision:false,timerSeconds:old.timerSeconds} as Round;
  if(r.mode==='fermi'){r.secretConfig.answer=safe;r.publicConfig={...r.publicConfig,unit:q.unit,min:-1e15,max:1e15,step:1e-6,errorMode:safe<=0?'absolute':'proportional',tolerance:Math.max(1,Math.abs(safe))};}
  if(r.mode==='amountle'){r.secretConfig.answer=safe;r.publicConfig={...r.publicConfig,unit:q.unit,maxCount:500,allowRemove:false,steps:[1],tolerance:Math.max(10,safe/2)};}
  if(r.mode==='word_puzzle'){r.secretConfig.answer=q.answer.toUpperCase();r.publicConfig.length=q.answer.length;}
- if(r.mode==='size_it_up'&&old.mode==='size_it_up')return {...old,question:q.text,questionType:q.type,answerStructure:'size'};
+ if(r.mode==='size_it_up'&&old.mode==='size_it_up')return {...old,speedScoring:'time-v1',question:q.text,questionType:q.type,answerStructure:'size'};
  if(isArcade(r)){
   const c=r.publicConfig,s=r.secretConfig;c.unit=q.unit;c.requiredCount=q.requiredCount;c.kind=q.type==='boolean'?'boolean':q.type==='multiple'?(q.kind==='list'?'list':'multiple'):q.kind==='choice'?'choice':q.kind==='text'||mode==='answer'?'text':'number';
   s.answer=q.type==='boolean'?q.answer==='true':c.kind==='number'?safe:q.answer;s.acceptedAlternatives=q.alternatives;
@@ -64,7 +64,7 @@ export function roundFromAnswer(q:QuestionAnswer,mode:ModeId,old:Round):Round{
   c.options.sort((a,b)=>hash(old.id+a.id)-hash(old.id+b.id));
   c.codeLength=Math.max(1,Math.min(8,q.answer.length));c.max=r.mode==='crack'?10**c.codeLength-1:99999999;c.min=0;
   const scaling=stackScale(safe);
-  c.step=1;c.blockValues=scaling.values;if(r.mode==='stack')r.timerSeconds=Math.max(40,old.timerSeconds); c.tolerance=Math.max(10,Math.abs(safe));
+  c.step=1;c.blockValues=scaling.values;if(r.mode==='stack'){r.timerSeconds=Math.max(40,old.timerSeconds);c.stackPhysics='support-v1';} c.tolerance=Math.max(10,Math.abs(safe));
  }
  return r;
 }

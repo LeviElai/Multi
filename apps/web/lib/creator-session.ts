@@ -3,7 +3,7 @@ export function creatorDestination(value:string|null):string{
  if(!value||!value.startsWith('/')||value.startsWith('//')||/[\\\u0000-\u0020]/.test(value))return '/create';
  const path=value.split(/[?#]/)[0];
  // Auth endpoints and the login screen must never be their own return target.
- return /^\/(create|library|quiz|host|account)(\/|$)/.test(path)?value:'/create';
+ return /^\/(create|library|quiz|host|account|daily)(\/|$)/.test(path)?value:'/create';
 }
 export async function signInCreator(register:boolean,credentials:{email:string;password:string;displayName:string}){
  const result=await api<{id:string}>('/api/auth/'+(register?'register':'login'),{method:'POST',body:JSON.stringify(credentials)});
