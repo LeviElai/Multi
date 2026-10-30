@@ -131,7 +131,8 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       if(method==='GET'&&path==='daily/archive')return ok(await daily.archive(url.searchParams.get('before')??utcDay(Date.now()),user?.id));
       if(method==='GET'&&path==='daily/leaderboard')return ok(await daily.board(day,user?.id,z.coerce.number().int().min(0).max(100000).parse(url.searchParams.get('offset')??0)));
       if(method==='POST'&&path==='daily/start'){
-        const owner=requireUser(user),input=z.object({day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),practice:z.boolean().default(false)}).strict().parse(body);
+        if(!user)throw new DomainError('UNAUTHENTICATED','Sign in to save your world ranking.',401);
+        const owner=user,input=z.object({day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),practice:z.boolean().default(false)}).strict().parse(body);
         await rateLimit(ctx.store.db,`daily-start:${owner.id}`,30,3600000);
         return ok(await daily.start(input.day,owner,input.practice));
       }

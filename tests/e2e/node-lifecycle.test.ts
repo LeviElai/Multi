@@ -62,8 +62,9 @@ test(`HTTP + Socket.IO: ${scenario.players} players, ${scenario.arcade?'eleven':
     assert.match(loggedIn.response.headers.get('set-cookie')??'',/HttpOnly/);const hostCookie=loggedIn.cookie;
     await call('/api/auth/logout','POST',{},hostCookie,403,{Origin:'https://attacker.invalid'});
     const demo=scenario.arcade?getArcadeQuiz():(await call<QuizInput>('/api/v1/demo')).data;
-    // This lifecycle fixture preserves the legacy Crack policy; deduction-v1 has clock-controlled regression coverage.
-    for(const round of demo.rounds){if(round.mode==='crack')delete round.publicConfig.crackScoring;if(round.mode==='fish')delete round.publicConfig.fishScoring;}
+    // This fixed-total lifecycle fixture preserves legacy scoring. Time-v1 and
+    // deduction-v1 have clock-controlled regression coverage in the scoring tests.
+    for(const round of demo.rounds){delete round.speedScoring;if(round.mode==='crack')delete round.publicConfig.crackScoring;if(round.mode==='fish')delete round.publicConfig.fishScoring;}
     const created=(await call<{id:string;revision:number}>('/api/v1/quizzes','POST',demo,hostCookie,201)).data;
     const version=(await call<{id:string}>(`/api/v1/quizzes/${created.id}/publish`,'POST',{expectedRevision:created.revision},hostCookie,201)).data;
     const room=(await call<{sessionId:string;pin:string}>('/api/v1/sessions','POST',{quizVersionId:version.id},hostCookie,201)).data;
@@ -112,9 +113,9 @@ test(`HTTP + Socket.IO: ${scenario.players} players, ${scenario.arcade?'eleven':
         await call(`${sessionPath}/word-guesses`,'POST',{...guess,clientMutationId:randomUUID()},second.cookie);
         for(const participant of participants.slice(2))await call(`${sessionPath}/word-guesses`,'POST',{...guess,clientMutationId:randomUUID()},participant.cookie);
       }else {
-        const answer=(r:Round,participantIndex=0)=>r.mode==='fermi'?{value:r.secretConfig.answer}:['fish','claw','sling'].includes(r.mode)&&'correctOptionIds' in r.secretConfig?{choiceId:r.secretConfig.correctOptionIds[0]}:r.mode==='drop'?{choiceId:String(r.secretConfig.answer)}:r.mode==='size_it_up'?{ratio:r.secretConfig.targetSize/r.publicConfig.referenceSize}:r.mode==='amountle'?{count:r.secretConfig.answer}:['draw','stack','crack'].includes(r.mode)&&'answer' in r.secretConfig?{value:r.secretConfig.answer}:{};
+        const answer=(r:Round,participantIndex=0)=>r.mode==='fermi'?{value:r.secretConfig.answer}:r.mode==='stack'?{value:51,blocks:[{value:25,x:50},{value:25,x:50},{value:1,x:50}]}:['fish','claw','sling'].includes(r.mode)&&'correctOptionIds' in r.secretConfig?{choiceId:r.secretConfig.correctOptionIds[0]}:r.mode==='drop'?{choiceId:String(r.secretConfig.answer)}:r.mode==='size_it_up'?{ratio:r.secretConfig.targetSize/r.publicConfig.referenceSize}:r.mode==='amountle'?{count:r.secretConfig.answer}:['draw','stack','crack'].includes(r.mode)&&'answer' in r.secretConfig?{value:r.secretConfig.answer}:{};
         const submission={roundId:round.id,clientMutationId:randomUUID(),revision:round.mode==='amountle'?8:1,payload:answer(round)};
-        const result=await command<{accepted:boolean}>(player.socket,'answer.submit',submission);assert.equal(result.data.accepted,true);
+        const result=await command<{accepted:boolean}>(player.socket,'answer.submit',submission);assert.equal(result.error,undefined,round.mode+': '+JSON.stringify(result.error));assert.equal(result.data.accepted,true);
         const repeat=await command(player.socket,'answer.submit',submission);assert.deepEqual(repeat.data,result.data);
         await call(`${sessionPath}/submissions`,'POST',{...submission,clientMutationId:randomUUID(),payload:answer(round,1)},second.cookie);
         for(let participantIndex=2;participantIndex<participants.length;participantIndex++)await call(`${sessionPath}/submissions`,'POST',{...submission,clientMutationId:randomUUID(),payload:answer(round,participantIndex)},participants[participantIndex].cookie);

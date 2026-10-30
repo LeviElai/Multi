@@ -12,6 +12,8 @@ test('Vercel proxy removes decoded compression headers, preserves cookies, and s
     assert.equal(headers.get('oai-authenticated-user-id'), null);
     assert.equal(headers.get('oai-authenticated-user-email'), null);
     assert.equal(headers.get('cookie'), 'mg_host=test-only');
+    assert.equal(headers.get('origin'), 'https://frontend.example.test');
+    assert.equal(headers.get('sec-fetch-site'), 'same-origin');
     assert.equal(headers.get('accept-encoding'), 'identity');
     return new Response('{"data":{"id":"creator"}}', {status:201,headers:{
       'Content-Type':'application/json','Content-Encoding':'br','Content-Length':'12',
@@ -20,7 +22,7 @@ test('Vercel proxy removes decoded compression headers, preserves cookies, and s
   };
   try {
     const response = await siteApi(new Request('https://frontend.example.test/api/auth/login', {method:'POST',body:'{}',headers:{
-      Cookie:'mg_host=test-only','oai-authenticated-user-id':'forged','oai-authenticated-user-email':'forged@example.test',
+      Cookie:'mg_host=test-only',Origin:'https://frontend.example.test','Sec-Fetch-Site':'same-origin','oai-authenticated-user-id':'forged','oai-authenticated-user-email':'forged@example.test',
     }}));
     assert.equal(response.status,201);
     assert.equal(response.headers.get('content-encoding'),null);
