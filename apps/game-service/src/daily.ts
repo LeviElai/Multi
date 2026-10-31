@@ -26,7 +26,9 @@ export class DailyChallengeService{
  }
  async overview(day:string,owner?:string){const c=await this.challenge(day);return {day:c.day,title:c.title,version:c.version,questionCount:10,resetAt:new Date(Date.parse(utcDay(this.clock())+'T00:00:00Z')+86400000).toISOString(),serverTime:new Date(this.clock()).toISOString(),...await this.board(day,owner)};}
  async archive(before:string,owner?:string){
-  const result=await this.db.query("SELECT c.day,c.title,c.version,(SELECT MAX(a.score) FROM daily_attempts a WHERE a.day=c.day AND a.owner_id=? AND a.ranked=1 AND a.completed_at IS NOT NULL) AS own_score FROM daily_challenges c WHERE c.status='published' AND c.day<? ORDER BY c.day DESC LIMIT 31",[owner??'',before]);return result.rows;
+  // PostgreSQL rejects an empty string for the UUID owner_id column. Anonymous
+  // readers use NULL, which cannot match a ranked attempt and remains private.
+  const result=await this.db.query("SELECT c.day,c.title,c.version,(SELECT MAX(a.score) FROM daily_attempts a WHERE a.day=c.day AND a.owner_id=? AND a.ranked=1 AND a.completed_at IS NOT NULL) AS own_score FROM daily_challenges c WHERE c.status='published' AND c.day<? ORDER BY c.day DESC LIMIT 31",[owner??null,before]);return result.rows;
  }
  async start(day:string,owner:{id:string;displayName:string},practice:boolean){
   await this.challenge(day);const now=this.clock(),ranked=!practice&&day===utcDay(now);

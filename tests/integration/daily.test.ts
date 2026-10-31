@@ -4,8 +4,13 @@ import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {NodeSqliteDatabase} from '../../packages/db/src/sqlite';
+import type {SqlDatabase} from '../../packages/db/src/types';
 import {SqlStore} from '../../packages/db/src/store';
 import {DailyChallengeService,type DailyQuestion} from '../../apps/game-service/src/daily';
+test('anonymous archive binds a nullable owner UUID for PostgreSQL',async()=>{
+ const db={query:async (_sql:string,params:unknown[])=>{assert.equal(params[0],null);return {rows:[],changes:0};}} as unknown as SqlDatabase;
+ assert.deepEqual(await new DailyChallengeService(db).archive('2026-10-31'),[]);
+});
 test('daily ranked attempts survive refresh, reject impersonation/replay and preserve archive rankings',async t=>{
  const dir=await mkdtemp(join(tmpdir(),'daily-test-')),db=new NodeSqliteDatabase(join(dir,'db.sqlite'));t.after(async()=>{await db.close();await rm(dir,{recursive:true,force:true});});
  await db.migrate(await readFile('drizzle/0000_initial.sql','utf8'));
