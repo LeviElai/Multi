@@ -37,8 +37,10 @@ try{
  }
  await page.getByText('Daily quest complete',{exact:true}).waitFor();
  await page.getByText('Your rank',{exact:false}).waitFor();console.log('PASS ten-question touch completion, mid-run reload and rank reveal');
+ await page.waitForTimeout(650);
  await page.screenshot({path:(process.env.QA_SCREENSHOTS??'.sites-runtime')+'/daily-result-320.png'});
  await page.getByRole('link',{name:'Open quest book',exact:true}).click();await page.getByRole('heading',{name:'Past adventures'}).waitFor();
+ await page.getByText('Loading the quest book…',{exact:true}).waitFor({state:'hidden'});await page.waitForTimeout(350);
  await page.screenshot({path:(process.env.QA_SCREENSHOTS??'.sites-runtime')+'/daily-archive-320.png'});
  await context.route('**/api/auth/me',route=>route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:{code:'SESSION_EXPIRED',message:'Expired test session'}})}));
  await page.goto(base+'/create');await page.getByRole('heading',{name:'Session expired'}).waitFor();await page.getByRole('link',{name:'Sign in',exact:true}).waitFor();console.log('PASS expired session offers direct sign-in');
