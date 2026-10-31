@@ -8,7 +8,7 @@ export async function prepareDaily(db:SqlDatabase,now=Date.now(),choose?:(day:st
  for(let offset=0;offset<=7;offset++){
   const day=utcDay(now+offset*86400000);
   if((await db.query('SELECT day FROM daily_challenges WHERE day=?',[day])).rows.length)continue;
-  const recentRows=await db.query<{questions:string}>('SELECT questions FROM daily_challenges WHERE day<? ORDER BY day DESC LIMIT 2',[day]);
+  const recentRows=await db.query<{questions:string}>('SELECT questions FROM daily_challenges WHERE day<? ORDER BY day DESC LIMIT 4',[day]);
   const recent=new Set(recentRows.rows.flatMap(r=>DailyQuestionsSchema.parse(JSON.parse(r.questions)).map(q=>q.id)));
   let preferred:string[]=[];if(choose)try{const ids=await choose(day,DAILY_POOL);if(!Array.isArray(ids)||ids.length!==10||new Set(ids).size!==10||ids.some(id=>!DAILY_POOL.some(q=>q.id===id)))throw Error('Invalid AI selection');preferred=ids;}catch{aiFailures++;}
   const questions=selectDaily(day,recent,preferred);

@@ -1,4 +1,4 @@
-import {stableStack} from './stack';
+import {stableStack,stackStability} from './stack';
 import {InkSchema} from '../../contracts/src/index';
 import type {ArcadeRound,Submission,ValidationIssue} from '../../contracts/src/index';
 import {invalid,issue,normalizeAnswer,points} from './shared';
@@ -64,6 +64,7 @@ export function scoreArcade(r:ArcadeRound,p:Submission['payload']):{points:numbe
  else if(c.kind==='list'){const expected=String(s.answer).split('|').map(normalizeAnswer).sort();const actual=(p.choices??[]).map(normalizeAnswer).sort();correct=c.requiredCount!==undefined?actual.length===c.requiredCount&&actual.every(v=>expected.includes(v)):JSON.stringify(actual)===JSON.stringify(expected);n=correct?1000:0;}
  else {correct=[String(s.answer),...s.acceptedAlternatives].some(a=>normalizeAnswer(a)===normalizeAnswer(p.text??''));n=correct?1000:0;}
  if(r.speedScoring==='time-v1'&&correct)n=1000;
+ if(r.mode==='stack'&&c.stackPhysics==='support-v1'&&p.blocks?.length)n=points(n*(.65+.35*stackStability(p.blocks)));
  if(r.mode==='crack'&&c.crackScoring==='deduction-v1')n=correct&&p.locked?points(p.crackPoints??0):0;
  if(r.mode==='fish'&&c.fishScoring!==undefined){n=points(p.fishPoints??0);correct=(p.fishCatches??0)>0;selected=`${p.fishCatches??0} catches`;}
  return {points:n,selected,correct,...(p.value!==undefined?{value:p.value}:{})};

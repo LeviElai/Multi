@@ -25,6 +25,15 @@
 .arcade-stack .block-unsupported .ready-block{animation:unsupported-block .7s ease-in forwards}
 @keyframes unsupported-block{60%{top:65%;rotate:12deg}100%{top:110%;rotate:35deg;opacity:0}}
 @media(prefers-reduced-motion:reduce){.arcade-stack .block-unsupported .ready-block{animation:none;opacity:.35}}
+.arcade-stack .stack-loading-mark{left:var(--placement);transform:translateX(-50%);top:76px;transition:left .08s steps(4,end);text-shadow:1px 2px #213e50;pointer-events:none}
+.arcade-stack .stack-yard[data-support=solid] .stack-loading-mark{color:#e9f2ae}
+.arcade-stack .stack-yard[data-support=fall] .stack-loading-mark{color:#f0a18d}
+.arcade-stack .stack-block:last-child{animation:stack-impact .25s steps(4,end) both}
+@keyframes stack-impact{0%{filter:brightness(1.6);translate:0 -8px}65%{translate:0 2px}100%{translate:0 0}}
+.arcade-stack .tower-collapse .stack-tower{animation:stack-tipping .65s steps(7,end) both;transform-origin:50% 100%}
+@keyframes stack-tipping{0%,30%{rotate:0}45%{rotate:-5deg}60%{rotate:8deg}100%{rotate:16deg;translate:10px 0}}
+@media(prefers-reduced-motion:reduce){.arcade-stack .stack-loading-mark{transition:none}.arcade-stack .stack-block:last-child{animation:none}}
+@media(prefers-reduced-motion:reduce){.arcade-stack .tower-collapse .stack-tower{animation:none}}
 
 .plinko-ball,.sling-garden .pixel-projectile{width:24px;height:24px;min-width:24px;min-height:24px;aspect-ratio:1;border:0;border-radius:0;background:transparent url('/art/pixel/pebble.svg') center/contain no-repeat;box-shadow:none;image-rendering:pixelated}
 .plinko-ball:after{display:none}.sling-garden .pixel-projectile{position:absolute;transform:translate(-50%,-50%);z-index:8;touch-action:none;cursor:grab}

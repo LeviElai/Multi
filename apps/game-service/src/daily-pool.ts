@@ -41,6 +41,37 @@ const rows:[string,string,string[],string,DailyQuestion['difficulty'],string][]=
  ['venus-name','Venus is named after the Roman goddess of what?',['Love and beauty','War','Wisdom','The hunt'],'Culture','medium','https://science.nasa.gov/venus/venus-facts/'],
  ['reef-country','The Great Barrier Reef lies off the coast of which country?',['Australia','Indonesia','South Africa','Mexico'],'Nature','easy','https://whc.unesco.org/en/list/154/'],
  ['dugong-name','Which marine animal is also known as a sea cow?',['Dugong','Dolphin','Sea lion','Walrus'],'Nature','medium','https://whc.unesco.org/en/list/154/'],
+ ['rapa-country','Rapa Nui, also called Easter Island, is part of which country?',['Chile','Peru','New Zealand','Ecuador'],'Geography','medium','https://whc.unesco.org/en/list/715'],
+ ['rapa-figures','What are the monumental stone figures of Rapa Nui called?',['Moai','Totems','Obelisks','Dolmens'],'Culture','medium','https://whc.unesco.org/en/list/715'],
+ ['rapa-ocean','Rapa Nui is an island in which ocean?',['Pacific','Atlantic','Indian','Arctic'],'Geography','easy','https://whc.unesco.org/en/list/715'],
+ ['serengeti-country','In which country is Serengeti National Park?',['Tanzania','Kenya','Namibia','Botswana'],'Geography','medium','https://whc.unesco.org/en/list/156/'],
+ ['serengeti-migration','Which animal is especially famous for its mass migration across the Serengeti?',['Wildebeest','Polar bear','Panda','Kangaroo'],'Nature','medium','https://whc.unesco.org/en/list/156/'],
+ ['galapagos-country','Which country includes the Galápagos Islands?',['Ecuador','Colombia','Chile','Costa Rica'],'Geography','medium','https://whc.unesco.org/en/list/001/'],
+ ['stonehenge-period','Stonehenge is best known as a monument from which broad period?',['Prehistory','The Renaissance','The Industrial Age','The Middle Ages'],'History','easy','https://whc.unesco.org/en/list/373'],
+ ['stonehenge-partner','Which site shares a UNESCO World Heritage listing with Stonehenge?',['Avebury','Hadrian’s Wall','Pompeii','Petra'],'History','challenging','https://whc.unesco.org/en/list/373'],
+ ['penicillin-prize','The 1945 Nobel Prize in Medicine honoured the discovery and medical use of what?',['Penicillin','Insulin','Aspirin','Vaccination'],'Science','medium','https://www.nobelprize.org/prizes/medicine/1945/summary/'],
+ ['penicillin-fleming','Who shared the 1945 Medicine Nobel Prize for work on penicillin?',['Alexander Fleming','Louis Pasteur','Charles Darwin','Gregor Mendel'],'Science','medium','https://www.nobelprize.org/prizes/medicine/1945/summary/'],
+ ['mandela-peace','Nelson Mandela shared the 1993 Nobel Peace Prize with whom?',['F. W. de Klerk','Desmond Tutu','Kofi Annan','Mikhail Gorbachev'],'History','challenging','https://www.nobelprize.org/prizes/peace/1993/press-release/'],
+ ['ancient-olympic-combat','Which ancient Olympic sport combined wrestling and boxing?',['Pankration','Pentathlon','Fencing','Judo'],'Sport','challenging','https://www.olympics.com/ioc/ancient-olympic-games/the-sports-events'],
+ ['ancient-olympic-horses','Where did ancient Olympic chariot races take place?',['Hippodrome','Colosseum','Parthenon','Agora'],'Sport','challenging','https://www.olympics.com/ioc/ancient-olympic-games/the-sports-events'],
+ ['earth-third','Earth is which planet from the Sun?',['Third','Second','Fourth','Fifth'],'Space','easy','https://science.nasa.gov/earth/facts/'],
+ ['moon-titan','Which moon has a thick atmosphere?',['Titan','Phobos','Deimos','Io'],'Space','challenging','https://science.nasa.gov/solar-system/moons/facts/'],
+ ['neptune-triton','Triton is a moon of which planet?',['Neptune','Saturn','Mars','Venus'],'Space','medium','https://science.nasa.gov/neptune/moons/facts/'],
+ ['flamenco-heartland','Which region of Spain is the heartland of flamenco?',['Andalusia','Catalonia','Galicia','Navarre'],'Music','medium','https://ich.unesco.org/en/RL/flamenco-00363'],
+ ['flamenco-forms','Flamenco brings together song, dance and what else?',['Instrumental music','Painting','Pottery','Sculpture'],'Music','medium','https://ich.unesco.org/en/RL/flamenco-00363'],
+ ['tango-cities','Tango developed in Buenos Aires and which other city?',['Montevideo','Lima','Santiago','Havana'],'Music','challenging','https://ich.unesco.org/en/RL/tango-00258'],
+ ['tango-region','Which river basin is associated with the birth of tango?',['Río de la Plata','Nile','Danube','Mekong'],'Music','challenging','https://ich.unesco.org/en/RL/tango-00258'],
+ ['reggae-country','Reggae music originated in which country?',['Jamaica','Cuba','Ghana','Brazil'],'Music','easy','https://ich.unesco.org/en/RL/reggae-music-of-jamaica-01398'],
+ ['mariachi-country','Mariachi is a musical tradition of which country?',['Mexico','Spain','Argentina','Colombia'],'Music','easy','https://ich.unesco.org/en/RL/mariachi-string-music-song-and-trumpet-00575'],
+ ['mariachi-bass','Which large bass guitar is part of modern mariachi?',['Guitarrón','Sitar','Balalaika','Mandolin'],'Music','challenging','https://ich.unesco.org/en/RL/mariachi-string-music-song-and-trumpet-00575'],
+ ['washoku-country','Washoku is a traditional food culture of which country?',['Japan','China','Thailand','Vietnam'],'Culture','medium','https://ich.unesco.org/en/RL/washoku-traditional-dietary-culture-of-the-japanese-notably-for-the-celebration-of-new-year-00869'],
+ ['washoku-festival','Washoku is especially associated with celebrating which occasion?',['New Year','The summer solstice','Harvest moon','Spring equinox'],'Culture','challenging','https://ich.unesco.org/en/RL/washoku-traditional-dietary-culture-of-the-japanese-notably-for-the-celebration-of-new-year-00869'],
+ ['web-inventor','Who invented the World Wide Web while working at CERN?',['Tim Berners-Lee','Alan Turing','Steve Jobs','Bill Gates'],'Technology','medium','https://home.cern/science/computing/the-birth-of-the-web/short-history-web/'],
+ ['web-year','In which year did Tim Berners-Lee propose the World Wide Web?',['1989','1975','1999','2005'],'Technology','challenging','https://home.cern/science/computing/the-birth-of-the-web/short-history-web/'],
+ ['web-first-site','Which laboratory hosted the world’s first website?',['CERN','NASA','MIT','Bell Labs'],'Technology','medium','https://home.cern/science/computing/the-birth-of-the-web/short-history-web/'],
+ ['earth-air','Which gas makes up most of Earth’s atmosphere?',['Nitrogen','Oxygen','Carbon dioxide','Hydrogen'],'Science','medium','https://science.nasa.gov/earth/facts/'],
+ ['earth-ocean','About how much of Earth’s surface is covered by ocean?',['71%','29%','50%','90%'],'Nature','medium','https://science.nasa.gov/earth/facts/'],
+ ['marathon-distance','What is the official marathon distance in kilometres?',['42.195','40','50','36.2'],'Sport','challenging','https://www.olympics.com/ioc/news/olympic-marathon-innovations'],
 ];
 export const DAILY_POOL:DailyQuestion[]=[...rows.map(([id,question,options,category,difficulty,sourceUrl])=>({id,question,options,answer:0,category,difficulty,sourceUrl,explanation:`${options[0]}. See the linked primary source.`})),...NUMERIC_FACTS.filter(f=>!isApproximateFact(f)&&!f.id.endsWith('-order')).map(f=>{
  const options=(f.answer>=1800&&f.answer<=2026?[f.answer,f.answer-20,f.answer-10,f.answer+10]:[f.answer,Math.max(1,Math.round(f.answer*.7)),Math.round(f.answer*1.3)+1,Math.round(f.answer*1.6)+3]).map(String);
@@ -48,7 +79,7 @@ export const DAILY_POOL:DailyQuestion[]=[...rows.map(([id,question,options,categ
 })].map(q=>DailyQuestionSchema.parse(q));
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 /** Deterministic fallback: diverse categories, 3 easy / 5 medium / 2 challenging.
- * Recent IDs are avoided when the reviewed inventory supports the quota. */
+ * The four most recent days are avoided when the reviewed inventory supports it. */
 export function selectDaily(day:string,recent:ReadonlySet<string>=new Set(),preferred:readonly string[]=[]){
  const selected:DailyQuestion[]=[],categories=new Map<string,number>();
  for(const [difficulty,count] of [['easy',3],['medium',5],['challenging',2]] as const){
