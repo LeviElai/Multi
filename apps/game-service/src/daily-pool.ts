@@ -4,6 +4,15 @@ import {NUMERIC_FACTS,isApproximateFact} from './numeric-facts';
 /** Reviewed against the primary source links, 2026-10-25. AI may select IDs;
  * it cannot rewrite a fact, answer, source, or difficulty during publication. */
 const rows:[string,string,string[],string,DailyQuestion['difficulty'],string][]=[
+ ['petra-country','The rock-cut city of Petra is in which country?',['Jordan','Egypt','Greece','Turkey'],'Geography','medium','https://whc.unesco.org/en/list/326/'],
+ ['petra-people','Which people made Petra an important caravan city?',['Nabataeans','Vikings','Incas','Mongols'],'History','challenging','https://whc.unesco.org/en/list/326/'],
+ ['acropolis-city','Which city is home to the Acropolis and Parthenon?',['Athens','Rome','Istanbul','Alexandria'],'Culture','easy','https://whc.unesco.org/en/list/404'],
+ ['curie-birthplace','In which city was Marie Curie born?',['Warsaw','Paris','Vienna','Prague'],'History','medium','https://www.nobelprize.org/prizes/physics/1903/marie-curie/facts/'],
+ ['curie-fields','Marie Curie won Nobel Prizes in which two fields?',['Physics and chemistry','Chemistry and medicine','Physics and peace','Medicine and literature'],'Science','medium','https://www.nobelprize.org/womenwhochangedscience/stories/marie-curie.'],
+ ['saturn-size','Which is the second-largest planet in our solar system?',['Saturn','Neptune','Uranus','Earth'],'Space','medium','https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/'],
+ ['uranus-position','Counting outward from the Sun, which planet is seventh?',['Uranus','Neptune','Saturn','Jupiter'],'Space','challenging','https://science.nasa.gov/solar-system/planet-sizes-and-locations-in-our-solar-system/'],
+ ['ice-giants','Which pair of planets are classified as ice giants?',['Uranus and Neptune','Jupiter and Saturn','Earth and Mars','Mercury and Venus'],'Science','medium','https://science.nasa.gov/solar-system/solar-system-facts/'],
+
  ['taj-country','In which country is the Taj Mahal?',['India','Nepal','Pakistan','Bangladesh'],'Geography','easy','https://whc.unesco.org/en/list/252'],
  ['taj-city','Which city is home to the Taj Mahal?',['Agra','Mumbai','Jaipur','Delhi'],'Culture','medium','https://whc.unesco.org/en/list/252'],
  ['taj-material','Which material gives the Taj Mahal its famous white exterior?',['Marble','Limestone','Granite','Sandstone'],'Culture','medium','https://whc.unesco.org/en/list/252'],
