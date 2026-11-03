@@ -1,10 +1,14 @@
 'use client';
-import Link from 'next/link';
-import { Brand } from './Brand';
+import { Header, Footer } from './Brand';
 import JoinForm from './JoinForm';
-import { WorldScene } from './world/WorldScene';
-export default function Join({ initialPin = '' }: {
-    initialPin?: string;
-}) {
-    return <main className="join-world"><WorldScene /><div className="join-world-content"><Brand /><h1>Join a game</h1><JoinForm initialPin={initialPin}/><Link href="/" className="text-link">← Back to MULTIGAME</Link><p className="join-legal"><Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link></p></div></main>;
+import { PixelSprite } from './world/Sprites';
+import styles from './Join.module.css';
+
+export default function Join({ initialPin = '' }: { initialPin?: string }) {
+  return <div className={styles.page}><Header/><main className={styles.content}>
+    <section className={styles.card} aria-labelledby="join-title">
+      <div className={styles.title}><PixelSprite kind="fish"/><h1 id="join-title">Join a game</h1></div>
+      <JoinForm initialPin={initialPin}/>
+    </section>
+  </main><Footer/></div>;
 }
