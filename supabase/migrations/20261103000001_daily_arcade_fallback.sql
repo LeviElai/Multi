@@ -462,7 +462,7 @@ BEGIN
     SELECT pg_catalog.jsonb_agg(option ORDER BY position),
        max(position-1) FILTER(WHERE ordinal=(picked->>'answer')::integer) INTO shuffled,answer_index
       FROM (SELECT option,ordinality-1 AS ordinal,
-        row_number() OVER(ORDER BY pg_catalog.md5(canonical||picked->>'id'||ordinality::text)) AS position
+        row_number() OVER(ORDER BY pg_catalog.md5(canonical||(picked->>'id')||ordinality::text)) AS position
         FROM pg_catalog.jsonb_array_elements(picked->'options') WITH ORDINALITY AS choices(option,ordinality)) ranked_options;
     selected:=selected||pg_catalog.jsonb_build_array(pg_catalog.jsonb_set(pg_catalog.jsonb_set(picked,'{options}',shuffled),'{answer}',pg_catalog.to_jsonb(answer_index)));
    END LOOP;
