@@ -4,7 +4,7 @@
 
 Independent review: 2026-11-03, source 56fa3b0. Root previously inspected live desktop production 8881c5. The reviewer inspected the stored `docs/evidence/20261031/home-390.png` rendering and the supplied user captures: these are **historical baseline evidence**, not current production screenshots. The pinched full-page image does not establish a CSS width defect.
 
-No new rendered candidate has passed independent review. This child has no CUA browser surface; the managed environment has no installed Chromium executable. Root reports that the candidate preview at terminal.local:4173 is refused by its browser. This is an unresolved preview-access limitation, not evidence the product is broken. Do not call desktop captures mobile evidence or infer successful touch interaction from bounds tests.
+Latest desktop candidate Home, Daily, Community and Archive captures passed independent composition review; see the latest review below. Mobile, signed-in states and five-game live behavior remain unverified. Historical findings below are retained as the audit trail, not a statement that corrected defects remain present.
 
 ## Ranked findings
 
@@ -83,3 +83,14 @@ Actually inspected `/workspace/scratch/multigame-candidate-home-desktop.jpg`, `m
 | Community | Not reviewed | Supplied screenshot path was absent at inspection; do not infer visual quality from source. |
 
 The desktop Home's large sky region is not automatically a defect; test shorter windows before changing it. Avoid turning intentional background into another oversized card. Current captures do not establish focus behavior, contrast measurements, responsive fit, gameplay comprehension or enjoyment.
+
+### Follow-up rendered acceptance (latest preview)
+
+Inspected fresh `/workspace/scratch/multigame-final-{home,daily,community,archive}-desktop.jpg` captures for https://multigame-fo43l8t2q-levi-6fe6.vercel.app/ . These supersede the earlier Home/Daily composition rejections for the depicted states only.
+
+- **Home:** accepted desktop composition. Card edges and headings align; globe restores Daily's visual identity; two action groups and one primary navigation remain clear. Legal links have a readable parchment backing. Differing action-row heights reflect Daily metadata and are not a release blocker.
+- **Daily landing / empty standings:** accepted desktop composition. Narrower panel, globe, readable date and removal of the duplicate Home backlink resolve the prior void and hierarchy defects. Legacy ten-question data remains visible; this capture does not verify the five-game release.
+- **Community / populated library:** accepted desktop composition. Search, filters and quiz cards form a clear sequence; consistent three-column cards keep actions aligned even with two-line titles. “Details & host” and “Play solo” distinguish next actions. Seven cards naturally leave an incomplete final row; that is normal data-grid behavior, not a layout defect. Search/filter behavior, empty results and mobile are not established by the image.
+- **Archive / eight available dates:** accepted desktop composition. Four-column, two-row arrangement is compact and balanced; content-sized parchment removes the old huge empty sheet. Date hierarchy and return-to-today action are clear. Completed/unavailable states, pagination, historical ranks and replay correctness remain unverified by this capture.
+
+No release-level visual defect is visible in these desktop captures. This is limited visual approval, not overall product approval: mobile, browser interactions, registered profile, populated leaderboard, all game frames and actual five-game content still require their own evidence. No claim of human-tested enjoyment is made.
