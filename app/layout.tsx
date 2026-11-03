@@ -1,5 +1,6 @@
 import SoundDesign from '../apps/web/components/SoundDesign';
-import { Atmosphere } from '../apps/web/components/world/Atmosphere';
+import { PageBackdrop } from '../apps/web/components/world/PageBackdrop';
+import backdrop from '../apps/web/components/world/PageBackdrop.module.css';
 import type { Metadata } from "next";
 import "./globals.css";
 import "../apps/web/components/creator.css";
@@ -27,6 +28,6 @@ export default function RootLayout({ children, }: Readonly<{
     children: React.ReactNode;
 }>) {
     return (<html lang="en"><head/>
-      <body className="antialiased"><SoundDesign/><Atmosphere global/>{children}</body>
+      <body className={`antialiased ${backdrop.shell}`}><SoundDesign/><PageBackdrop/>{children}</body>
     </html>);
 }
