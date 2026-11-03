@@ -1,10 +1,9 @@
 'use client';
-import {MODES,MODE_META} from '../../../packages/contracts/src/index';
-import {PixelSprite} from './world/Sprites';
 import Link from 'next/link';
-import { Header, Footer } from './Brand';
+import {Header,Footer} from './Brand';
 import {DailyEntrance} from './DailyChallenge';
-import JoinForm from './JoinForm';
-export default function Home() {
-    return <div className="clean-home plaza-home"><Header/><main><DailyEntrance/><section className="plaza-entry"><div className="plaza-scenery" aria-hidden="true"><div className="plaza-cloud cloud-a"/><div className="plaza-cloud cloud-b"/><div className="plaza-sun"/></div><div className="plaza-content"><h1>Join a game</h1><JoinForm compact/></div><div className="plaza-hosting"><strong>Make your own game night</strong><Link href="/create" className="btn btn-primary">Create a quiz →</Link><Link href="/community" className="text-link">Browse quizzes</Link></div></section><details className="game-showcase"><summary>Explore the eleven games ↓</summary><div className="game-showcase-grid">{MODES.map(mode=><article key={mode}><PixelSprite kind={mode}/><strong>{MODE_META[mode].name}</strong><p>{MODE_META[mode].description}</p></article>)}</div></details></main><Footer/></div>;
+import {PixelSprite} from './world/Sprites';
+import styles from './Home.module.css';
+export default function Home(){
+ return <div className={styles.world}><Header/><main className={styles.menu} aria-label="Game menu"><DailyEntrance/><section className={styles.friends}><div className={styles.friendsArt} aria-hidden="true"><PixelSprite kind="fish"/><PixelSprite kind="word_puzzle"/><PixelSprite kind="claw"/></div><h1>Play with friends</h1><div className={styles.actions}><Link className="btn btn-primary" href="/join">Join a game</Link><Link className="btn btn-outline" href="/community">Host a game</Link></div></section></main><Footer/></div>;
 }
