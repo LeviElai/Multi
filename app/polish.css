@@ -143,3 +143,13 @@
 .creator-page .creator-empty{max-width:480px;margin:12px auto;padding:24px;border:5px solid #77543e;background:#f2d9a9;box-shadow:inset 0 0 0 3px #fff0c9,5px 5px #193649;color:#294556}
 .creator-page .creator-empty h2{font:clamp(17px,4vw,23px)/1.4 var(--pixel),monospace;margin:8px 0}.creator-page .creator-empty p{margin:7px 0 16px;font-size:13px;line-height:1.4;color:#47616a}
 @media(max-width:700px){.community-page{padding:12px 12px 28px}.community-page .community-heading{padding:12px}.community-page .community-categories{display:flex;flex-wrap:nowrap;overflow-x:auto;padding:2px 2px 7px;scroll-snap-type:x proximity}.community-page .community-categories button{flex:none;scroll-snap-align:start}.community-page .community-grid{gap:12px}.community-page .community-cover{min-height:108px}}
+
+/* The menu's optional game gallery is a compact, legible control, not an empty band. */
+.plaza-home .game-showcase{box-sizing:border-box;width:min(100% - 32px,1040px);max-width:1040px;margin:10px auto 18px;padding:0;border:3px solid #805c42;background:#f0d4a1;box-shadow:inset 0 0 0 3px #fff0cb,4px 4px #203c4e;color:#253f50}
+.plaza-home .game-showcase summary{display:flex;align-items:center;justify-content:center;min-height:52px;padding:10px 16px;color:#253f50;font-family:var(--pixel),monospace;font-size:clamp(12px,2vw,16px);line-height:1.5;list-style:none}
+.plaza-home .game-showcase summary::-webkit-details-marker{display:none}
+.plaza-home .game-showcase summary:focus-visible{outline:3px solid #2e7880;outline-offset:3px}
+.plaza-home .game-showcase[open] summary{border-bottom:3px solid #805c42}
+.plaza-home .game-showcase-grid{padding:10px;margin:0}
+.community-page .community-card-body>p{color:#465d61;line-height:1.4;min-height:40px}
+@media(max-width:700px){.plaza-home .game-showcase{width:calc(100% - 20px);margin:8px auto 12px}.plaza-home .game-showcase summary{min-height:46px}}
