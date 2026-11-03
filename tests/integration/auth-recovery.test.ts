@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {startGameServer} from '../../apps/game-service/src/server';
+
+test('profile reads do not exhaust login budget; session survives service restart and transient database failure', {timeout:30000},async t=>{
+  const directory=await mkdtemp(join(tmpdir(),'mg-auth-recovery-'));
+  const environment:NodeJS.ProcessEnv={...process.env,NODE_ENV:'test',DATABASE_URL:'',SQLITE_PATH:join(directory,'auth.sqlite'),AUTO_MIGRATE:'1',PORT:'0',HOST:'127.0.0.1',PUBLIC_ORIGIN:'http://localhost:4001',PIN_PEPPER:'auth-recovery-test-pepper-32-characters',AUTH_BOOTSTRAP_EMAIL:'',AUTH_BOOTSTRAP_PASSWORD:''};
+  let service=await startGameServer(environment);
+  t.after(async()=>{await service.close();await rm(directory,{recursive:true,force:true});});
+  const call=(path:string,method='GET',body?:unknown,cookie='')=>fetch(`http://127.0.0.1:${service.port}/api/auth/${path}`,{method,headers:{Origin:environment.PUBLIC_ORIGIN!,'Content-Type':'application/json',Cookie:cookie},body:body===undefined?undefined:JSON.stringify(body)});
+  const credentials={email:'person@example.test',password:'strong-phrase8',displayName:'Fish King',username:'fish_king'};
+  const registered=await call('register','POST',credentials);
+  assert.equal(registered.status,201);
+  const cookie=registered.headers.get('set-cookie')!.split(';')[0];
+  const user=((await registered.json()) as {data:{id:string}}).data;
+  for(let i=0;i<20;i++)assert.equal((await call('profile','GET',undefined,cookie)).status,200);
+  assert.equal((await call('login','POST',credentials)).status,200);
+  const originalQuery=service.db.query.bind(service.db);
+  service.db.query=async()=>{throw new Error('Injected database outage');};
+  const unavailable=await call('me','GET',undefined,cookie);
+  assert.equal(unavailable.status,500);
+  assert.equal(unavailable.headers.get('set-cookie'),null,'outage must not erase session cookie');
+  service.db.query=originalQuery;
+  assert.equal(((await (await call('profile','GET',undefined,cookie)).json()) as {data:{id:string}}).data.id,user.id);
+  await service.close();service=await startGameServer(environment);
+  assert.equal(((await (await call('profile','GET',undefined,cookie)).json()) as {data:{id:string}}).data.id,user.id);
+  for(let i=0;i<12;i++)assert.equal((await call('login','POST',{...credentials,password:'wrong-pass'})).status,401);
+  assert.equal((await call('login','POST',credentials)).status,429,'credential throttling remains active');
+  assert.equal((await call('profile','GET',undefined,cookie)).status,200,'login throttle must not block existing session');
+});
