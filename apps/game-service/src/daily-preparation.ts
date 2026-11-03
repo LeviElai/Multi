@@ -9,12 +9,12 @@ export async function prepareDaily(db:SqlDatabase,now=Date.now(),choose?:(day:st
  for(let offset=0;offset<=7;offset++){
   const day=utcDay(now+offset*86400000);
   const current=(await db.query<{status:string;version:number}>('SELECT status,version FROM daily_challenges WHERE day=?',[day])).rows[0];
-  if(current?.status==='published'||current?.version>=2)continue;
+  if(current?.status==='published'||current?.version>=3)continue;
   const recentRows=await db.query<{questions:string;version:number}>('SELECT questions,version FROM daily_challenges WHERE day<? ORDER BY day DESC LIMIT 4',[day]);
   const recentArcade=recentRows.rows.filter(r=>r.version>=2).map(r=>DailyArcadeSchema.parse(JSON.parse(r.questions)));
   let preferred:string[]=[];if(choose)try{const ids=await choose(day,DAILY_POOL);if(!Array.isArray(ids)||ids.length!==10||new Set(ids).size!==10||ids.some(id=>!DAILY_POOL.some(q=>q.id===id)))throw Error('Invalid AI selection');preferred=ids;}catch{aiFailures++;}
   const questions=selectDailyArcade(day,recentArcade,preferred);
-  const result=current?await db.query("UPDATE daily_challenges SET version=2,scoring_version='daily-arcade-v2',questions=?,prepared_at=? WHERE day=? AND status='approved'",[JSON.stringify(questions),new Date(now).toISOString(),day]):await db.query("INSERT INTO daily_challenges(day,title,questions,version,scoring_version,prepared_at,status) VALUES(?,?,?,2,'daily-arcade-v2',?, 'approved') ON CONFLICT(day) DO NOTHING",[day,'The Daily Quest',JSON.stringify(questions),new Date(now).toISOString()]);prepared+=result.changes;
+  const result=current?await db.query("UPDATE daily_challenges SET version=3,scoring_version='daily-skill-v3',questions=?,prepared_at=? WHERE day=? AND status='approved'",[JSON.stringify(questions),new Date(now).toISOString(),day]):await db.query("INSERT INTO daily_challenges(day,title,questions,version,scoring_version,prepared_at,status) VALUES(?,?,?,3,'daily-skill-v3',?, 'approved') ON CONFLICT(day) DO NOTHING",[day,'The Daily Quest',JSON.stringify(questions),new Date(now).toISOString()]);prepared+=result.changes;
  }
  const published=await db.query("UPDATE daily_challenges SET status='published',published_at=? WHERE status='approved' AND day<=?",[new Date(now).toISOString(),utcDay(now)]);
  return {prepared,published:published.changes,aiFailures};
