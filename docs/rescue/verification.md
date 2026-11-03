@@ -6,7 +6,7 @@ Latest candidate: local 1aefdb6, remote f3afefd3d18c7fb29943db5bd8700975ca748840
 |---|---|---|
 | Navigation/community | Desktop primary Quizzes opens /community; public cards and Details & host visible | Desktop verified; mobile open |
 | Home/Daily composition | Fresh full-page desktop screenshots independently accepted after globe/alignment/proportion corrections | Captured states accepted; mobile open |
-| Archive/community composition | Fresh desktop captures saved; independent review requested | Review pending |
+| Archive/community composition | Fresh desktop captures independently accepted | Captured desktop states accepted |
 | Games | Browser exercised Fishing miss/one-attempt lock, Stack drop/disabled falling controls, Crack higher hint then correct unlock, Count lock, Estimate lock, Claw correct collection, Draw keyboard submission, Drop True lock, Sling Mars lock | Partial desktop interaction coverage; not full playtest |
 | Size/Guess | Size submission locked, but requested slider value was not reflected; Guess submission result was not captured | Follow-up required |
 | Daily sequence/scoring | 220 unit/integration checks pass, including five-mode v3 and equal-correct runs at 1s versus 20s: 4732 versus 3623, ranks 1/2 | Automated verified; v3 browser flow not deployed |
