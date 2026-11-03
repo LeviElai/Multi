@@ -35,3 +35,19 @@ Registration integration checks cover password validation, immediate session cre
 - No production database policies, ELIX isolation, hosted secrets, migration rollback, production dependency audit, broad injection testing or destructive tests were performed in this workstream. Other workstreams must supply that evidence.
 
 Review references: [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html). These guide review; passing local tests is not certification.
+
+## Independent live database review (read-only, 21:29–21:32 UTC)
+
+Project `wceqphhlgnqhlcxijtsg` was identified as MULTIGAME. Catalog queries verified all 45 tables in `multigame` have RLS enabled; both `anon` and `authenticated` lack schema USAGE and table SELECT/INSERT/UPDATE/DELETE grants. This includes auth accounts/sessions, runtime secrets, challenges and attempts. Live indexes enforce case-insensitive username uniqueness and one ranked attempt per `(day, owner_id)`; archive and ranking indexes exist.
+
+The security advisor returned only informational `rls_enabled_no_policy` findings across server-only schemas and the backup. No-policy is intentional deny-by-default for this access model; adding broad policies would weaken it. [Advisor explanation](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+
+`multigame.publish_daily_challenges` is SECURITY DEFINER with an empty search path and no EXECUTE privilege for anon/authenticated. The public `rls_auto_enable` function has EXECUTE grants but is an event-trigger function, not an ordinary callable application RPC; its inspected definition enables RLS on newly created public tables. No production rows or secrets were read, and no live writes were performed. ELIX objects were not modified. These catalog checks do not establish the privileges of the backend's deployed database login.
+
+## Independent Daily/source integrity review
+
+- API attempt routes derive the owner from authenticated or separate guest sessions and reject client-supplied identity fields via strict input schemas. Attempt reads and updates filter on both attempt ID and owner ID.
+- Ranked attempt uniqueness is backed by the live partial unique index. Submission updates use revision checks, enforce the current index/server deadline, and bind idempotency keys to payloads. Current answers and explanations are omitted from active snapshots; previous-round answers become visible only after advancement.
+- Current-day practice requires completion of the official run for new guest/registered scoring rules. Separate guest identities across browsers remain an acknowledged evasion path.
+- Remaining competitive-integrity limitation: physical choice modes such as Claw/Slingshot/Plinko submit a selected answer directly. The server validates the answer and its receipt time, but cannot attest that the client performed the displayed physical interaction. Fishing has a server-time catch-window check; Stack validates submitted support geometry. Do not claim all physical gameplay is cheat-proof or that client interaction is fully server-simulated.
+- Latest product instruction restores Daily speed scoring; the Daily workstream owns that scoring change and its validation. This review does not assert a no-speed invariant.
