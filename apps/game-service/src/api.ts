@@ -9,7 +9,7 @@ import type { Features, Principal, Quiz, QuizInput, Profile } from '../../../pac
 import type { Store } from '../../../packages/db/src/types';
 import { getDemoQuiz, validateQuiz } from '../../../packages/game-modes/src/index';
 import { GameEngine } from './engine';
-import { assertRateBudget, assertSameOrigin, cookieValue, digestToken, idempotentId, mutationKey, participantCookie, rateLimit } from './security';
+import { assertRateBudget, assertSameOrigin, cookieValue, digestToken, idempotentId, mutationKey, participantCookie, rateLimit, roomDisplayName } from './security';
 
 export type ApiUser = { id: string; displayName: string };
 export type ApiContext = { store: Store; user: ApiUser | null; guest?:ApiUser|null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; automatic?:boolean; rulesVersion?:2; aiEnabled?:boolean; adsConfig?:AdsConfig; clientIp?: string };
@@ -127,15 +127,15 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
 
     if(path==='daily'||path.startsWith('daily/')){
       const daily=new DailyChallengeService(ctx.store.db),day=url.searchParams.get('day')??utcDay(Date.now());
-      if(method==='GET'&&path==='daily')return ok(await daily.overview(day,user?.id));
-      if(method==='GET'&&path==='daily/archive')return ok(await daily.archive(url.searchParams.get('before')??utcDay(Date.now()),user?.id));
-      if(method==='GET'&&path==='daily/leaderboard')return ok(await daily.board(day,user?.id,z.coerce.number().int().min(0).max(100000).parse(url.searchParams.get('offset')??0)));
+      if(method==='GET'&&path==='daily')return ok(await daily.overview(day,(user??ctx.guest)?.id));
+      if(method==='GET'&&path==='daily/archive')return ok(await daily.archive(url.searchParams.get('before')??utcDay(Date.now()),(user??ctx.guest)?.id));
+      if(method==='GET'&&path==='daily/leaderboard')return ok(await daily.board(day,(user??ctx.guest)?.id,z.coerce.number().int().min(0).max(100000).parse(url.searchParams.get('offset')??0)));
       if(method==='POST'&&path==='daily/start'){
         const owner=user??ctx.guest;
         if(!owner)throw new DomainError('PRACTICE_IDENTITY_REQUIRED','A guest session is needed to play.',401);
         const input=z.object({day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),practice:z.boolean().default(false)}).strict().parse(body);
         await rateLimit(ctx.store.db,`daily-start:${owner.id}`,30,3600000);
-        return ok(await daily.start(input.day,owner,input.practice||!user,!user));
+        return ok(await daily.start(input.day,owner,input.practice,!user));
       }
       const attempt=path.match(/^daily\/attempts\/([^/]+)(\/answer)?$/);
       if(attempt){const owner=user??ctx.guest;if(!owner)throw new DomainError('UNAUTHENTICATED','Reopen this challenge to resume.',401);const id=uuid.parse(attempt[1]);
@@ -322,7 +322,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       let result: Awaited<ReturnType<GameEngine['join']>>;
       try {
         const saved=user?(await ctx.store.db.query<{avatar_json:string}>('SELECT avatar_json FROM creator_avatars WHERE owner_id=?',[user.id])).rows[0]:undefined;
-        result = await engine.join(input.pin, user?.displayName??input.nickname, saved?AvatarSchema.parse(JSON.parse(saved.avatar_json)):undefined);
+        result = await engine.join(input.pin, user?roomDisplayName(user.displayName):input.nickname, saved?AvatarSchema.parse(JSON.parse(saved.avatar_json)):undefined);
       }
       catch (error) {
         if (error instanceof DomainError && error.code === 'ROOM_UNAVAILABLE') await rateLimit(ctx.store.db, `pin-failures:${ipDigest}`, 20, 60 * 1000);
