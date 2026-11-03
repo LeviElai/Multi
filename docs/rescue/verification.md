@@ -21,7 +21,7 @@ Latest candidate: local 1aefdb6, remote f3afefd3d18c7fb29943db5bd8700975ca748840
 - Latest desktop captures: multigame-final-home-desktop.jpg, multigame-final-daily-desktop.jpg, multigame-final-community-desktop.jpg, multigame-final-archive-desktop.jpg in shared scratch. Prior logged-out login/profile captures were independently reviewed.
 - Preview still reads production legacy Daily data (10 questions). This is not proof of five-game v3 browser behavior.
 - Available cloud browsers do not expose viewport resizing. Playwright browser download failed; TinyFish also could not resize. No mobile pass, physical phone, Mobile Safari, or human enjoyment claim.
-- Secure browser sign-in requires user credential handoff; no credentials were entered through general automation.
+- Secure browser sign-in handoff completed; backend rejected the candidate origin with "Origin is not permitted." No incorrect-password conclusion. Signed-in browser QA is blocked until the exact candidate origin is added to ALLOWED_ORIGINS while preserving existing entries. Render connector exposes update but not current environment values; do not overwrite an unknown allowlist. No credentials were entered through general automation.
 - Existing lint reports 30 errors and 5 warnings in prior imperative/ref patterns; no clean-lint claim.
 - No production database writes or deployment performed in this rescue pass. Safe backup/additive migration/cutover instructions are prepared under release/.
 - Latest user amendment: Daily DOES reward response speed, matching regular quizzes; supersedes earlier no-speed instruction. Historical scoring versions remain preserved.
