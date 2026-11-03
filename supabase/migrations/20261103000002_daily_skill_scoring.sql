@@ -43,8 +43,8 @@ BEGIN
    END LOOP;
    IF pg_catalog.jsonb_array_length(selected)<>5 THEN RAISE EXCEPTION 'Five reviewed games required for %',canonical; END IF;
    INSERT INTO multigame.daily_challenges(day,title,questions,version,scoring_version,prepared_at,status)
-    VALUES(canonical,'The Daily Quest',selected::text,3,'daily-skill-v3',ts,'approved') ON CONFLICT(day) DO UPDATE
-    SET questions=excluded.questions,version=3,scoring_version='daily-skill-v3',prepared_at=ts
+    VALUES(canonical,'The Daily Quest',selected::text,3,'daily-speed-v3',ts,'approved') ON CONFLICT(day) DO UPDATE
+    SET questions=excluded.questions,version=3,scoring_version='daily-speed-v3',prepared_at=ts
     WHERE daily_challenges.status='approved' AND daily_challenges.version<3;
   END IF;
  END LOOP;
