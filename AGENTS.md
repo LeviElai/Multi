@@ -14,7 +14,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Mobile first: essential gameplay fits the visible dynamic viewport without hiding controls. Inspect actual rendered mobile and desktop screens before accepting design work.
 - One primary navigation: Home, Daily, Join, Quizzes (public community library), Profile. Personal quizzes are secondary within Quizzes/Profile.
 - Casual play requires no account. Guest Daily completion is officially ranked under a server-issued temporary identity; do not claim cross-device guest uniqueness.
-- Daily contains five actual minigames. No general response-speed multiplier or speed ranking tie-breaker. Regular multiplayer retains speed scoring.
+- Daily contains five actual minigames. Daily and regular multiplayer reward faster correct performance with server-authoritative response-time scoring; accuracy and game-specific skill remain the base.
 - Global registered identity uses unique username plus avatar; multiplayer uses display name. Stable internal IDs own scores and quizzes.
 - Preserve historical challenges/scores. Version scoring changes; never silently rescore historical attempts.
 - Temporary backend failures must not destroy authentication. Bound loading and offer recovery.
