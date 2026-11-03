@@ -15,6 +15,7 @@ test('daily ranked attempts survive refresh, reject impersonation/replay and pre
  const dir=await mkdtemp(join(tmpdir(),'daily-test-')),db=new NodeSqliteDatabase(join(dir,'db.sqlite'));t.after(async()=>{await db.close();await rm(dir,{recursive:true,force:true});});
  await db.migrate(await readFile('drizzle/0000_initial.sql','utf8'));
  await db.migrate(await readFile('packages/db/migrations/sqlite/20261025171428_daily_world_challenge.sql','utf8'),'daily-world-v1');
+ await db.migrate(await readFile('packages/db/migrations/sqlite/20261103000000_account_usernames.sql','utf8'),'account-usernames');
  const store=new SqlStore(db),owner=await store.ensureUser('daily-test','Player'),other=await store.ensureUser('other','Other');
  let now=Date.parse('2026-10-25T10:00:00Z');const service=new DailyChallengeService(db,()=>now);
  const questions:DailyQuestion[]=Array.from({length:10},(_,i)=>({id:'q'+i,question:'Test fixture question number '+i,options:['A','B','C','D'],answer:0,category:'Test',difficulty:'medium',sourceUrl:'https://example.org/fixture',explanation:'Test only, never published.'}));

@@ -96,3 +96,60 @@
 @media(max-height:650px){.game-focus{--board-height:clamp(90px,calc(var(--game-height,100dvh) - 380px),190px)}.game-focus-live{--board-height:clamp(80px,calc(var(--game-height,100dvh) - 425px),190px)}.game-focus .fixed-scale>svg,.game-focus-live .fixed-scale>svg{height:clamp(75px,calc(var(--game-height,100dvh) - 470px),150px)!important}.game-focus .recognition-status,.game-focus-live .recognition-status{padding:0!important}}
 .machine-marquee,.prize-rail,.prize-cable,.prize-gripper,.machine-lamp{pointer-events:none}
 .game-focus .prize-shelf,.game-focus-live .prize-shelf{top:58px!important;bottom:38px!important;height:auto!important;align-items:center}.game-focus .prize-slot,.game-focus-live .prize-slot{min-height:44px;gap:2px;padding:3px!important}.game-focus .prize-capsule,.game-focus-live .prize-capsule{width:34px!important;height:34px!important}.game-focus .machine-marquee,.game-focus-live .machine-marquee{height:30px;line-height:26px;font-size:12px}.game-focus .prize-chute,.game-focus-live .prize-chute{height:28px;bottom:5px}
+/* Arcade menu: one compact composition instead of stacked landing sections. */
+.site-header{height:auto;min-height:68px;display:block!important;padding:0 20px!important;background:#fff0cf;border-bottom:4px solid #263e50;color:#263e50}
+.site-header .header-main{min-height:68px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.site-header .desktop-nav{display:flex;align-items:center;gap:18px}
+.site-header .mobile-nav,.site-header .mobile-sound{display:none}
+.plaza-home>main{margin:8px auto 20px}
+.plaza-home .plaza-entry{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.65fr);align-items:center;gap:16px;padding:20px}
+.plaza-home .plaza-content{padding:8px;gap:9px}
+.plaza-home .plaza-content h1{font-family:var(--pixel),monospace;font-size:clamp(22px,3vw,32px);line-height:1.2}
+.plaza-home .plaza-content .harbor-join{padding:16px!important}
+.plaza-home .plaza-hosting{margin:0;display:grid;justify-items:stretch;gap:12px;text-align:center;max-width:none;padding:20px}
+.plaza-home .plaza-hosting .btn{width:100%}
+.plaza-home .game-showcase{margin:18px auto}
+.utility-page:has(.account-profile),.utility-page:has(.account-guest){max-width:760px}
+.account-guest{display:grid;gap:15px;justify-items:start;padding:22px;border:4px solid #77553d;background:#f3d9a4;box-shadow:inset 0 0 0 3px #ffedc5,5px 5px #253f50}
+.account-guest p{margin:0;color:#314955}
+.account-guest .btn{min-width:180px}
+.login-page{max-width:530px!important;margin:18px auto 36px;padding:24px!important;background:#f2d9a9;border:5px solid #76543e;box-shadow:inset 0 0 0 3px #c59b68,6px 6px #173446;color:#253f50}
+.login-page>h1{font-family:var(--pixel),monospace;font-size:clamp(22px,5vw,33px)!important;line-height:1.3;margin:7px 0}
+.login-page>p{font-size:14px!important;margin:0 0 16px;line-height:1.4}
+.login-page form{display:grid;gap:10px}.login-page .field{margin:0}.login-page .field input{width:100%;min-height:44px;background:#fff6df;border:3px solid #637b78;border-radius:0;box-shadow:inset 2px 2px #d4bc92;font-size:16px}
+.login-page .btn{border-radius:0;box-shadow:3px 4px #1a3245;min-height:46px}.login-page .auth-tabs{display:grid;grid-template-columns:1fr 1fr;margin:12px 0;border:3px solid #2b4856}.login-page .auth-tabs button{min-height:42px;background:#ead0a0;border:0}.login-page .auth-tabs button[aria-pressed=true]{background:#2b4856;color:#fff0cc}.login-page .auth-guest-link{margin-top:15px}
+@media(max-width:700px){
+ .site-header{padding:0 12px!important}.site-header .header-main{min-height:50px}.site-header .brand{font-size:15px}.site-header .brand span{font-size:14px!important}.site-header .desktop-nav{display:none}.site-header .mobile-sound{display:block}.site-header .mobile-sound .icon-btn{min-height:38px;min-width:38px;border:2px solid #365b66;border-radius:0;background:#264653;color:#fff0c8}
+ .site-header .mobile-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:0 0 6px}.site-header .mobile-nav a{display:grid;place-items:center;min-height:44px;font-size:clamp(10px,3vw,13px);font-family:var(--pixel),monospace;border:2px solid #8b7254;background:#f3daa9;box-shadow:1px 2px #4b5660;text-align:center}
+ .plaza-home>main{margin:7px auto 12px}.plaza-home .plaza-entry{display:grid;grid-template-columns:1fr;padding:9px;gap:8px}.plaza-home .plaza-content{padding:4px;gap:8px}.plaza-home .plaza-content h1{font-size:20px;margin:0}.plaza-home .plaza-content .harbor-join{padding:12px!important}.plaza-home .plaza-content .join-input-row input{height:50px;font-size:23px}.plaza-home .plaza-content .join-hint{margin:2px 0 0}.plaza-home .plaza-hosting{margin:0;grid-template-columns:1fr 1fr;padding:11px;gap:6px}.plaza-home .plaza-hosting strong{grid-column:1/-1;font-size:14px}.plaza-home .plaza-hosting .btn,.plaza-home .plaza-hosting .text-link{min-width:0;font-size:11px;padding:7px;min-height:42px}.plaza-home .plaza-hosting .text-link{justify-content:center}.plaza-home .game-showcase{margin:12px 6px}
+ .login-page{margin:12px 10px 22px;padding:15px!important}.account-guest{padding:15px}
+}
+@media(prefers-reduced-motion:reduce){.plaza-cloud{animation:none}}
+.account-page{max-width:750px;margin:18px auto 30px;padding:0 12px;color:#253f50}.account-card{padding:clamp(16px,4vw,30px);border:6px solid #76543e;box-shadow:inset 0 0 0 3px #c59b68,6px 6px #173446;background:#f2d9a9}.account-card h1{font-family:var(--pixel),monospace;font-size:clamp(23px,5vw,34px);line-height:1.25;margin:8px 0 18px}.account-badge{display:flex;align-items:center;gap:14px;padding:12px;background:#fff0c9;border:3px solid #9b7952}.account-badge>span{display:grid;place-items:center;width:52px;height:52px;flex:none;background:#396a72;color:#ffe5a8;border:3px solid #244653;font-family:var(--pixel),monospace;font-size:26px}.account-badge>div{display:grid;gap:2px;min-width:0}.account-badge strong{overflow-wrap:anywhere}.account-badge small{color:#5b6965}.account-form{display:grid;gap:10px;margin:16px 0}.account-form h2{font-family:var(--pixel),monospace;font-size:17px;margin:0}.account-form .field{margin:0}.account-form input{width:100%;min-height:44px;border:3px solid #617a78;background:#fff8e5;border-radius:0;font-size:16px}.account-form .btn{justify-self:start;border-radius:0;min-height:44px}.account-links{display:flex;flex-wrap:wrap;gap:8px}.account-links a{display:inline-block;padding:9px 12px;border:2px solid #71897f;background:#fff0c9;font-size:13px;font-weight:bold}.account-security{margin-top:16px;border-top:2px dashed #967951;padding-top:13px}.account-security summary{min-height:44px;cursor:pointer;font-weight:bold}.account-security p{font-size:13px}.account-guest .button-row{display:flex;flex-wrap:wrap;gap:10px}
+
+/* Keep all secondary destinations in the same compact arcade-paper rhythm. */
+.community-page{max-width:1080px;padding:22px 20px 36px}
+.community-page .community-heading{padding:17px 20px 20px;background:#e7d6ad;border:4px solid #785b43;box-shadow:inset 0 0 0 3px #fff0c9,4px 4px #183648}
+.community-page .community-heading h1{font-family:var(--pixel),monospace;font-size:clamp(20px,3vw,28px);line-height:1.3;margin:4px 0}
+.community-page .community-heading p{font-size:14px;line-height:1.4;margin:3px 0 12px}
+.community-page .community-heading .library-search{min-height:44px;margin:0;max-width:none}
+.community-page .community-categories{margin:12px 0 16px;gap:6px}
+.community-page .community-categories button{min-height:40px;border-radius:0;box-shadow:2px 2px #183648;font-size:12px}
+.community-page .community-card-body{padding:15px}.community-page .community-cover{min-height:128px;padding:14px}
+.account-data{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0 15px}.account-data .btn{font-size:12px;min-height:42px}
+.login-page:before{display:none}.login-page .auth-guest-link{display:inline-block;margin-top:14px}.login-page .field span{font-family:var(--pixel),monospace;font-size:11px;line-height:1.5}
+.auth-check{box-sizing:border-box;width:min(440px,calc(100% - 24px));min-height:0;padding:24px 18px;margin:20px auto 28px;gap:8px;border:5px solid #77543e;background:#f2d9a9;box-shadow:inset 0 0 0 3px #fff0c9,5px 5px #193649;color:#294556}
+.auth-check .pixel-sprite{width:43px;height:43px}.auth-check h1{font-size:clamp(17px,4vw,22px);line-height:1.4;margin:4px 0}.auth-check p{font-size:13px;line-height:1.4;margin:0 0 8px}.auth-check .btn{justify-self:center;min-width:150px}
+.creator-page .creator-empty{max-width:480px;margin:12px auto;padding:24px;border:5px solid #77543e;background:#f2d9a9;box-shadow:inset 0 0 0 3px #fff0c9,5px 5px #193649;color:#294556}
+.creator-page .creator-empty h2{font:clamp(17px,4vw,23px)/1.4 var(--pixel),monospace;margin:8px 0}.creator-page .creator-empty p{margin:7px 0 16px;font-size:13px;line-height:1.4;color:#47616a}
+@media(max-width:700px){.community-page{padding:12px 12px 28px}.community-page .community-heading{padding:12px}.community-page .community-categories{display:flex;flex-wrap:nowrap;overflow-x:auto;padding:2px 2px 7px;scroll-snap-type:x proximity}.community-page .community-categories button{flex:none;scroll-snap-align:start}.community-page .community-grid{gap:12px}.community-page .community-cover{min-height:108px}}
+
+/* The menu's optional game gallery is a compact, legible control, not an empty band. */
+.plaza-home .game-showcase{box-sizing:border-box;width:min(100% - 32px,1040px);max-width:1040px;margin:10px auto 18px;padding:0;border:3px solid #805c42;background:#f0d4a1;box-shadow:inset 0 0 0 3px #fff0cb,4px 4px #203c4e;color:#253f50}
+.plaza-home .game-showcase summary{display:flex;align-items:center;justify-content:center;min-height:52px;padding:10px 16px;color:#253f50;font-family:var(--pixel),monospace;font-size:clamp(12px,2vw,16px);line-height:1.5;list-style:none}
+.plaza-home .game-showcase summary::-webkit-details-marker{display:none}
+.plaza-home .game-showcase summary:focus-visible{outline:3px solid #2e7880;outline-offset:3px}
+.plaza-home .game-showcase[open] summary{border-bottom:3px solid #805c42}
+.plaza-home .game-showcase-grid{padding:10px;margin:0}
+.community-page .community-card-body>p{color:#465d61;line-height:1.4;min-height:40px}
+@media(max-width:700px){.plaza-home .game-showcase{width:calc(100% - 20px);margin:8px auto 12px}.plaza-home .game-showcase summary{min-height:46px}}

@@ -12,7 +12,7 @@ import { GameEngine } from './engine';
 import { assertRateBudget, assertSameOrigin, cookieValue, digestToken, idempotentId, mutationKey, participantCookie, rateLimit } from './security';
 
 export type ApiUser = { id: string; displayName: string };
-export type ApiContext = { store: Store; user: ApiUser | null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; automatic?:boolean; rulesVersion?:2; aiEnabled?:boolean; adsConfig?:AdsConfig; clientIp?: string };
+export type ApiContext = { store: Store; user: ApiUser | null; guest?:ApiUser|null; features?: Features; cookieSecure?: boolean; pinSecret?: string; maxPlayers?: number; automatic?:boolean; rulesVersion?:2; aiEnabled?:boolean; adsConfig?:AdsConfig; clientIp?: string };
 const DEFAULT_FEATURES: Features = { ai: false, billing: false, ads: false, stage: 'private_alpha', transport: 'polling' };
 const uuid = z.string().uuid();
 const revision = z.number().int().positive();
@@ -131,16 +131,17 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       if(method==='GET'&&path==='daily/archive')return ok(await daily.archive(url.searchParams.get('before')??utcDay(Date.now()),user?.id));
       if(method==='GET'&&path==='daily/leaderboard')return ok(await daily.board(day,user?.id,z.coerce.number().int().min(0).max(100000).parse(url.searchParams.get('offset')??0)));
       if(method==='POST'&&path==='daily/start'){
-        if(!user)throw new DomainError('UNAUTHENTICATED','Sign in to save your world ranking.',401);
-        const owner=user,input=z.object({day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),practice:z.boolean().default(false)}).strict().parse(body);
+        const owner=user??ctx.guest;
+        if(!owner)throw new DomainError('PRACTICE_IDENTITY_REQUIRED','A guest session is needed to play.',401);
+        const input=z.object({day:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),practice:z.boolean().default(false)}).strict().parse(body);
         await rateLimit(ctx.store.db,`daily-start:${owner.id}`,30,3600000);
-        return ok(await daily.start(input.day,owner,input.practice));
+        return ok(await daily.start(input.day,owner,input.practice||!user,!user));
       }
       const attempt=path.match(/^daily\/attempts\/([^/]+)(\/answer)?$/);
-      if(attempt){const owner=requireUser(user),id=uuid.parse(attempt[1]);
+      if(attempt){const owner=user??ctx.guest;if(!owner)throw new DomainError('UNAUTHENTICATED','Reopen this challenge to resume.',401);const id=uuid.parse(attempt[1]);
         if(method==='GET'&&!attempt[2])return ok(await daily.snapshot(id,owner.id));
         if(method==='POST'&&attempt[2]){
-          const input=z.object({index:z.number().int().min(0).max(9),choice:z.number().int().min(-1).max(3)}).strict().parse(body);
+          const input=z.object({index:z.number().int().min(0).max(9),choice:z.number().int().min(-1).max(3),value:z.number().finite().min(0).max(1000000).optional(),text:z.string().max(80).optional(),blocks:z.array(z.object({x:z.number().min(12).max(88),value:z.number().int().positive()}).strict()).max(32).optional()}).strict().parse(body);
           await rateLimit(ctx.store.db,`daily-answer:${owner.id}`,120,60000);
           return ok(await daily.answer(id,owner.id,{...input,key:mutationKey(request)}));
         }
@@ -321,7 +322,7 @@ export async function handleApi(request: Request, ctx: ApiContext): Promise<Resp
       let result: Awaited<ReturnType<GameEngine['join']>>;
       try {
         const saved=user?(await ctx.store.db.query<{avatar_json:string}>('SELECT avatar_json FROM creator_avatars WHERE owner_id=?',[user.id])).rows[0]:undefined;
-        result = await engine.join(input.pin, input.nickname, saved?AvatarSchema.parse(JSON.parse(saved.avatar_json)):undefined);
+        result = await engine.join(input.pin, user?.displayName??input.nickname, saved?AvatarSchema.parse(JSON.parse(saved.avatar_json)):undefined);
       }
       catch (error) {
         if (error instanceof DomainError && error.code === 'ROOM_UNAVAILABLE') await rateLimit(ctx.store.db, `pin-failures:${ipDigest}`, 20, 60 * 1000);

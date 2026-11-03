@@ -1,0 +1,4 @@
+import {z} from 'zod';
+export const DailyQuestionSchema=z.object({id:z.string().min(1).max(100),question:z.string().min(10).max(220),options:z.array(z.string().min(1).max(80)).length(4),answer:z.number().int().min(0).max(3),category:z.string().max(40),difficulty:z.enum(['easy','medium','challenging']),sourceUrl:z.string().url(),explanation:z.string().max(400)}).strict();
+export type DailyQuestion=z.infer<typeof DailyQuestionSchema>;
+export const DailyQuestionsSchema=z.array(DailyQuestionSchema).length(10).superRefine((items,ctx)=>{if(new Set(items.map(q=>q.id)).size!==10||new Set(items.map(q=>q.question.toLowerCase())).size!==10)ctx.addIssue({code:'custom',message:'Duplicate daily questions'});for(const q of items)if(new Set(q.options.map(o=>o.toLowerCase())).size!==4)ctx.addIssue({code:'custom',message:'Duplicate answers'});});
