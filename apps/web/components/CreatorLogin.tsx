@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowRight, KeyRound, UserPlus } from 'lucide-react';
+import {PixelCharacter} from './game/PlayerIdentity';
+import styles from './Account.module.css';
 import { Header, Footer } from './Brand';
 import {waitForService} from '../lib/service-ready';
 import {api} from '../lib/api';
@@ -17,6 +18,7 @@ export default function CreatorLogin() {
   const [name, setName] = useState('');
   const [username,setUsername]=useState('');
   const [available,setAvailable]=useState<boolean|null>(null);
+  const [checking,setChecking]=useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const sending=useRef(false);
@@ -25,32 +27,37 @@ export default function CreatorLogin() {
     const next = new URLSearchParams(location.search).get('return_to');
     setDestination(creatorDestination(next));
     const controller=new AbortController();setError('');
-    waitForService(controller.signal).then(f => setProvider(f.auth ?? 'chatgpt')).catch(() => {if(!controller.signal.aborted)setError('The game server is taking too long to start. Please try again.');});
-    return()=>controller.abort();
+    const deadline=setTimeout(()=>{controller.abort();setError('The server is taking longer than expected. Try again.');},15000);
+    waitForService(controller.signal).then(f => setProvider(f.auth ?? 'chatgpt')).catch(() => {if(!controller.signal.aborted)setError('Could not connect to the server. Try again.');}).finally(()=>clearTimeout(deadline));
+    return()=>{clearTimeout(deadline);controller.abort();};
   }, [connectionAttempt]);
-  useEffect(()=>{if(!register||!username){setAvailable(null);return;}const clean=username.trim().replace(/^@/,'').toLowerCase();if(!/^[a-z][a-z0-9_]{2,23}$/.test(clean)){setAvailable(false);return;}const controller=new AbortController();const timer=setTimeout(()=>{void api<{available:boolean}>('/api/auth/username?value='+encodeURIComponent(clean),{signal:controller.signal}).then(v=>setAvailable(v.available)).catch(()=>setAvailable(null));},280);return()=>{clearTimeout(timer);controller.abort();};},[username,register]);
+  const validUsername=/^[a-z][a-z0-9_]{2,23}$/.test(username);
+  useEffect(()=>{
+    setAvailable(null);setChecking(false);
+    if(!register||!validUsername)return;
+    const controller=new AbortController();setChecking(true);
+    const timer=setTimeout(()=>{void api<{available:boolean}>('/api/auth/username?value='+encodeURIComponent(username),{signal:controller.signal}).then(v=>setAvailable(v.available)).catch(()=>{if(!controller.signal.aborted)setAvailable(null);}).finally(()=>{if(!controller.signal.aborted)setChecking(false);});},280);
+    return()=>{clearTimeout(timer);controller.abort();};
+  },[username,register,validUsername]);
   async function submit(e: React.FormEvent) {
     e.preventDefault(); if(sending.current)return; sending.current=true;setBusy(true); setError('');
     try {
-      await waitForService();
       await signInCreator(register,{email,password,displayName:name,username});
       location.assign(destination);
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not sign in.'); setBusy(false);sending.current=false; }
   }
-  return <><Header/><main className="page login-page">
-    <span className="eyebrow">MULTIGAME · PLAYER CARD</span>
-    <h1>{register ? 'Make your player card' : 'Welcome back'}</h1>
-    <p>{register?'Pick your name for games and a unique @username for world rankings.':'Your arcade is ready when you are.'}</p>
-    {provider === 'chatgpt' ? <a className="btn btn-primary" href={'/signin-with-chatgpt?return_to=' + encodeURIComponent(destination)} target="_top">Continue with ChatGPT <ArrowRight size={17}/></a> : provider === 'credentials' ? <>
-      <div className="auth-tabs" aria-label="Creator account"><button disabled={busy} aria-pressed={!register} onClick={() => {setRegister(false);setError('');}}>Sign in</button><button disabled={busy} aria-pressed={register} onClick={() => {setRegister(true);setError('');}}>Create account</button></div>
-      <form onSubmit={submit}>
-        {register && <><label className="field"><span>Display name · shown in games</span><input value={name} onChange={e => setName(e.target.value)} autoComplete="nickname" maxLength={60} required/></label><label className="field"><span>Username · world rankings</span><input value={username} onChange={e=>{setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_@]/g,''));setAvailable(null);}} autoComplete="off" maxLength={24} pattern="@?[a-z][a-z0-9_]{2,23}" placeholder="@pixelmaster" required aria-describedby="username-status"/></label><small id="username-status" role="status">{available===true?'Available!':available===false?'Choose 3–24 letters, numbers or underscores, starting with a letter.':''}</small></>}
-        <label className="field"><span>Email</span><input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" maxLength={254} required/></label>
-        <label className="field"><span>Password</span><input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete={register ? 'new-password' : 'current-password'} minLength={register ? 8 : undefined} maxLength={128} required/>{register && <small>At least 8 characters. Longer passphrases welcome.</small>}</label>
-        <button className="btn btn-primary" disabled={busy}>{register ? <UserPlus size={17}/> : <KeyRound size={17}/>} {busy ? 'Opening the workshop…' : register ? 'Create account' : 'Sign in'} <ArrowRight size={17}/></button>
+  return <><Header/><main className={styles.page}><section className={styles.card} aria-labelledby="login-title">
+    <header className={styles.heading}><div className={styles.character}><PixelCharacter id="welcome"/></div><h1 id="login-title">{register?'Create account':'Welcome back'}</h1></header>
+    {provider==='chatgpt'?<a className={styles.primary} href={'/signin-with-chatgpt?return_to='+encodeURIComponent(destination)} target="_top">Continue with ChatGPT</a>:provider==='credentials'?<>
+      <div className={styles.tabs} aria-label="Account options"><button disabled={busy} aria-pressed={!register} onClick={()=>{setRegister(false);setError('');}}>Sign in</button><button disabled={busy} aria-pressed={register} onClick={()=>{setRegister(true);setError('');}}>Create account</button></div>
+      <form onSubmit={submit} className={styles.form}>
+        {register&&<><label className={styles.field}><span>Display name <small>In multiplayer</small></span><input value={name} onChange={e=>setName(e.target.value)} autoComplete="nickname" maxLength={60} required/></label><label className={styles.field}><span>Username <small>On Daily rankings</small></span><input value={username} onChange={e=>setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,''))} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={24} pattern="[a-z][a-z0-9_]{2,23}" placeholder="pixelmaster" required aria-describedby="username-status"/></label><small id="username-status" className={styles.hint} role="status">{username&&!validUsername?'Use 3–24 letters, numbers or underscores; start with a letter.':checking?'Checking…':available===true?'Username available':available===false?'That username is taken.':''}</small></>}
+        <label className={styles.field}><span>Email</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete={register?'email':'username'} maxLength={254} required/></label>
+        <label className={styles.field}><span>Password {register&&<small>8 characters or more</small>}</span><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={register?'new-password':'current-password'} minLength={register?8:undefined} maxLength={128} required/></label>
+        <button className={styles.primary} disabled={busy||(register&&(available===false||checking))}>{busy?(register?'Creating account…':'Signing in…'):register?'Create account':'Sign in'}</button>
       </form>
-    </> : !error && <p role="status">Connecting to the game server…</p>}
-    {error && <div className="notice error" role="alert">{error}{!provider&&<button className="btn btn-outline" onClick={()=>setConnectionAttempt(n=>n+1)}>Try again</button>}</div>}
-    <Link href="/join" className="text-link auth-guest-link">Playing with friends? Join as a guest →</Link>
-  </main><Footer/></>;
+    </>:!error&&<p className={styles.loading} role="status">Connecting…</p>}
+    {error&&<div className={styles.error} role="alert">{error}{!provider&&<button className={styles.secondary} onClick={()=>setConnectionAttempt(n=>n+1)}>Retry connection</button>}</div>}
+    <Link href="/" className={styles.guestLink}>Continue as guest</Link>
+  </section></main><Footer/></>;
 }
