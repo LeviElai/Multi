@@ -30,7 +30,7 @@ test('five reviewed Daily games balance action, tactile and puzzle modes without
  assert.equal(seen.size,11);
 });
 
-test('five-game server run is skill scored, one ranked attempt, guest ranking and immutable history',async t=>{
+test('five-game server run is speed scored, one ranked attempt, guest ranking and immutable history',async t=>{
  const dir=await mkdtemp(join(tmpdir(),'daily-arcade-')),db=new NodeSqliteDatabase(join(dir,'db.sqlite'));
  t.after(async()=>{await db.close();await rm(dir,{recursive:true,force:true});});
  await db.migrate(await readFile('drizzle/0000_initial.sql','utf8'));
@@ -76,7 +76,7 @@ test('five-game server run is skill scored, one ranked attempt, guest ranking an
  assert.equal((await service.archive('2026-11-04',owner.id))[0].own_score,0);
 });
 
-test('Daily v3 rewards identical skill equally at different speeds, with tied ranks and live stable profile names',async t=>{
+test('Daily v3 rewards faster correct performance, penalizes Crack mistakes, and preserves live profile identity',async t=>{
  const dir=await mkdtemp(join(tmpdir(),'daily-skill-')),db=new NodeSqliteDatabase(join(dir,'db.sqlite'));
  t.after(async()=>{await db.close();await rm(dir,{recursive:true,force:true});});
  await db.migrate(await readFile('drizzle/0000_initial.sql','utf8'));
@@ -89,19 +89,23 @@ test('Daily v3 rewards identical skill equally at different speeds, with tied ra
  await db.query('INSERT INTO creator_avatars VALUES (?,?)',[fast.id,JSON.stringify({character:'cat'})]);
  let now=Date.parse('2026-11-03T10:00:00Z');const service=new DailyChallengeService(db,()=>now);
  const rounds=['amountle','draw','fermi','crack','word_puzzle'].map((mode,i)=>({id:'fixture-'+i,mode,question:'Test fixture number '+i,options:mode==='word_puzzle'?['cat','dog','fox','hen']:['10','20','30','40'],answer:0,category:'Fixture',difficulty:'medium',sourceUrl:'https://example.org/fixture',explanation:'Test only.'}));
- await db.query("INSERT INTO daily_challenges(day,title,questions,version,scoring_version,prepared_at,status) VALUES(?,?,?,3,'daily-skill-v3',?,'published')",['2026-11-03','Fixture',JSON.stringify(rounds),new Date(now).toISOString()]);
+ await db.query("INSERT INTO daily_challenges(day,title,questions,version,scoring_version,prepared_at,status) VALUES(?,?,?,3,'daily-speed-v3',?,'published')",['2026-11-03','Fixture',JSON.stringify(rounds),new Date(now).toISOString()]);
+ const scores:number[]=[];
  for(const [owner,delay] of [[fast,1000],[slow,20000]] as const){
   let snap=await service.start('2026-11-03',owner,false,owner===slow);
   for(let index=0;index<5;index++){
    now=Date.parse(snap.startsAt)+delay;
-   if(index===3){await service.answer(snap.id,owner.id,{key:'wrong',index,choice:-1,value:9});now+=800;}
+   if(index===3){const wrong=await service.answer(snap.id,owner.id,{key:'wrong',index,choice:-1,value:9});assert.equal(wrong.score,snap.score);assert.equal(wrong.guess?.hint,'higher');now+=800;}
    snap=await service.answer(snap.id,owner.id,{key:'answer-'+index,index,choice:-1,...(index===4?{text:'cat'}:{value:10})});
   }
-  assert.equal(snap.score,4800);assert.equal(snap.correct,5);assert.equal(snap.board?.own?.rank,1);
+  scores.push(snap.score);assert.equal(snap.correct,5);assert.equal(snap.board?.own?.rank,owner===fast?1:2);
+  assert.ok(snap.score<5000,'Time and the incorrect Crack guess reduce the maximum');
  }
+ assert.ok(scores[0]>scores[1],'Faster correct run must beat identical slower performance');
+ assert.deepEqual(scores,[4732,3623]);
  await db.query('UPDATE auth_accounts SET username=? WHERE id=?',['renamed',fast.id]);
  const board=await service.board('2026-11-03',fast.id);
- assert.equal(board.leaders.length,2);assert.ok(board.leaders.every(r=>r.rank===1));
+ assert.equal(board.leaders.length,2);assert.deepEqual(board.leaders.map(r=>r.rank),[1,2]);
  assert.equal(board.own?.username,'renamed');assert.deepEqual(board.own?.avatar,{character:'cat'});
  const before=JSON.stringify(board.leaders);
  now=Date.parse('2026-11-04T00:00:00Z');const replay=await service.start('2026-11-03',slow,false,true);assert.equal(replay.ranked,false);
@@ -124,11 +128,11 @@ test('attempt snapshots preserve legacy practice across a same-day version switc
  await db.migrate(await readFile('packages/db/migrations/sqlite/20261103000002_daily_skill_scoring.sql','utf8'),'snapshots');
  const service=new DailyChallengeService(db,()=>now),before=await service.snapshot('legacy-attempt',guest.id);
  const next=selectDailyArcade('2026-11-03');
- await db.query("UPDATE daily_challenges SET version=3,scoring_version='daily-skill-v3',questions=? WHERE day=?",[JSON.stringify(next),'2026-11-03']);
+ await db.query("UPDATE daily_challenges SET version=3,scoring_version='daily-speed-v3',questions=? WHERE day=?",[JSON.stringify(next),'2026-11-03']);
  const resumed=await service.snapshot('legacy-attempt',guest.id);
  assert.deepEqual(resumed.question,before.question);assert.equal(resumed.total,10);assert.equal(resumed.scoringVersion,'daily-time-v1');
  now+=1000;assert.equal((await service.answer('legacy-attempt',guest.id,{key:'resume',index:0,choice:0})).score,975);
- const ranked=await service.start('2026-11-03',guest,false,true);assert.equal(ranked.total,5);assert.equal(ranked.ranked,true);assert.equal(ranked.durationMs,600000);
+ const ranked=await service.start('2026-11-03',guest,false,true);assert.equal(ranked.total,5);assert.equal(ranked.ranked,true);assert.ok([26000,35000].includes(ranked.durationMs));
  // A challenge switch between SELECT and INSERT cannot attach a stale snapshot to a new ranked run.
  const other=await store.ensureUser('daily-guest:race','Player 4822');let switched=false;
  const racingDb={...db,query:async(sql:string,params?:import('../../packages/db/src/types').SqlValue[])=>{
