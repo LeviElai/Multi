@@ -9,12 +9,13 @@ test('creator registration validates passwords, signs in, prevents duplicates an
   const db = new NodeSqliteDatabase(':memory:');
   t.after(() => db.close());
   await db.migrate(await readFile(new URL('../../packages/db/migrations/sqlite/0001_initial.sql', import.meta.url), 'utf8'));
+  await db.migrate(await readFile(new URL('../../packages/db/migrations/sqlite/20261103000000_account_usernames.sql', import.meta.url), 'utf8'),'account-usernames');
   const auth = new CreatorAuth(new SqlStore(db), db, false);
   await auth.initialize({ NODE_ENV: 'test' });
   const request = (route: string, payload: unknown, cookie = '') => new Request('http://localhost/api/auth/' + route, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify(payload),
   });
-  const account = { email: 'creator@example.test', password: 'long-test-password-123', displayName: 'Luna' };
+  const account = { email: 'creator@example.test', password: 'long-test-password-123', displayName: 'Luna',username:'luna_star' };
   assert.equal((await auth.handle(request('register', {...account, password:'short'})))?.status, 400);
   const created = (await auth.handle(request('register', account)))!;
   assert.equal(created.status, 201);
@@ -22,12 +23,28 @@ test('creator registration validates passwords, signs in, prevents duplicates an
   assert.match(created.headers.get('set-cookie')!, /HttpOnly/);
   const identity = await auth.identify(new Request('http://localhost', {headers:{Cookie:cookie}}));
   assert.equal(identity?.displayName, 'Luna');
+  assert.equal(identity?.username,'luna_star');
+  const profile=await auth.handle(new Request('http://localhost/api/auth/profile',{method:'PATCH',headers:{Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({displayName:'The Fish King',username:'fish_king'})}));
+  assert.equal(profile?.status,200);
+  assert.equal((await auth.identify(new Request('http://localhost',{headers:{Cookie:cookie}})))?.displayName,'The Fish King');
+  assert.equal((await auth.identify(new Request('http://localhost',{headers:{Cookie:cookie}})))?.username,'fish_king');
+  assert.equal((await auth.handle(new Request('http://localhost/api/auth/profile',{method:'PATCH',headers:{Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({displayName:'Impersonator',username:'admin'})})))?.status,400);
   assert.equal((await auth.handle(request('register', account)))?.status, 409);
   assert.equal((await auth.handle(request('login', {...account, password:'incorrect'})))?.status, 401);
   const login = (await auth.handle(request('login', {...account, email:'CREATOR@example.test'})))!;
   assert.equal(login.status, 200);
-  const other = (await auth.handle(request('register', {...account, email:'other@example.test'})))!;
+  assert.equal((await auth.handle(request('register', {...account,username:'FISH_KING',email:'other@example.test',password:'planetary8'})))?.status,409);
+  const other = (await auth.handle(request('register', {...account, username:'other_star', email:'other@example.test',password:'planetary8'})))!;
   assert.notEqual(((await other.json()) as {data:{id:string}}).data.id, identity!.id);
+  assert.equal((await auth.handle(new Request('http://localhost/api/auth/profile',{method:'PATCH',headers:{Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({displayName:'Collision',username:'OTHER_STAR'})})))?.status,409);
+  assert.equal((await auth.handle(request('password',{currentPassword:'incorrect',newPassword:'newpassphrase'},cookie)))?.status,401);
+  assert.equal((await auth.handle(request('password',{currentPassword:account.password,newPassword:'newpassphrase'},cookie)))?.status,200);
+  assert.equal((await auth.handle(request('login',{email:account.email,password:account.password})))?.status,401);
+  assert.equal((await auth.handle(request('login',{email:account.email,password:'newpassphrase'})))?.status,200);
+  const guestResponse=(await auth.handle(request('guest',{})))!;assert.equal(guestResponse.status,200);
+  const guestCookie=guestResponse.headers.get('set-cookie')!.split(';')[0];
+  assert.ok((await auth.identifyGuest(new Request('http://localhost',{headers:{Cookie:guestCookie}})))?.id);
+  assert.equal(await auth.identify(new Request('http://localhost',{headers:{Cookie:guestCookie}})),null);
   await auth.handle(request('logout', {}, cookie));
   assert.equal(await auth.identify(new Request('http://localhost', {headers:{Cookie:cookie}})), null);
 });

@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {DailyQuestionSchema,DailyQuestionsSchema,type DailyQuestion} from './daily';
+import {DailyQuestionSchema,DailyQuestionsSchema,type DailyQuestion} from './daily-question';
 import {NUMERIC_FACTS,isApproximateFact} from './numeric-facts';
 /** Reviewed against the primary source links, 2026-10-25. AI may select IDs;
  * it cannot rewrite a fact, answer, source, or difficulty during publication. */

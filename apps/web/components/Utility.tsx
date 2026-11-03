@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 const AccountCharacter=dynamic(()=>import('./AccountExtras').then(m=>m.AccountCharacter));
 const Credits=dynamic(()=>import('./AccountExtras').then(m=>m.Credits));
 import { Header, Footer } from './Brand';
+import AccountPage from './AccountPage';
 import { api, post } from '../lib/api';
 import type { Profile } from '../../../packages/contracts/src/index';
 export default function Utility({ page }: {
@@ -23,7 +24,7 @@ catch (e) {
 }
 finally {
     setBusy(false);
-} } return <><Header /><main className="page utility-page">{page === 'report' ? <Report /> : page === 'account' ? <><h1>Your account</h1><p>Manage your account and the information you share.</p>{profile ? <><div className="account-profile"><span className="player-avatar">{profile.displayName[0]}</span><div><h2>{profile.displayName}</h2><p>Creator account</p></div><Link href="/billing" className="btn btn-outline btn-small">Billing & credits</Link><button className="btn btn-outline btn-small" onClick={async()=>{await api('/api/auth/logout',{method:'POST',body:'{}'});location.assign('/login');}}>Sign out</button></div><div className="account-content-grid"><AccountCharacter profile={profile}/><Credits compact/></div><section className="utility-block"><h2>Your data</h2><p>Download your profile and owned quiz drafts. For a fuller export or deletion, submit a request below. The confirmation is a receipt, not a completed deletion.</p><div className="button-row"><button className="btn btn-dark" onClick={async () => { try {
+} } if(page==='account')return <AccountPage/>; return <><Header /><main className="page utility-page">{page === 'report' ? <Report /> : page === 'account' ? <><h1>Your account</h1><p>Manage your account and the information you share.</p>{profile ? <><div className="account-profile"><span className="player-avatar">{profile.displayName[0]}</span><div><h2>{profile.displayName}</h2><p>Creator account</p></div><Link href="/billing" className="btn btn-outline btn-small">Billing & credits</Link><button className="btn btn-outline btn-small" onClick={async()=>{await api('/api/auth/logout',{method:'POST',body:'{}'});location.assign('/login');}}>Sign out</button></div><div className="account-content-grid"><AccountCharacter profile={profile}/><Credits compact/></div><section className="utility-block"><h2>Your data</h2><p>Download your profile and owned quiz drafts. For a fuller export or deletion, submit a request below. The confirmation is a receipt, not a completed deletion.</p><div className="button-row"><button className="btn btn-dark" onClick={async () => { try {
     const data = await api('/account/export');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));

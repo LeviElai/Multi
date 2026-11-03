@@ -126,11 +126,12 @@ export async function startGameServer(environment:NodeJS.ProcessEnv=process.env)
       // participant/action limits remain in the controller; this is a coarse
       // transport ceiling which permits fallback polling plus input updates.
       if(!limiter.allow(`http:${address}`,Math.max(6000,maxPlayers*240),60000))throw new DomainError('RATE_LIMITED','Too many requests. Try again shortly.',429);
-      if((path==='/api/auth/login'||path==='/api/auth/register')&&!limiter.allow(`login:${address}`,8,60000))throw new DomainError('RATE_LIMITED','Too many sign-in attempts. Try again in a minute.',429);
+      if((path==='/api/auth/login'||path==='/api/auth/register'||path==='/api/auth/password'||path==='/api/auth/profile')&&!limiter.allow(`login:${address}`,12,60000))throw new DomainError('RATE_LIMITED','Too many account requests. Try again in a minute.',429);
+      if(path==='/api/auth/guest'&&!limiter.allow(`daily-guest:${address}`,12,60000))throw new DomainError('RATE_LIMITED','Try again in a minute.',429);
       if(path==='/api/v1/sessions/join'&&!limiter.allow(`join:${address}`,90,60000))throw new DomainError('RATE_LIMITED','Too many join attempts. Try again in a minute.',429);
       const request=await webRequest(req,allowedOrigin??publicOrigin);
       const authResponse=await auth.handle(request);
-      const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0',rulesVersion:environment.GAME_RULES_V2==='1'?2:undefined,aiEnabled,adsConfig});
+      const response=authResponse??await handleApi(request,{store,user:await auth.identify(request),guest:path.includes('/daily/')?await auth.identifyGuest(request):null,features,cookieSecure:secure,pinSecret,clientIp:address,maxPlayers,automatic:environment.AUTOMATIC_FLOW!=='0',rulesVersion:environment.GAME_RULES_V2==='1'?2:undefined,aiEnabled,adsConfig});
       await sendResponse(res,response,secure,allowedOrigin);
       if(req.method!=='GET'&&response.ok){scheduleBroadcast();if(path==='/api/v1/ai/generate'){aiWake++;nextAiCheck=0;}}
       log('http_request',{method:req.method,path:safeLogPath,status:response.status,durationMs:Date.now()-started});

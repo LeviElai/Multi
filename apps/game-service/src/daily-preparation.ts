@@ -1,18 +1,20 @@
 import type {SqlDatabase} from '../../../packages/db/src/types';
-import {DailyQuestionsSchema,utcDay} from './daily';
-import {DAILY_POOL,selectDaily} from './daily-pool';
+import {utcDay} from './daily';
+import {DailyArcadeSchema,selectDailyArcade} from './daily-arcade';
+import {DAILY_POOL} from './daily-pool';
 /** Call from a scheduled worker, never from a player's request. Idempotent inserts
  * freeze the published questions and answer order for every date. */
 export async function prepareDaily(db:SqlDatabase,now=Date.now(),choose?:(day:string,candidates:typeof DAILY_POOL)=>Promise<string[]>){
  let prepared=0,aiFailures=0;
  for(let offset=0;offset<=7;offset++){
   const day=utcDay(now+offset*86400000);
-  if((await db.query('SELECT day FROM daily_challenges WHERE day=?',[day])).rows.length)continue;
-  const recentRows=await db.query<{questions:string}>('SELECT questions FROM daily_challenges WHERE day<? ORDER BY day DESC LIMIT 4',[day]);
-  const recent=new Set(recentRows.rows.flatMap(r=>DailyQuestionsSchema.parse(JSON.parse(r.questions)).map(q=>q.id)));
+  const current=(await db.query<{status:string;version:number}>('SELECT status,version FROM daily_challenges WHERE day=?',[day])).rows[0];
+  if(current?.status==='published'||current?.version>=2)continue;
+  const recentRows=await db.query<{questions:string;version:number}>('SELECT questions,version FROM daily_challenges WHERE day<? ORDER BY day DESC LIMIT 4',[day]);
+  const recentArcade=recentRows.rows.filter(r=>r.version>=2).map(r=>DailyArcadeSchema.parse(JSON.parse(r.questions)));
   let preferred:string[]=[];if(choose)try{const ids=await choose(day,DAILY_POOL);if(!Array.isArray(ids)||ids.length!==10||new Set(ids).size!==10||ids.some(id=>!DAILY_POOL.some(q=>q.id===id)))throw Error('Invalid AI selection');preferred=ids;}catch{aiFailures++;}
-  const questions=selectDaily(day,recent,preferred);
-  const result=await db.query("INSERT INTO daily_challenges(day,title,questions,prepared_at,status) VALUES(?,?,?,?, 'approved') ON CONFLICT(day) DO NOTHING",[day,'The Daily Quest',JSON.stringify(questions),new Date(now).toISOString()]);prepared+=result.changes;
+  const questions=selectDailyArcade(day,recentArcade,preferred);
+  const result=current?await db.query("UPDATE daily_challenges SET version=2,scoring_version='daily-arcade-v2',questions=?,prepared_at=? WHERE day=? AND status='approved'",[JSON.stringify(questions),new Date(now).toISOString(),day]):await db.query("INSERT INTO daily_challenges(day,title,questions,version,scoring_version,prepared_at,status) VALUES(?,?,?,2,'daily-arcade-v2',?, 'approved') ON CONFLICT(day) DO NOTHING",[day,'The Daily Quest',JSON.stringify(questions),new Date(now).toISOString()]);prepared+=result.changes;
  }
  const published=await db.query("UPDATE daily_challenges SET status='published',published_at=? WHERE status='approved' AND day<=?",[new Date(now).toISOString(),utcDay(now)]);
  return {prepared,published:published.changes,aiFailures};
