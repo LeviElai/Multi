@@ -104,7 +104,7 @@ function Fermi({ round, disabled, busy, value, send }: ControlProps & {
 }
 catch {
     preview = 'Enter a number';
-} ; return <form onSubmit={e => { e.preventDefault(); void send({ text, locked: true }).catch(() => { }); }}><div className="number-entry"><label htmlFor="fermi-value">{round.scoringPolicy==='exact'?'YOUR ANSWER':'YOUR BEST ESTIMATE'}</label><input autoComplete="off" id="fermi-value" inputMode="decimal" enterKeyHint="done" placeholder="0" value={text} onChange={e => setText(e.target.value)} disabled={disabled} required/><span>{c.unit}</span></div><p className="estimate-preview" aria-live="polite">{preview || ""}</p><button className="btn btn-dark btn-full" disabled={disabled || busy || !text.trim() || !validNumber}><Lock size={17}/>{busy?'Sending…':round.scoringPolicy==='exact'?'Lock answer':'Lock estimate'}</button></form>; }
+} ; return <form onSubmit={e => { e.preventDefault(); if(disabled||busy||!validNumber||!text.trim())return; void send({ text, locked: true }).catch(() => { }); }}><div className="number-entry"><label htmlFor="fermi-value">{round.scoringPolicy==='exact'?'YOUR ANSWER':'YOUR BEST ESTIMATE'}</label><input autoComplete="off" id="fermi-value" inputMode="decimal" enterKeyHint="done" placeholder="0" value={text} onChange={e => setText(e.target.value)} disabled={disabled} required/><span>{c.unit}</span></div><p className="estimate-preview" aria-live="polite">{preview || ""}</p><button className="btn btn-dark btn-full" disabled={disabled || busy || !text.trim() || !validNumber}><Lock size={17}/>{busy?'Sending…':round.scoringPolicy==='exact'?'Lock answer':'Lock estimate'}</button></form>; }
 function Rare({ disabled, busy, value, send }: ControlProps & {
     value?: string;
 }) {
@@ -181,7 +181,7 @@ function Word({ snapshot: s, onUpdate, onLocalSubmit, onError, disabled }: {
         return;
     } if (/^[a-zA-Z]$/.test(k) && chars.length < c.length)
         { playCue('letter'); setGuess(v => v + k.toUpperCase()); } }
-    useEffect(() => { const fn = (e: KeyboardEvent) => { if ((e.target as HTMLElement)?.matches('input,textarea,select'))
+    useEffect(() => { const fn = (e: KeyboardEvent) => { if (e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||(e.target as HTMLElement)?.closest('input,textarea,select,button,a,[contenteditable=true],[role=button],summary'))
         return; if (/^[a-zA-Z]$/.test(e.key) || ['Enter', 'Backspace'].includes(e.key)) {
         e.preventDefault();
         key(e.key);
