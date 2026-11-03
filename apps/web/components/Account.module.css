@@ -1,0 +1,33 @@
+.page{position:relative;z-index:1;display:grid;justify-items:center;align-content:start;padding:24px 16px 16px;color:#244758}
+.card{box-sizing:border-box;width:min(100%,520px);padding:24px;background:#fff1d1;border:3px solid #76543c;box-shadow:4px 5px #142e40;min-width:0}
+.heading{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.heading h1{margin:0;font-family:var(--pixel),monospace;font-size:clamp(20px,5vw,28px);line-height:1.25;letter-spacing:0}
+.character{flex:none;width:56px;height:70px;background:#bfe5ec;border-bottom:4px solid #397d79;display:grid;place-items:center}
+.character svg{width:48px;height:60px;image-rendering:pixelated}
+.username{margin:6px 0 0;overflow-wrap:anywhere;font-size:15px}
+.form{display:grid;gap:14px;margin:0}
+.field{display:grid;gap:6px;min-width:0;font-size:15px;font-weight:700}
+.field>span{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.field small,.hint{font-size:12px;line-height:1.4;font-weight:400;color:#4f6666}
+.field input{box-sizing:border-box;width:100%;min-width:0;min-height:46px;padding:10px 12px;border:2px solid #789188;border-radius:0;background:#fffaf0;color:#244758;font:inherit;font-size:16px;box-shadow:inset 2px 2px #eee2c8}
+.field input:focus{border-color:#244758;outline:2px solid #d1b56d;outline-offset:2px}
+.hint:empty{display:none}
+.primary,.secondary{box-sizing:border-box;display:flex;justify-content:center;align-items:center;gap:8px;min-height:46px;padding:10px 16px;border:2px solid #244758;border-radius:0;font:inherit;font-size:15px;font-weight:700;line-height:1.35;text-decoration:none;color:#244758;background:#ffd37b;box-shadow:2px 3px #142e40;cursor:pointer;text-align:center}
+.secondary{background:#fffaf0}
+.primary:active,.secondary:active{transform:translate(1px,2px);box-shadow:1px 1px #142e40}
+.primary:disabled,.secondary:disabled{opacity:.6;cursor:wait}
+.primary:focus-visible,.secondary:focus-visible,.textButton:focus-visible,.shortcuts a:focus-visible,.tabs button:focus-visible,.settings summary:focus-visible{outline:3px solid #397d79;outline-offset:3px}
+.guest{display:grid;gap:12px}.guest p{margin:0 0 4px;font-size:16px;line-height:1.5}
+.loading{font-size:15px;margin:0;padding:8px 0}
+.error,.success{font-size:14px;line-height:1.5;margin:0 0 16px;padding:10px 12px;border-left:4px solid #a34e4e;background:#fff4ef;color:#863f44;overflow-wrap:anywhere}
+.success{border-color:#397d79;background:#e1efcf;color:#285e51}
+.characterAction{margin:-8px 0 20px}.characterAction :global(.edit-look){min-height:44px;padding:8px 16px;font-size:14px;border-radius:0}.characterAction .error{margin-top:12px}
+.shortcuts{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:16px 0;border-top:2px solid #dfc99f;border-bottom:2px solid #dfc99f;padding:4px 0}
+.shortcuts a{min-height:44px;display:flex;align-items:center;font-weight:700;font-size:13px;text-decoration:underline;text-underline-offset:4px;color:inherit}
+.settings{font-size:14px}.settings summary{cursor:pointer;min-height:44px;align-content:center;font-weight:700}.email{overflow-wrap:anywhere;margin:8px 0 16px;color:#4f6666}.dataActions{display:grid;justify-items:start;gap:0;margin:16px 0}
+.textButton{padding:8px 0;min-height:44px;border:0;background:none;color:inherit;text-decoration:underline;text-underline-offset:4px;font:inherit;font-size:13px;cursor:pointer}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 20px;border-bottom:2px solid #bc9b6e}
+.tabs button{font:inherit;font-size:14px;min-height:44px;background:transparent;color:#244758;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;padding:8px;cursor:pointer;font-weight:700}.tabs button[aria-pressed=true]{border-bottom-color:#244758;background:#f3daa9}
+.guestLink{display:block;min-height:44px;align-content:center;text-align:center;margin-top:16px;color:inherit;font-size:14px;text-underline-offset:4px}
+@media(max-width:480px){.page{padding:16px 12px 8px}.card{padding:20px 16px}.heading{gap:12px;margin-bottom:16px}.character{width:48px;height:60px}.character svg{width:40px;height:50px}.form{gap:12px}.tabs{margin-bottom:16px}}
+@media(prefers-reduced-motion:reduce){.primary:active,.secondary:active{transform:none}}
