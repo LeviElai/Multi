@@ -69,3 +69,17 @@ Additional primary references checked 2026-11-03:
 | [Microsoft Xbox Accessibility Guideline 107: Input](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/107) | Avoid repeated button presses and provide simpler alternatives to sustained holds or drag-only controls. Fishing's single catch attempt follows this direction. Stack/Slingshot should expose equivalent discrete controls where practical, with the same authoritative outcome rules. Inspect cancel/release behavior and accidental activation interactively. |
 
 These are standards explanations, browser implementation guidance and platform game-accessibility guidance, not experiments establishing that a particular layout is enjoyable. The two-card menu choice still requires rendered comparison and actual playtesting.
+
+## Independent rendered review: candidate desktop, 2026-11-03
+
+Actually inspected `/workspace/scratch/multigame-candidate-home-desktop.jpg`, `multigame-candidate-profile-desktop.jpg`, `multigame-candidate-login-desktop.jpg`, and `multigame-candidate-daily-desktop.jpg`; compared Home with `multigame-baseline-home-20261103.jpg`. Candidate link supplied by release owner: https://multigame-heasglleu-levi-6fe6.vercel.app/ . These captures represent a partial candidate; legacy ten-question backend copy is excluded from composition judgments. No mobile pass is implied.
+
+| Screen/state | Verdict | Evidence and correction |
+| --- | --- | --- |
+| Home desktop | Needs revision | Single navigation and two action groups substantially clarify the baseline. But Friends card starts about 20px above Daily and ends about 20px below, with three sprites and a stronger title; it draws attention away from Today. Align card edges and heading/action baselines where useful. Restore the existing globe or actual daily-mode art to Daily. Do not add fixed empty panel height simply to fill the sky. |
+| Profile, signed out | Composition accepted for this state | Content-sized card, integrated avatar, clear account and guest actions. Background landscape is intentional surrounding space, not an empty content panel. Signed-in editing, errors and mobile remain unreviewed. |
+| Login, initial sign-in tab | Composition accepted for this state | Compact centered card; clear tabs, field labels and primary action; existing sprite integrates the form. Low-contrast footer needs the already-planned correction. Registration, validation, recovery and keyboard/mobile states remain unreviewed. |
+| Daily landing, empty leaderboard | Needs revision | Broad parchment sheet contains a narrow left-aligned title/action cluster and uncomposed empty space on the right. Use the existing globe or five mode badges as deliberate illustration; tighten action/countdown grouping. Remove redundant Home backlink when primary navigation is present. Prefer a readable localized date. Keep empty standings compact until real rows exist. |
+| Community | Not reviewed | Supplied screenshot path was absent at inspection; do not infer visual quality from source. |
+
+The desktop Home's large sky region is not automatically a defect; test shorter windows before changing it. Avoid turning intentional background into another oversized card. Current captures do not establish focus behavior, contrast measurements, responsive fit, gameplay comprehension or enjoyment.
