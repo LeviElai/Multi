@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import type {Snapshot} from '../../../../packages/contracts/src/index';
 export const COMMIT_MS:Record<string,number>={claw:3200,drop:2600,sling:1200,fish:750,draw:650,stack:700,crack:850};
 const EVENT='multigame:physical-commit';
-export function holdRoundAnimation(roundId:string,mode:string){window.dispatchEvent(new CustomEvent(EVENT,{detail:{roundId,until:Date.now()+(COMMIT_MS[mode]??500)}}));}
+export function holdRoundAnimation(roundId:string,mode:string){if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;window.dispatchEvent(new CustomEvent(EVENT,{detail:{roundId,until:Date.now()+(COMMIT_MS[mode]??500)}}));}
 /** Presentation may finish a committed action while the authoritative room advances. */
 export function useRoundPresentation(snapshot:Snapshot|null){
  const hold=useRef<{roundId:string;until:number}|null>(null),last=useRef<Snapshot|null>(null),[,redraw]=useState(0);
@@ -16,5 +16,5 @@ export function useRoundPresentation(snapshot:Snapshot|null){
 /** Imperative animation keeps pointer motion off React's render loop. */
 export function useTimeline(active:boolean,duration:number,paint:(progress:number)=>void,restored=false){
  const render=useRef(paint);render.current=paint;
- useEffect(()=>{if(!active)return;if(restored){render.current(1);return;}let frame=0;const start=performance.now();const tick=(now:number)=>{const p=Math.max(0,Math.min(1,(now-start)/duration));render.current(p);if(p<1)frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[active,duration,restored]);
+ useEffect(()=>{if(!active)return;if(restored||window.matchMedia('(prefers-reduced-motion: reduce)').matches){render.current(1);return;}let frame=0;const start=performance.now();const tick=(now:number)=>{const p=Math.max(0,Math.min(1,(now-start)/duration));render.current(p);if(p<1)frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[active,duration,restored]);
 }
