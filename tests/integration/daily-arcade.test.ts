@@ -30,7 +30,7 @@ test('five reviewed Daily games balance action, tactile and puzzle modes without
  assert.equal(seen.size,11);
 });
 
-test('five-game server run is speed scored, one ranked attempt, guest ranking and immutable history',async t=>{
+for(const version of [2,3])test(`five-game v${version} preserves content, guest official ranking and immutable history`,async t=>{
  const dir=await mkdtemp(join(tmpdir(),'daily-arcade-')),db=new NodeSqliteDatabase(join(dir,'db.sqlite'));
  t.after(async()=>{await db.close();await rm(dir,{recursive:true,force:true});});
  await db.migrate(await readFile('drizzle/0000_initial.sql','utf8'));
@@ -44,6 +44,10 @@ test('five-game server run is speed scored, one ranked attempt, guest ranking an
  const result=await prepareDaily(db,now);assert.ok(result.prepared>=7);
  const prepared=await db.query<{questions:string;version:number;status:string}>('SELECT * FROM daily_challenges WHERE day=?',['2026-11-03']);
  assert.equal(prepared.rows[0].version,3);assert.equal(prepared.rows[0].status,'published');
+ if(version===2)await db.query("UPDATE daily_challenges SET version=2,scoring_version='daily-arcade-v2' WHERE day=?",['2026-11-03']);
+ const original=(await db.query('SELECT * FROM daily_challenges WHERE day=?',['2026-11-03'])).rows[0];
+ await prepareDaily(db,now);
+ assert.deepEqual((await db.query('SELECT * FROM daily_challenges WHERE day=?',['2026-11-03'])).rows[0],original);
  const questions=DailyArcadeSchema.parse(JSON.parse(prepared.rows[0].questions));
  assert.equal(questions.length,5);
  const [ranked,concurrent]=await Promise.all([service.start('2026-11-03',owner,false),service.start('2026-11-03',owner,false)]);
@@ -69,7 +73,8 @@ test('five-game server run is speed scored, one ranked attempt, guest ranking an
  assert.equal((await service.board('2026-11-03',guest.id)).own,null);
  let guestSnapshot=guestRun;for(let i=0;i<5;i++){now=Date.parse(guestSnapshot.startsAt)+2000;guestSnapshot=await service.answer(guestRun.id,guest.id,{key:'guest-'+i,index:i,choice:-1});}
  assert.equal(guestSnapshot.board?.own?.username,'Player 4821');
- assert.equal(guestSnapshot.board?.own?.rank,snapshot.board?.own?.rank);
+ assert.equal(guestSnapshot.board?.own?.rank,version===2?2:snapshot.board?.own?.rank);
+ assert.deepEqual((await db.query('SELECT * FROM daily_challenges WHERE day=?',['2026-11-03'])).rows[0],original);
  assert.equal((await service.start('2026-11-03',guest,true,true)).ranked,false);
  now=Date.parse('2026-11-04T00:00:00Z');
  assert.equal((await service.start('2026-11-03',owner,true)).ranked,false);
