@@ -42,8 +42,8 @@ export class DailyChallengeService{
   const result=await this.db.query("SELECT c.day,c.title,c.version,(SELECT MAX(a.score) FROM daily_attempts a WHERE a.day=c.day AND a.owner_id=? AND a.ranked=1 AND a.completed_at IS NOT NULL) AS own_score FROM daily_challenges c WHERE c.status='published' AND c.day<? ORDER BY c.day DESC LIMIT 31",[owner??null,before]);return result.rows;
  }
  async start(day:string,owner:{id:string;displayName:string},practice:boolean,guest=false){
-  const challenge=await this.challenge(day);const now=this.clock(),ranked=!practice&&day===utcDay(now)&&(!guest||challenge.scoring_version==='daily-speed-v3');
-  if(practice&&(!guest||challenge.scoring_version==='daily-speed-v3')&&day===utcDay(now)){
+  const challenge=await this.challenge(day);const now=this.clock(),ranked=!practice&&day===utcDay(now)&&(!guest||challenge.version>=2);
+  if(practice&&(!guest||challenge.version>=2)&&day===utcDay(now)){
     const completed=await this.db.query('SELECT id FROM daily_attempts WHERE day=? AND owner_id=? AND ranked=1 AND completed_at IS NOT NULL',[day,owner.id]);
     if(!completed.rows.length)throw new DomainError('RANKED_FIRST','Finish today’s ranked run before practising.',409);
   }
