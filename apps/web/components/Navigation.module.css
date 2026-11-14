@@ -11,3 +11,6 @@
 .footer nav{display:flex;justify-content:center;gap:24px;font-size:12px;width:fit-content;margin:0 auto;padding:0 16px;background:#fff1d1;color:#244758}
 .footer a{display:inline-flex;align-items:center;min-height:44px;color:inherit;text-underline-offset:4px}
 @media(max-width:700px){.header{display:grid;gap:4px;padding:8px 12px 0}.identity{width:100%}.identity :global(.brand){font-size:13px}.identity :global(.brand) span{font-size:13px}.navigation{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;gap:0}.navigation a{font-size:12px;padding:8px 2px;min-width:0}.header{grid-template-columns:minmax(0,1fr)}}
+
+/* Active games own the viewport, including previews nested below page stacking contexts. */
+:global(body[data-game-active="true"]) .header,:global(body[data-game-active="true"]) .footer{display:none}
