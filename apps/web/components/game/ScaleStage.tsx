@@ -16,7 +16,7 @@ export function ScaleStage({ round, ratio, truth, onRatio, personalComparison=tr
     const span = (c.calibration.end - c.calibration.start) / c.calibration.intrinsicDimension;
     // Camera is fixed by published bounds, never by the player's current value.
     const fittedUnit=Math.min(140,230/Math.max(1,c.maxRatio/span));
-    const [unit,setUnit]=useState(()=>Math.min(110,Math.max(42,fittedUnit))); 
+    const [unit,setUnit]=useState(()=>Math.min(110,fittedUnit)); 
     const points = useRef(new Map<number, {
         x: number;
         y: number;

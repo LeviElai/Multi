@@ -4,6 +4,7 @@ import { ArrowRight, ArrowLeft, LoaderCircle } from 'lucide-react';
 import { post } from '../lib/api';
 import {playCue} from '../lib/audio';
 import { normalizePin } from '../lib/presentation';
+import styles from './Join.module.css';
 export default function JoinForm({ initialPin = '', compact = false }: {
     initialPin?: string;
     compact?: boolean;
@@ -47,7 +48,7 @@ export default function JoinForm({ initialPin = '', compact = false }: {
             inFlight.current = false;
         }
     }
-    return <form className={`harbor-join ${compact ? 'compact-join' : ''}`} onSubmit={submit} aria-label="Join a game">
+    return <form className={`${styles.form} ${compact ? 'compact-join' : ''}`} onSubmit={submit} aria-label="Join a game">
     {stage==='name'&&<p className="join-room-code">Room {pin}</p>}
     {stage === 'pin' ? <><label htmlFor={compact ? 'home-pin' : 'join-pin'}>Game code</label><div className="join-input-row"><input ref={pinRef} id={compact ? 'home-pin' : 'join-pin'} aria-label="Game PIN" type="text" inputMode="numeric" autoComplete="off" value={pin} placeholder="000 000" maxLength={20} onChange={e => { setPin(normalizePin(e.target.value)); setError(''); }} aria-describedby="join-hint"/><button className="btn btn-primary" type="submit" aria-label="Continue to nickname">Continue <ArrowRight size={18}/></button></div></> : <><label htmlFor={compact ? 'home-nickname' : 'join-nickname'}>Your nickname</label><div className="join-input-row"><input ref={nameRef} id={compact ? 'home-nickname' : 'join-nickname'} aria-label="Your nickname" value={nickname} maxLength={24} autoComplete="nickname" placeholder="Your nickname" onChange={e => setNickname(e.target.value)} required disabled={busy}/><button className="btn btn-primary" disabled={busy || !nickname.trim()}>{busy ? <LoaderCircle className="spin" size={18}/> : <ArrowRight size={18}/>}<span>{busy ? 'Joining…' : 'Join game'}</span></button></div><button type="button" className="join-back" disabled={busy} onClick={() => { setStage('pin'); setError(''); requestAnimationFrame(() => pinRef.current?.focus()); }}><ArrowLeft size={14}/> Change code</button></>}
     <div className="join-error-slot">{error && <p className="join-error" role="alert">{error}</p>}</div>

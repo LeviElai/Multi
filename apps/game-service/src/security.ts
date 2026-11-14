@@ -34,6 +34,13 @@ export function sanitizeNickname(value: string): string {
   }
   return normalized;
 }
+/** Keep full profile names in the account, but fit room labels without splitting emoji. */
+export function roomDisplayName(value:string):string {
+  const normalized=value.normalize('NFKC').trim().replace(/\s+/gu,' ');
+  if(/[\p{Cc}\p{Cf}<>]/u.test(normalized))throw new DomainError('INVALID_NICKNAME','Choose a display name with visible characters.',422);
+  const graphemes=[...new Intl.Segmenter('en',{granularity:'grapheme'}).segment(normalized)].map(part=>part.segment);
+  return sanitizeNickname(graphemes.length>24?graphemes.slice(0,21).join('')+'...':normalized);
+}
 export function assertSameOrigin(request: Request): void {
   if (['GET', 'HEAD', 'OPTIONS'].includes(request.method.toUpperCase())) return;
   const url = new URL(request.url);

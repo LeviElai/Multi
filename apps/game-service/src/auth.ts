@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import type { SqlDatabase, Store } from '../../../packages/db/src/types';
 
@@ -75,9 +75,13 @@ export class CreatorAuth {
     const path=new URL(request.url).pathname;
     if(path==='/api/auth/guest'&&request.method==='POST'){
       const existing=await this.identifyGuest(request);
-      if(existing)return Response.json({data:{ready:true}});
+      if(existing){
+        // Upgrade the old generic label without replacing the guest or its scores.
+        if(existing.displayName==='Daily guest')await this.db.query('UPDATE users SET display_name=? WHERE id=? AND display_name=?',[`Player ${randomInt(1000,10000)}`,existing.id,'Daily guest']);
+        return Response.json({data:{ready:true}});
+      }
       const token=randomBytes(32).toString('base64url'),now=Date.now();
-      const guest=await this.store.ensureUser('daily-guest:'+randomUUID(),'Daily guest');
+      const guest=await this.store.ensureUser('daily-guest:'+randomUUID(),`Player ${randomInt(1000,10000)}`);
       await this.db.query('INSERT INTO auth_sessions (token_digest,user_id,expires_at,created_at) VALUES (?,?,?,?)',[digestToken(token),guest.id,new Date(now+SESSION_SECONDS*1000).toISOString(),new Date(now).toISOString()]);
       const cookie=`${this.secure?'__Host-mg_daily_guest':'mg_daily_guest'}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_SECONDS}${this.secure?'; Secure':''}`;
       return Response.json({data:{ready:true}},{headers:{'Set-Cookie':cookie}});

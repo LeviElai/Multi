@@ -11,7 +11,7 @@ import { api, post } from '../lib/api';
 import type { Profile } from '../../../packages/contracts/src/index';
 export default function Utility({ page }: {
     page: string;
-}) { const [profile, setProfile] = useState<Profile | null>(null); const [profileLoading,setProfileLoading]=useState(true); const [message, setMessage] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false); useEffect(() => { if (['account', 'billing', 'admin'].includes(page))
+}) { const [profile, setProfile] = useState<Profile | null>(null); const [profileLoading,setProfileLoading]=useState(true); const [message, setMessage] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false); useEffect(() => { if (['billing', 'admin'].includes(page))
     void api<Profile | null>('/me').then(setProfile).catch(e => setError(e.message)).finally(()=>setProfileLoading(false)); }, [page]); async function request(type: string) { setBusy(true); setError(''); try {
     const r = await post<{
         receiptId: string;
